@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Platform;
 
 use App\Models\Addon;
+use App\Models\CardProduct;
 use App\Models\ContactType;
 use App\Models\LanyardHardware;
 use App\Models\LanyardWidth;
+use App\Models\ShippingMethod;
 use App\Support\Audit;
 use App\Support\Contacts\ContactTypes;
 use Illuminate\Http\JsonResponse;
@@ -13,7 +15,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
-/** Katalog (platform.catalog.manage): harga lanyard, jenis kontak bio link, dan add-on (harga, status, jumlah peminat). */
+/** Katalog (platform.catalog.manage): produk kartu & ongkir, harga lanyard, jenis kontak bio link, add-on (harga, status, peminat). */
 class CatalogController extends PlatformController
 {
     public function show(): JsonResponse
@@ -21,6 +23,8 @@ class CatalogController extends PlatformController
         $this->can('catalog.manage');
 
         return $this->ok([
+            'card_products' => CardProduct::orderBy('sort')->get()->map(fn (CardProduct $p) => $p->only(['public_id', 'key', 'name', 'description', 'price', 'min_qty', 'sort', 'is_active']) + ['chip_type' => $p->chip_type->value]),
+            'shipping_methods' => ShippingMethod::orderBy('sort')->get()->map(fn ($m) => $m->only(['public_id', 'key', 'name', 'eta', 'price', 'needs_address', 'sort', 'is_active'])),
             'lanyard_widths' => LanyardWidth::orderBy('sort')->get()->map(fn ($w) => $w->only(['public_id', 'width_mm', 'label', 'price_single', 'price_double', 'min_qty', 'sort', 'is_active'])),
             'lanyard_hardware' => LanyardHardware::orderBy('sort')->get()->map(fn ($h) => $h->only(['public_id', 'key', 'name', 'description', 'price', 'sort', 'is_active'])),
             'addons' => Addon::withCount('interests')->orderBy('sort')->get()->map(fn (Addon $a) => $a->only([
@@ -49,6 +53,53 @@ class CatalogController extends PlatformController
         $before = $w->exists ? $w->toArray() : null;
         $w->fill($data)->save();
         Audit::platform($id ? 'catalog.lanyard_width.updated' : 'catalog.lanyard_width.created', $w, $before, $w->toArray());
+
+        return $this->show();
+    }
+
+    public function saveCardProduct(Request $request, ?string $id = null): JsonResponse
+    {
+        $this->can('catalog.manage');
+        $p = $id ? CardProduct::where('public_id', $id)->firstOrFail() : new CardProduct;
+        $s = $id ? 'sometimes' : 'required';
+        $data = $request->validate([
+            'name' => [$s, 'string', 'max:80'],
+            'description' => ['nullable', 'string', 'max:200'],
+            'chip_type' => [$s, Rule::in(['ntag213', 'ntag215', 'ntag216', 'ntag424'])],
+            'price' => [$s, 'integer', 'min:0', 'max:100000000'],
+            'min_qty' => ['sometimes', 'integer', 'min:1', 'max:5000'],
+            'sort' => ['sometimes', 'integer'],
+            'is_active' => ['sometimes', 'boolean'],
+        ]);
+        if (! $id) {
+            $data['key'] = Str::limit(Str::slug($data['name'], '_'), 24, '').'_'.Str::lower(Str::random(3));
+        }
+        $before = $p->exists ? $p->toArray() : null;
+        $p->fill($data)->save();
+        Audit::platform($id ? 'catalog.card_product.updated' : 'catalog.card_product.created', $p, $before, $p->toArray());
+
+        return $this->show();
+    }
+
+    public function saveShipping(Request $request, ?string $id = null): JsonResponse
+    {
+        $this->can('catalog.manage');
+        $m = $id ? ShippingMethod::where('public_id', $id)->firstOrFail() : new ShippingMethod;
+        $s = $id ? 'sometimes' : 'required';
+        $data = $request->validate([
+            'name' => [$s, 'string', 'max:80'],
+            'eta' => ['nullable', 'string', 'max:60'],
+            'price' => [$s, 'integer', 'min:0', 'max:10000000'],
+            'needs_address' => ['sometimes', 'boolean'],
+            'sort' => ['sometimes', 'integer'],
+            'is_active' => ['sometimes', 'boolean'],
+        ]);
+        if (! $id) {
+            $data['key'] = Str::limit(Str::slug($data['name'], '_'), 24, '').'_'.Str::lower(Str::random(3));
+        }
+        $before = $m->exists ? $m->toArray() : null;
+        $m->fill($data)->save();
+        Audit::platform($id ? 'catalog.shipping.updated' : 'catalog.shipping.created', $m, $before, $m->toArray());
 
         return $this->show();
     }

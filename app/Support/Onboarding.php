@@ -57,8 +57,8 @@ final class Onboarding
                 'done' => filled($user->handle), 'cta' => ['label' => 'Atur @nama', 'to' => '/settings']] : null,
             ['key' => 'share', 'title' => 'Bagikan kartu digital', 'text' => 'Tunjukkan QR di layar, kirim lewat WhatsApp, atau unduh gambarnya — tanpa menunggu kartu fisik.',
                 'done' => $shared, 'cta' => $main ? ['label' => 'Bagikan', 'to' => "/cards/{$main->card_token}/share"] : null],
-            ['key' => 'physical', 'title' => 'Punya kartu fisik', 'text' => 'Desain kartu NFC Anda di Studio, atau aktifkan kartu yang sudah Anda terima.',
-                'done' => $physical, 'cta' => ['label' => 'Desain kartu', 'to' => '/designs'], 'secondary' => ['label' => 'Aktifkan kartu', 'to' => '/cards']],
+            ['key' => 'physical', 'title' => 'Punya kartu fisik', 'text' => 'Pesan kartu NFC dari desain Anda, atau aktifkan kartu yang sudah Anda terima.',
+                'done' => $physical, 'cta' => ['label' => 'Pesan kartu', 'to' => '/orders/new'], 'secondary' => ['label' => 'Aktifkan kartu', 'to' => '/cards']],
         ]));
         $done = count(array_filter($steps, fn ($s) => $s['done']));
 

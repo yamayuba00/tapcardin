@@ -23,8 +23,12 @@ const widths = ref([])
 const hardware = ref([])
 const types = ref([])
 const addons = ref([])
+const products = ref([])
+const shipping = ref([])
 watch(c, (v) => {
   if (!v) return
+  products.value = v.card_products.map((p) => ({ ...p }))
+  shipping.value = v.shipping_methods.map((m) => ({ ...m }))
   addons.value = v.addons.map((a) => ({ ...a, featuresText: (a.features ?? []).join('\n'), price_monthly: a.price_monthly ?? '' }))
   widths.value = v.lanyard_widths.map((w) => ({ ...w }))
   hardware.value = v.lanyard_hardware.map((h) => ({ ...h }))
@@ -49,6 +53,14 @@ async function addHardware() {
   const res = await run(() => adminApi.saveLanyardHardware(null, { name: fresh.name, price: Number(fresh.price) }), 'Pengait ditambahkan.').catch(() => null)
   if (res) { c.value = res.data; fresh.name = ''; fresh.price = 0 }
 }
+async function saveProduct(p) {
+  const res = await run(() => adminApi.saveCardProduct(p.public_id, { name: p.name, description: p.description || null, is_active: p.is_active, ...ints(p, ['price', 'min_qty', 'sort']) }), `${p.name} disimpan.`).catch(() => null)
+  if (res) c.value = res.data
+}
+async function saveShipping(m) {
+  const res = await run(() => adminApi.saveShipping(m.public_id, { name: m.name, eta: m.eta || null, is_active: m.is_active, needs_address: m.needs_address, ...ints(m, ['price', 'sort']) }), `${m.name} disimpan.`).catch(() => null)
+  if (res) c.value = res.data
+}
 const ADDON_STATUS = [{ value: 'coming_soon', label: 'Segera hadir (daftar minat)' }, { value: 'available', label: 'Tersedia' }, { value: 'retired', label: 'Dihentikan' }]
 async function saveAddon(a) {
   const res = await run(() => adminApi.updateAddon(a.public_id, {
@@ -67,6 +79,53 @@ async function saveType(t, patch) {
   <PageHeader eyebrow="Bisnis" title="Katalog" />
   <AppSkeleton v-if="!c" class="!h-60" />
   <template v-else>
+    <AppPanel title="Kartu fisik · produk" flush>
+      <div class="overflow-x-auto">
+        <table class="w-full min-w-[760px] text-sm">
+          <thead>
+            <tr class="text-left text-muted">
+              <th class="px-4 py-2 font-medium">Nama</th><th class="px-4 py-2 font-medium">Deskripsi</th><th class="px-4 py-2 font-medium">Chip</th>
+              <th class="px-4 py-2 font-medium">Harga / kartu (Rp)</th><th class="px-4 py-2 font-medium">Min. pesan</th><th class="px-4 py-2 font-medium">Aktif</th><th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="p in products" :key="p.public_id" class="border-t border-line">
+              <td class="px-4 py-2"><AppInput v-model="p.name" maxlength="80" :aria-label="`Nama ${p.key}`" /></td>
+              <td class="px-4 py-2"><AppInput v-model="p.description" maxlength="200" :aria-label="`Deskripsi ${p.name}`" /></td>
+              <td class="px-4 py-2 font-mono uppercase">{{ p.chip_type }}</td>
+              <td class="px-4 py-2"><AppInput v-model="p.price" type="number" min="0" class="max-w-32" :aria-label="`Harga ${p.name}`" /></td>
+              <td class="px-4 py-2"><AppInput v-model="p.min_qty" type="number" min="1" class="max-w-24" :aria-label="`Minimal pesan ${p.name}`" /></td>
+              <td class="px-4 py-2"><AppToggle v-model="p.is_active" :label="p.is_active ? 'Ya' : 'Tidak'" /></td>
+              <td class="px-4 py-2 text-right"><AppButton variant="secondary" :loading="busy" @click="saveProduct(p)"><Save class="size-4" /> Simpan</AppButton></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </AppPanel>
+
+    <AppPanel title="Pengiriman" flush>
+      <div class="overflow-x-auto">
+        <table class="w-full min-w-[760px] text-sm">
+          <thead>
+            <tr class="text-left text-muted">
+              <th class="px-4 py-2 font-medium">Nama</th><th class="px-4 py-2 font-medium">Estimasi</th><th class="px-4 py-2 font-medium">Ongkir / pesanan (Rp)</th>
+              <th class="px-4 py-2 font-medium">Perlu alamat</th><th class="px-4 py-2 font-medium">Aktif</th><th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="m in shipping" :key="m.public_id" class="border-t border-line">
+              <td class="px-4 py-2"><AppInput v-model="m.name" maxlength="80" :aria-label="`Nama ${m.key}`" /></td>
+              <td class="px-4 py-2"><AppInput v-model="m.eta" maxlength="60" :aria-label="`Estimasi ${m.name}`" /></td>
+              <td class="px-4 py-2"><AppInput v-model="m.price" type="number" min="0" class="max-w-32" :aria-label="`Ongkir ${m.name}`" /></td>
+              <td class="px-4 py-2"><AppToggle v-model="m.needs_address" :label="m.needs_address ? 'Ya' : 'Tidak'" /></td>
+              <td class="px-4 py-2"><AppToggle v-model="m.is_active" :label="m.is_active ? 'Ya' : 'Tidak'" /></td>
+              <td class="px-4 py-2 text-right"><AppButton variant="secondary" :loading="busy" @click="saveShipping(m)"><Save class="size-4" /> Simpan</AppButton></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </AppPanel>
+
     <AppPanel title="Lanyard · lebar tali" flush>
       <div class="overflow-x-auto">
         <table class="w-full min-w-[760px] text-sm">

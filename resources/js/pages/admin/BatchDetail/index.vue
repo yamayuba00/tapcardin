@@ -45,6 +45,7 @@ async function act(fn, message) {
           <AppBadge tone="info">{{ b.status_label }}</AppBadge>
           <AppBadge tone="outline">{{ b.chip_type }}</AppBadge>
           <AppBadge tone="outline">{{ b.quantity }} kartu</AppBadge>
+          <RouterLink v-if="b.order" :to="`/orders/${b.order.id}`" class="text-sm">Pesanan {{ b.order.number }}</RouterLink>
           <AppBadge v-if="b.holder" tone="outline">{{ b.holder.email }}</AppBadge>
         </div>
       </template>

@@ -1,5 +1,5 @@
 <script setup>
-// Halaman bayar SIMULASI (TAPCARD_PAYMENT_DRIVER=simulator, hanya lokal/test): meniru halaman gateway agar alur
+// Halaman bayar SIMULASI (PAYMENT_DRIVER=simulator, hanya lokal/test): meniru halaman gateway agar alur
 // upgrade bisa dicoba tanpa uang sungguhan. "Bayar" mengirim event yang diproses sama persis seperti webhook asli.
 import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -28,7 +28,8 @@ const rupiah = (n) => new Intl.NumberFormat('id-ID', { style: 'currency', curren
 async function submit(result) {
   const res = await run(() => billingApi.simulate(id, result, method.value)).catch(() => null)
   if (!res) return
-  if (result === 'paid') router.replace(`/billing/invoices/${id}?paid=1`)
+  // langganan → halaman invoice; pesanan kartu → halaman pesanan
+  if (result === 'paid') router.replace(`${inv.value?.return_to ?? `/billing/invoices/${id}`}?paid=1`)
   else toast.push('Pembayaran gagal (simulasi). Tagihan masih terbuka — coba metode lain.')
 }
 </script>
@@ -57,7 +58,7 @@ async function submit(result) {
       </template>
       <p v-else class="text-center text-muted">Tagihan ini sudah {{ inv.status === 'paid' ? 'lunas' : 'tidak berlaku' }}.</p>
       <AppButton variant="secondary" block :to="`/billing/invoices/${id}`">Kembali ke invoice</AppButton>
-      <p class="flex items-center justify-center gap-1 text-xs text-muted"><ShieldCheck class="size-4" /> Di produksi halaman ini diganti Midtrans Snap.</p>
+      <p class="flex items-center justify-center gap-1 text-xs text-muted"><ShieldCheck class="size-4" /> Di produksi halaman ini diganti halaman bayar gateway (mis. QRIS).</p>
     </section>
   </div>
 </template>

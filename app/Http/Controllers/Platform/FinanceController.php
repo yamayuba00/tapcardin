@@ -11,8 +11,8 @@ use App\Models\PaymentEvent;
 use App\Models\Plan;
 use App\Models\Subscription;
 use App\Models\Tenant;
+use App\Services\Payment\PaymentNotification;
 use App\Support\Audit;
-use App\Support\Billing\WebhookEvent;
 use App\Support\Http\Table;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -89,7 +89,7 @@ class FinanceController extends PlatformController
         if (! $i->isPayable()) {
             throw new ApiError('invoice_not_payable', 'Hanya invoice terbuka yang bisa ditandai lunas.');
         }
-        $outcome = $apply->handle(new WebhookEvent('manual', 'manual-'.Str::ulid(), $i->number, WebhookEvent::PAID, (int) $i->total,
+        $outcome = $apply->handle(new PaymentNotification('manual', 'manual-'.Str::ulid(), $i->number, PaymentNotification::PAID, (int) $i->total,
             mb_substr($data['method'], 0, 40), true, ['by' => auth()->id(), 'reference' => $data['reference'] ?? null]));
         Audit::platform('invoice.marked_paid', $i, null, ['method' => $data['method'], 'reference' => $data['reference'] ?? null, 'outcome' => $outcome]);
 

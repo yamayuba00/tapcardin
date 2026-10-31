@@ -13,6 +13,7 @@ const messages = {
   invoice_paid: (d) => `Pembayaran ${d.number} berhasil — paket ${d.plan} aktif`,
   invoice_due: (d) => `Tagihan perpanjangan ${d.number} sudah terbit`,
   plan_changed: (d) => `Paket workspace kini ${d.plan}`,
+  order_status: (d) => `Pesanan ${d.number}: ${d.label}${d.tracking ? ' · resi ' + d.tracking : ''}`,
   announcement: (d) => `${d.title} — ${d.body}`,
   import_done: (d) => `Impor ${d.filename} selesai: ${d.created} baru, ${d.merged} digabung, ${d.failed} gagal`,
 }

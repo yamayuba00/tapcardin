@@ -140,10 +140,13 @@ else
   set_env SEED_PLATFORM_OWNER_PASSWORD "$OWNER_PASSWORD"   # dihapus lagi setelah akun dibuat
   for k in DB_HOST DB_PORT DB_DATABASE DB_USERNAME DB_PASSWORD DB_SSLMODE DB_EMULATE_PREPARES \
            MAIL_HOST MAIL_PORT MAIL_SCHEME MAIL_USERNAME MAIL_PASSWORD \
-           MIDTRANS_SERVER_KEY MIDTRANS_CLIENT_KEY MIDTRANS_PRODUCTION GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET; do
-    set_env "$k" "${!k:-}"
+           PAYMENT_GATEWAY_NAME PAYMENT_GATEWAY_CODE PAYMENT_API_URL PAYMENT_API_KEY PAYMENT_METHOD \
+           PAYMENT_WEBHOOK_VERIFY PAYMENT_WEBHOOK_SECRET GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET; do
+    # isian kosong di install.env tidak menimpa nilai bawaan template (mis. nama metode, path API)
+    if [[ -n ${!k:-} ]]; then set_env "$k" "${!k}"; fi
   done
   set_env MAIL_FROM_ADDRESS "${MAIL_FROM_ADDRESS:-noreply@$DOMAIN}"
+  set_env PAYMENT_DRIVER link
   set_env GOOGLE_REDIRECT_URI "https://app.$DOMAIN/auth/google/callback"
   ok ".env dibuat (kunci aplikasi & pepper acak)"
 fi

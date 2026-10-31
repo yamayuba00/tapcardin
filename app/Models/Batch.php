@@ -34,6 +34,12 @@ class Batch extends Model
         return $this->belongsTo(Tenant::class);
     }
 
+    /** Item pesanan asal batch ini (null = batch stok / pilot / pengganti). */
+    public function orderItem(): BelongsTo
+    {
+        return $this->belongsTo(OrderItem::class);
+    }
+
     public function holder(): BelongsTo
     {
         return $this->belongsTo(User::class, 'holder_user_id');

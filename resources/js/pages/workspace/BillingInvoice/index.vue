@@ -1,6 +1,6 @@
 <script setup>
 // Invoice / kuitansi: rincian, status, metode bayar; tombol bayar bila masih terbuka; cetak / simpan PDF dari browser.
-// Setelah kembali dari gateway, status dipantau beberapa saat sampai notifikasi pembayaran masuk.
+// Setelah kembali dari gateway, status ditanyakan langsung ke gateway beberapa saat sampai pembayaran terkonfirmasi.
 import { computed, onBeforeUnmount, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { CircleCheck, Clock, Printer } from 'lucide-vue-next'
@@ -24,15 +24,20 @@ const rupiah = (n) => new Intl.NumberFormat('id-ID', { style: 'currency', curren
 const STATUS = { issued: ['warn', 'Belum dibayar'], overdue: ['danger', 'Terlambat'], paid: ['ok', 'Lunas'], void: ['muted', 'Dibatalkan'], draft: ['muted', 'Draf'] }
 const payable = computed(() => inv.value && ['issued', 'overdue'].includes(inv.value.status))
 
-// pantau 2 menit setelah kembali dari halaman bayar
+// pantau ±2 menit setelah kembali dari halaman bayar: server menanyakan status langsung ke gateway
+// (tidak hanya menunggu webhook), lalu memproses lewat jalur pembayaran yang sama
 let timer = null
 let tries = 0
+async function check() {
+  try {
+    inv.value = { ...inv.value, ...(await billingApi.check(route.params.id)).data }
+  } catch { await reload() }
+  if (inv.value?.status !== 'issued' || ++tries > 30) clearInterval(timer)
+}
 watch(inv, (v) => {
-  if (!v || !route.query.paid || v.status === 'paid' || timer) return
-  timer = setInterval(async () => {
-    await reload()
-    if (inv.value?.status === 'paid' || ++tries > 40) clearInterval(timer)
-  }, 3000)
+  if (!v || !route.query.paid || v.status !== 'issued' || timer) return
+  check()
+  timer = setInterval(check, 4000)
 }, { immediate: true })
 onBeforeUnmount(() => clearInterval(timer))
 

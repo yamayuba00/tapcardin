@@ -7,7 +7,7 @@ use App\Models\Invoice;
 use App\Models\Plan;
 use App\Models\Subscription;
 use App\Models\Tenant;
-use App\Support\Billing\Payments;
+use App\Services\Payment\PaymentService;
 use App\Support\Notify;
 use Illuminate\Console\Command;
 use Illuminate\Support\Str;
@@ -35,7 +35,7 @@ class Subscriptions extends Command
         Subscription::acrossTenants()->with('plan')->where('status', 'active')->where('cancel_at_period_end', false)
             ->whereBetween('current_period_end', [now(), now()->addDays(7)])->each(function (Subscription $s) use (&$n) {
                 $exists = Invoice::acrossTenants()->where('subscription_id', $s->id)->whereIn('status', ['issued', 'overdue'])->exists();
-                $amount = Payments::price($s->plan, $s->cycle);
+                $amount = PaymentService::price($s->plan, $s->cycle);
                 if ($exists || $amount <= 0) {
                     return;
                 }

@@ -123,6 +123,16 @@ export const notificationsApi = {
 }
 
 /** OR-05 — paket & tagihan. */
+export const ordersApi = {
+  catalog: () => http.get('/api/orders/catalog'),
+  list: (params) => http.get('/api/orders', params),
+  get: (id) => http.get(`/api/orders/${id}`),
+  create: (body) => http.post('/api/orders', body),
+  pay: (id) => http.post(`/api/orders/${id}/pay`),
+  check: (id) => http.post(`/api/orders/${id}/check`),
+  cancel: (id) => http.post(`/api/orders/${id}/cancel`),
+}
+
 export const billingApi = {
   get: () => http.get('/api/billing'),
   checkout: (plan, cycle, voucher = null) => http.post('/api/billing/checkout', { plan, cycle, voucher }),
@@ -130,6 +140,8 @@ export const billingApi = {
   invoices: (params) => http.get('/api/billing/invoices', params),
   invoice: (id) => http.get(`/api/billing/invoices/${id}`),
   pay: (id) => http.post(`/api/billing/invoices/${id}/pay`),
+  /** tanya status ke gateway pembayaran (setelah kembali dari halaman bayar) */
+  check: (id) => http.post(`/api/billing/invoices/${id}/check`),
   simulate: (id, result, method) => http.post(`/api/billing/invoices/${id}/simulate`, { result, method }),
   cancel: (resume = false) => http.post('/api/billing/cancel', { resume }),
 }

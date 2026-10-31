@@ -28,6 +28,7 @@ cp install.env.example /root/tapcard-install.env && nano /root/tapcard-install.e
 ```
 
 Yang wajib diisi: `DOMAIN`, `REPO_URL`, `ADMIN_EMAIL`, database (`DB_*`), dan SMTP (`MAIL_*`).
+Pembayaran (`PAYMENT_*`) boleh diisi belakangan — sampai diisi, halaman paket menampilkan "pembayaran online sedang disiapkan".
 Penjelasan setiap isian ada di [`install.env.example`](install.env.example). File ini berisi rahasia — hanya simpan di server.
 
 **Pilihan SSL (`SSL_MODE`)**
@@ -65,11 +66,12 @@ Installer aman dijalankan ulang (mis. setelah memperbaiki isian): langkah yang s
 | Rilis versi terbaru dari `BRANCH` | `sudo bash /var/www/tapcard/current/deploy/deploy.sh` |
 | Rilis tag / branch tertentu | `sudo bash /var/www/tapcard/current/deploy/deploy.sh v1.2.0` |
 | Kembali ke rilis sebelumnya | `sudo bash /var/www/tapcard/current/deploy/rollback.sh` |
-| Ubah konfigurasi (SMTP, Midtrans, Google…) | edit `/var/www/tapcard/shared/.env`, lalu jalankan rilis ulang |
+| Ubah konfigurasi (SMTP, pembayaran, Google…) | edit `/var/www/tapcard/shared/.env`, lalu jalankan rilis ulang |
 | Status worker & scheduler | `sudo supervisorctl status` |
 | Log aplikasi | `/var/www/tapcard/shared/storage/logs/` |
 | Log worker / scheduler | `/var/log/tapcard/queue.log`, `/var/log/tapcard/schedule.log` |
 | Uji email | `sudo -u www-data php /var/www/tapcard/current/artisan tapcard:mail-test email@anda.com` |
+| Cocokkan pembayaran dengan gateway (otomatis tiap 5 menit) | `sudo -u www-data php /var/www/tapcard/current/artisan tapcard:payments-reconcile` |
 
 Rilis tanpa downtime: kode baru di-build di `releases/<waktu>`, dan `current` baru dipindah setelah dependensi, build aset,
 migrasi, dan cache berhasil. Rilis yang gagal di tengah jalan tidak menyentuh versi yang sedang berjalan. Lima rilis
@@ -99,6 +101,26 @@ terakhir disimpan untuk rollback. Migrasi TapCard hanya menambah tabel/kolom, ja
 | Keamanan | UFW: hanya SSH, 80, 443 terbuka · `.env` tidak terbaca publik · PHP selain `index.php` tidak dieksekusi |
 | Backup | `DB_MODE=local`: `pg_dump` harian ke `/var/backups/tapcard` (14 hari). Salin juga ke luar server. Database terkelola memakai backup penyedianya |
 | Log | rotasi mingguan untuk log worker & PHP-FPM; log Laravel harian (14 hari) |
+
+## Pembayaran (payment service)
+
+Gateway pembayaran tidak terikat penyedia tertentu: semua diatur lewat `PAYMENT_*` di `shared/.env`
+(penjelasan lengkap di [`config/payment.php`](../config/payment.php)).
+
+| Isian | Contoh | Fungsi |
+|---|---|---|
+| `PAYMENT_DRIVER` | `link` | `link` = gateway payment link via REST; `simulator` hanya untuk lokal |
+| `PAYMENT_GATEWAY_NAME` / `PAYMENT_GATEWAY_CODE` | `QRIS` / `qris` | nama yang dilihat pengguna / kode penyedia di invoice |
+| `PAYMENT_API_URL`, `PAYMENT_API_KEY`, `PAYMENT_API_KEY_HEADER` | `https://…/api/v1`, `…`, `X-Api-Key` | alamat & kunci API gateway |
+| `PAYMENT_CREATE_PATH`, `PAYMENT_STATUS_PATH` | `/payments`, `/payments/{id}` | endpoint buat pembayaran & cek status |
+| `PAYMENT_METHOD`, `PAYMENT_METHOD_LABEL` | `QRIS`, `QRIS — semua e-wallet…` | metode yang diminta & teks untuk pengguna |
+| `PAYMENT_WEBHOOK_VERIFY` + `PAYMENT_WEBHOOK_SECRET` / `…_TOKEN` | `signature` + `whsec_…` | verifikasi webhook (`signature`, `token`, atau `none`) |
+
+Daftarkan URL webhook **`https://domain/webhooks/payment`** di dashboard gateway. Pembayaran dikonfirmasi tiga jalur
+sekaligus — webhook bertanda tangan sah, cek status ke API saat pengguna kembali dari halaman bayar, dan pencocokan
+otomatis tiap 5 menit — jadi pembayaran tetap tercatat walau webhook terlambat. Webhook yang tanda tangannya tidak sah
+tidak pernah melunasi invoice; statusnya selalu ditanyakan ulang ke API gateway. Ganti gateway = ubah `PAYMENT_*`
+lalu rilis ulang; bila bentuk API-nya berbeda, tambah satu kelas di `app/Services/Payment/Gateways/`.
 
 ## Kapan pindah ke Redis
 

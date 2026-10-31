@@ -46,6 +46,13 @@ export const adminApi = {
   updateStaff: (id, body) => http.patch(`/api/staff/${id}`, body),
   resetStaffPassword: (id) => http.post(`/api/staff/${id}/reset-password`),
 
+  orders: (params) => http.get('/api/orders', params),
+  order: (id) => http.get(`/api/orders/${id}`),
+  startProduction: (id) => http.post(`/api/orders/${id}/production`),
+  shipOrder: (id, body) => http.post(`/api/orders/${id}/ship`, body),
+  deliverOrder: (id) => http.post(`/api/orders/${id}/deliver`),
+  cancelOrder: (id, reason) => http.post(`/api/orders/${id}/cancel`, { reason }),
+
   plans: () => http.get('/api/plans'),
   createPlan: (body) => http.post('/api/plans', body),
   updatePlan: (key, body) => http.patch(`/api/plans/${key}`, body),
@@ -72,6 +79,8 @@ export const adminApi = {
   catalog: () => http.get('/api/catalog'),
   saveLanyardWidth: (id, body) => (id ? http.patch(`/api/catalog/lanyard-widths/${id}`, body) : http.post('/api/catalog/lanyard-widths', body)),
   saveLanyardHardware: (id, body) => (id ? http.patch(`/api/catalog/lanyard-hardware/${id}`, body) : http.post('/api/catalog/lanyard-hardware', body)),
+  saveCardProduct: (id, body) => (id ? http.patch(`/api/catalog/card-products/${id}`, body) : http.post('/api/catalog/card-products', body)),
+  saveShipping: (id, body) => (id ? http.patch(`/api/catalog/shipping/${id}`, body) : http.post('/api/catalog/shipping', body)),
   updateAddon: (id, body) => http.patch(`/api/catalog/addons/${id}`, body),
   updateContactType: (id, body) => http.patch(`/api/catalog/contact-types/${id}`, body),
 

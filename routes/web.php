@@ -47,7 +47,7 @@ Route::domain('{workspace}.'.$base)
 Route::domain($base)->group(function () use ($spa) {
     Route::get('/api/showcase', ShowcaseController::class)->middleware('throttle:60,1')->name('showcase');
     // notifikasi gateway pembayaran (CSRF dikecualikan untuk webhooks/*)
-    Route::post('/webhooks/payments/{provider}', PaymentWebhookController::class)->middleware('throttle:120,1')->name('webhooks.payments');
+    Route::post('/webhooks/payment', PaymentWebhookController::class)->middleware('throttle:120,1')->name('webhooks.payment');
     $spa()->name('marketing');
 });
 

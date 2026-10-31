@@ -3,7 +3,7 @@
 // bayar gateway), tagihan terbuka / masa tenggang, batal/lanjutkan langganan, riwayat invoice (server-side).
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowRight, Check, CircleCheck, CreditCard, Landmark, Lock, QrCode, Receipt, Smartphone, Sparkles, TriangleAlert, Wallet, X } from 'lucide-vue-next'
+import { ArrowRight, Check, CircleCheck, Lock, QrCode, Receipt, Smartphone, Sparkles, TriangleAlert, X } from 'lucide-vue-next'
 import AddonList from '@/components/billing/AddonList/index.vue'
 import AppBadge from '@/components/ui/AppBadge/index.vue'
 import AppButton from '@/components/ui/AppButton/index.vue'
@@ -45,7 +45,7 @@ const current = computed(() => b.value?.plan)
 const sub = computed(() => b.value?.subscription)
 const STATUS = { issued: ['warn', 'Belum dibayar'], overdue: ['danger', 'Terlambat'], paid: ['ok', 'Lunas'], void: ['muted', 'Dibatalkan'], draft: ['muted', 'Draf'] }
 const SUB = { active: ['ok', 'Aktif'], trialing: ['info', 'Uji coba'], past_due: ['danger', 'Menunggu pembayaran'], cancelled: ['muted', 'Berhenti'], expired: ['muted', 'Berakhir'] }
-const METHODS = [[Landmark, 'Virtual Account BCA, BNI, BRI, Mandiri, Permata'], [QrCode, 'QRIS (semua e-wallet & m-banking)'], [Wallet, 'GoPay, ShopeePay'], [CreditCard, 'Kartu kredit/debit']]
+const gateway = computed(() => b.value?.gateway ?? null) // { code, name, method, simulator } atau null bila belum dikonfigurasi
 
 // tombol "Upgrade" dari layar fitur terkunci membawa ?plan= → langsung buka ringkasan checkout
 watch(b, (v) => {
@@ -182,7 +182,7 @@ const COLUMNS = [
           <AppButton v-if="cta(p) && canManage" :variant="p.key === current?.key ? 'secondary' : 'primary'" block @click="choosing = p">{{ cta(p) }} <ArrowRight class="size-5" /></AppButton>
         </article>
       </div>
-      <p class="flex items-center gap-2 text-sm text-muted"><Lock class="size-4" /> Pembayaran aman lewat {{ b.gateway === 'midtrans' ? 'Midtrans' : 'gateway simulasi (mode pengembangan)' }}. Harga sudah termasuk pajak.</p>
+      <p class="flex items-center gap-2 text-sm text-muted"><Lock class="size-4" /> <template v-if="gateway">Pembayaran aman lewat {{ gateway.simulator ? 'gateway simulasi (mode pengembangan)' : gateway.name }}.</template><template v-else>Pembayaran online sedang disiapkan.</template> Harga sudah termasuk pajak.</p>
     </section>
 
     <AddonList v-if="auth.can('billing.view')" />
@@ -223,9 +223,8 @@ const COLUMNS = [
     </form>
     <div class="grid gap-2">
       <span class="label">Metode pembayaran</span>
-      <ul class="grid gap-2 text-sm">
-        <li v-for="[icon, label] in METHODS" :key="label" class="flex items-center gap-3"><component :is="icon" class="size-5 text-accent-text" /> {{ label }}</li>
-      </ul>
+      <p v-if="gateway" class="flex items-center gap-3 text-sm"><QrCode class="size-5 flex-none text-accent-text" /> {{ gateway.method }}</p>
+      <p v-else class="text-sm text-warn">Pembayaran online belum tersedia. Silakan coba lagi nanti atau hubungi kami.</p>
     </div>
     <p class="flex items-start gap-2 text-xs text-muted"><CircleCheck class="mt-0.5 size-4 flex-none text-ok" /> Paket langsung aktif setelah pembayaran terkonfirmasi{{ choosing.key === current?.key ? ' dan periode diperpanjang dari tanggal berakhir saat ini' : '' }}. Tagihan berlaku 24 jam.</p>
     <template #footer>

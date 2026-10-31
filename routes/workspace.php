@@ -16,6 +16,7 @@ use App\Http\Controllers\Workspace\ImportController;
 use App\Http\Controllers\Workspace\LeadDashboardController;
 use App\Http\Controllers\Workspace\MeController;
 use App\Http\Controllers\Workspace\NotificationController;
+use App\Http\Controllers\Workspace\OrderController;
 use App\Http\Controllers\Workspace\ProfileController;
 use App\Http\Controllers\Workspace\ReminderController;
 use App\Http\Controllers\Workspace\ScanController;
@@ -132,11 +133,19 @@ Route::middleware('auth')->prefix('api')->name('api.')->group(function () {
 
     Route::get('/billing', [BillingController::class, 'show'])->name('billing.show');
     Route::post('/billing/checkout', [BillingController::class, 'checkout'])->middleware('throttle:20,1')->name('billing.checkout');
+    Route::get('/orders/catalog', [OrderController::class, 'catalog'])->name('orders.catalog');
+    Route::get('/orders', [OrderController::class, 'index'])->name('orders');
+    Route::post('/orders', [OrderController::class, 'store'])->middleware('throttle:10,1')->name('orders.store');
+    Route::get('/orders/{order}', [OrderController::class, 'show'])->name('orders.show');
+    Route::post('/orders/{order}/pay', [OrderController::class, 'pay'])->middleware('throttle:20,1')->name('orders.pay');
+    Route::post('/orders/{order}/check', [OrderController::class, 'check'])->middleware('throttle:30,1')->name('orders.check');
+    Route::post('/orders/{order}/cancel', [OrderController::class, 'cancel'])->name('orders.cancel');
     Route::post('/billing/voucher', [BillingController::class, 'voucher'])->middleware('throttle:20,1')->name('billing.voucher');
     Route::post('/billing/cancel', [BillingController::class, 'cancel'])->name('billing.cancel');
     Route::get('/billing/invoices', [BillingController::class, 'invoices'])->name('billing.invoices');
     Route::get('/billing/invoices/{invoice}', [BillingController::class, 'invoice'])->name('billing.invoice');
     Route::post('/billing/invoices/{invoice}/pay', [BillingController::class, 'pay'])->name('billing.pay');
+    Route::post('/billing/invoices/{invoice}/check', [BillingController::class, 'check'])->middleware('throttle:30,1')->name('billing.check');
     Route::post('/billing/invoices/{invoice}/simulate', [BillingController::class, 'simulate'])->name('billing.simulate');
 
     Route::get('/addons', [AddonController::class, 'index'])->name('addons');

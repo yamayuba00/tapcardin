@@ -4,15 +4,16 @@ namespace App\Actions\Billing;
 
 use App\Authz\PlanFeatures;
 use App\Models\Invoice;
+use App\Models\Order;
 use App\Models\PaymentEvent;
 use App\Models\Plan;
 use App\Models\Subscription;
 use App\Models\Tenant;
 use App\Models\Voucher;
 use App\Models\VoucherRedemption;
+use App\Services\Payment\PaymentNotification;
+use App\Services\Payment\PaymentService;
 use App\Support\Audit;
-use App\Support\Billing\Payments;
-use App\Support\Billing\WebhookEvent;
 use App\Support\Notify;
 use Illuminate\Support\Facades\DB;
 
@@ -25,9 +26,10 @@ use Illuminate\Support\Facades\DB;
 final class ApplyPayment
 {
     /** @return string hasil: paid | ignored | duplicate | rejected | pending | failed */
-    public function handle(WebhookEvent $e): string
+    public function handle(PaymentNotification $e): string
     {
-        $invoice = Invoice::acrossTenants()->where('number', $e->invoiceNumber)->first();
+        // referensi dari gateway = public_id invoice (order_id); kabar internal memakai nomor invoice
+        $invoice = Invoice::acrossTenants()->where(fn ($q) => $q->where('number', $e->invoiceRef)->orWhere('public_id', $e->invoiceRef))->first();
 
         return DB::transaction(function () use ($e, $invoice) {
             $event = PaymentEvent::firstOrCreate(
@@ -45,10 +47,10 @@ final class ApplyPayment
             if ($invoice->status === 'paid') {
                 return 'ignored';
             }
-            if ($e->status === WebhookEvent::PENDING) {
+            if ($e->status === PaymentNotification::PENDING) {
                 return 'pending';
             }
-            if ($e->status === WebhookEvent::FAILED) {
+            if ($e->status === PaymentNotification::FAILED) {
                 $event->update(['processed_at' => now()]);
 
                 return 'failed'; // invoice tetap terbuka; pengguna bisa mencoba metode lain
@@ -58,10 +60,17 @@ final class ApplyPayment
             }
 
             $invoice->update(['status' => 'paid', 'paid_at' => now(), 'payment_method' => $e->method]);
+            $event->update(['processed_at' => now()]);
+
+            if ($invoice->type === 'order') {
+                $this->orderPaid($invoice);
+
+                return 'paid';
+            }
+
             $sub = $this->activate($invoice);
             $invoice->update(['subscription_id' => $sub->id]);
             $this->redeem($invoice);
-            $event->update(['processed_at' => now()]);
 
             Audit::tenant($invoice->tenant_id, 'billing.paid', $invoice, null, ['number' => $invoice->number, 'total' => $invoice->total, 'plan' => $sub->plan_id]);
             if ($invoice->user_id) {
@@ -74,11 +83,25 @@ final class ApplyPayment
         });
     }
 
+    /** Pesanan kartu/lanyard lunas → antre produksi; staf memulai produksi dari panel → Pesanan. */
+    private function orderPaid(Invoice $invoice): void
+    {
+        $order = Order::withoutGlobalScopes()->whereKey($invoice->order_id)->lockForUpdate()->first();
+        if (! $order || $order->status !== 'pending_payment') {
+            return; // dibatalkan / sudah diproses — staf menangani pengembalian dana secara manual
+        }
+        $order->update(['status' => 'paid', 'paid_at' => now()]);
+        Audit::tenant($order->tenant_id, 'order.paid', $order, null, ['number' => $order->number, 'total' => $order->total, 'invoice' => $invoice->number]);
+        if ($order->user_id) {
+            Notify::user($order->user_id, $order->tenant_id, 'order_status', ['id' => $order->public_id, 'number' => $order->number, 'status' => 'paid', 'label' => $order->label()]);
+        }
+    }
+
     private function activate(Invoice $invoice): Subscription
     {
         $tenant = Tenant::findOrFail($invoice->tenant_id);
         $plan = Plan::findOrFail($invoice->plan_id);
-        $months = Payments::CYCLES[$invoice->cycle] ?? 1;
+        $months = PaymentService::CYCLES[$invoice->cycle] ?? 1;
         $sub = Subscription::acrossTenants()->where('tenant_id', $tenant->id)->lockForUpdate()->first();
 
         // paket sama & masih berjalan → diperpanjang dari akhir periode; selain itu mulai sekarang

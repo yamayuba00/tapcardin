@@ -34,15 +34,23 @@ sebelum kartu fisiknya tiba.
 - **Cek siap cetak otomatis** — batas aman, area potong, ukuran teks & QR, area chip NFC dan lubang lanyard.
   QR, ikon NFC, dan logo TapCard selalu dibangun ulang server sehingga tidak bisa rusak.
 
+### Pemesanan kartu fisik & lanyard
+- **Pesan dari desain sendiri** — pilih desain yang lolos cek cetak, jenis kartu (PVC NFC / NFC Secure) dan jumlah,
+  lanyard (lebar, sisi cetak, pengait mengikuti desain), metode kirim & alamat; harga dihitung server dari katalog.
+- **Bayar lewat payment service yang sama** dengan langganan (saat ini QRIS); status dikonfirmasi otomatis.
+- **Langsung ke produksi** — panel → Pesanan → *Mulai produksi* membuat batch per item kartu yang tertaut ke pemesan;
+  token, encode NFC, QC, lalu *Kirim* dengan resi. Kartu yang tiba bisa diaktifkan pemesan tanpa kode.
+- **Desain dibekukan** saat dipesan, sehingga yang dicetak sama dengan yang dibayar; pelanggan memantau status & resi.
+
 ### Untuk bisnis
 - **Workspace perusahaan** di subdomain sendiri atau **domain kustom** (verifikasi DNS), anggota, peran & izin.
-- **Paket & langganan** — bulanan/tahunan, checkout lewat **Midtrans**, voucher, invoice & kuitansi, pengingat
+- **Paket & langganan** — bulanan/tahunan, checkout lewat **payment service** (saat ini QRIS; gateway diganti cukup lewat env), voucher, invoice & kuitansi, pengingat
   perpanjangan, masa tenggang, dan turun ke paket gratis otomatis.
 - **Add-on** berbayar terpisah — Integrasi CRM (Google Sheets, HubSpot) *segera hadir*, dengan pendaftaran minat.
 
 ### Panel pemilik (`panel.`)
-Operasional (workspace, domain kustom, pengguna, kartu), **produksi** (batch, encode NFC, quality control, kirim),
-**bisnis** (paket & harga, keuangan & MRR, voucher, katalog lanyard & jenis kontak, pengumuman), dan sistem
+Operasional (workspace, domain kustom, pengguna, kartu), **produksi** (pesanan, batch, encode NFC, quality control, kirim),
+**bisnis** (paket & harga, keuangan & MRR, voucher, katalog produk kartu, ongkir, lanyard & jenis kontak, pengumuman), dan sistem
 (staf & peran, audit log, kesehatan sistem). Menu mengikuti izin setiap staf.
 
 ### Keamanan & privasi
@@ -57,7 +65,7 @@ sebagai hash; CSP ber-nonce; bio tidak diindeks mesin pencari kecuali diizinkan;
 ```
  Daftar ──▶ kartu digital aktif ──▶ lengkapi bio link ──▶ bagikan (QR / @nama / WhatsApp)
                                                                │
- Pesan kartu fisik ──▶ produksi (batch · encode · QC) ──▶ aktivasi ──▶ tap NFC / scan QR
+ Pesan kartu fisik ──▶ bayar ──▶ produksi (batch · encode · QC) ──▶ kirim ──▶ aktivasi ──▶ tap NFC / scan QR
                                                                │
                          pengunjung: lihat bio · Simpan Kontak · Tukar Kontak
                                                                │
@@ -81,6 +89,7 @@ sebagai hash; CSP ber-nonce; bio tidak diindeks mesin pencari kecuali diizinkan;
 | Backend | Laravel 13 (PHP 8.3) sebagai **API JSON** — PostgreSQL 16 untuk data, cache, antrean, dan sesi |
 | Frontend | **Vue 3 SPA** (vue-router, Pinia) + Tailwind CSS v4 + ikon lucide; satu-satunya Blade adalah shell kosong & template email |
 | Dibuat sendiri | Encoder QR, NDEF (NFC), vCard, verifikasi ALTCHA, mesin izin & multi-tenant |
+| Pembayaran | `app/Services/Payment` — `PaymentService` + kontrak `PaymentGateway`; gateway aktif & semua alamatnya dari env `PAYMENT_*` ([`config/payment.php`](config/payment.php)) |
 | Produksi | Nginx + PHP-FPM, Supervisor, Let's Encrypt — instalasi sekali jalan di [`deploy/`](deploy/README.md) |
 
 Prinsip data: setiap entitas punya relasi (foreign key), index, dan constraint `CHECK`; ID publik berupa ULID
@@ -127,7 +136,7 @@ pembayaran memakai halaman bayar simulasi, dan email ditulis ke `storage/logs` b
 ## Pengujian
 
 ```bash
-composer test                  # PHPUnit — selalu di database lokal tapcard_test (236 test)
+composer test                  # PHPUnit — selalu di database lokal tapcard_test (243 test)
 npm test                       # unit test JavaScript
 vendor/bin/pint --test         # format kode PHP
 sh scripts/check-design.sh     # aturan desain & tombol
@@ -156,6 +165,5 @@ tests/Feature/    test API & alur end-to-end
 | Status | Fitur |
 |---|---|
 | Berikutnya | Notifikasi email (pengingat tagihan bertahap, kuitansi, follow-up, kartu hilang di-tap) |
-| Berikutnya | Pemesanan & pembayaran kartu fisik dan lanyard (checkout katalog → produksi) |
 | Direncanakan | Add-on Integrasi CRM (Google Sheets, HubSpot), Apple / Google Wallet untuk kartu digital |
 | Direncanakan | NTAG 424 DNA (tap anti-salin), SSL otomatis untuk domain kustom, Redis & WebSocket saat trafik tinggi |

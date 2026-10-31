@@ -10,8 +10,8 @@ use App\Models\Tenant;
 use App\Models\User;
 use App\Models\Voucher;
 use App\Models\VoucherRedemption;
-use App\Support\Billing\Payments;
-use App\Support\Billing\WebhookEvent;
+use App\Services\Payment\PaymentNotification;
+use App\Services\Payment\PaymentService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -22,12 +22,13 @@ use Illuminate\Support\Str;
 final class CreateCheckout
 {
     /** @return array{invoice: Invoice, payment_url: ?string} */
-    public function handle(Tenant $tenant, User $user, Plan $plan, string $cycle, string $returnUrl, ?string $voucherCode = null): array
+    /** @param  string  $origin  skema+host workspace (mis. https://app.domain) — pengguna kembali ke halaman invoice di sana */
+    public function handle(Tenant $tenant, User $user, Plan $plan, string $cycle, string $origin, ?string $voucherCode = null): array
     {
         if (! $plan->is_public || $plan->tenant_type !== $tenant->type->value) {
             throw new ApiError('plan_unavailable', 'Paket ini tidak tersedia untuk workspace Anda.');
         }
-        $amount = Payments::price($plan, $cycle);
+        $amount = PaymentService::price($plan, $cycle);
         if ($amount <= 0) {
             throw new ApiError('plan_free', 'Paket gratis tidak perlu dibayar.');
         }
@@ -46,10 +47,10 @@ final class CreateCheckout
             Invoice::where('tenant_id', $tenant->id)->where('type', 'subscription')->where('status', 'issued')->update(['status' => 'void']);
 
             $sub = Subscription::where('tenant_id', $tenant->id)->first();
-            $months = Payments::CYCLES[$cycle];
+            $months = PaymentService::CYCLES[$cycle];
             $label = "Paket {$plan->name} — ".($cycle === 'yearly' ? '1 tahun' : '1 bulan');
             $lines = [['code' => "{$plan->key}-{$cycle}", 'label' => $label, 'qty' => 1, 'amount' => $amount]];
-            if ($cycle === 'yearly' && ($save = Payments::yearlySaving($plan)) > 0) {
+            if ($cycle === 'yearly' && ($save = PaymentService::yearlySaving($plan)) > 0) {
                 $lines[0]['note'] = 'Hemat '.number_format($save, 0, ',', '.').' dibanding bulanan';
             }
             if ($discount > 0) {
@@ -71,17 +72,13 @@ final class CreateCheckout
 
         // voucher 100% -> tanpa gateway; langsung lunas lewat jalur pembayaran yang sama
         if ((int) $invoice->total === 0) {
-            app(ApplyPayment::class)->handle(new WebhookEvent('voucher', 'voucher-'.$invoice->number, $invoice->number, WebhookEvent::PAID, 0, 'voucher', true, ['voucher' => $voucher?->code]));
+            app(ApplyPayment::class)->handle(new PaymentNotification('voucher', 'voucher-'.$invoice->number, $invoice->number, PaymentNotification::PAID, 0, 'voucher', true, ['voucher' => $voucher?->code]));
 
             return ['invoice' => $invoice->fresh('plan'), 'payment_url' => null];
         }
-        if (! $invoice->payment_url) {
-            $gw = Payments::gateway();
-            $pay = $gw->checkout($invoice, $user, $returnUrl);
-            $invoice->update(['payment_provider' => $gw->name(), 'payment_url' => $pay['url'], 'payment_ref' => $pay['ref']]);
-        }
+        $url = PaymentService::startPayment($invoice, $user, "$origin/billing/invoices/{$invoice->public_id}");
 
-        return ['invoice' => $invoice->fresh('plan'), 'payment_url' => $invoice->payment_url];
+        return ['invoice' => $invoice->fresh('plan'), 'payment_url' => $url];
     }
 
     /** Voucher yang sah untuk workspace & paket ini; selain itu ApiError dengan alasan yang jelas. */

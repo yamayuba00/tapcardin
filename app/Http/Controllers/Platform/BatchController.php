@@ -82,6 +82,8 @@ class BatchController extends PlatformController
             'has_bundle' => (bool) $batch->print_bundle_path,
             'next_statuses' => array_map(fn ($s) => ['value' => $s->value, 'label' => $s->label()], $batch->status->allowedNext()),
             'counts' => array_map('intval', $counts->only(['tokens', 'encoded', 'qc', 'shipped'])),
+            // pesanan asal (bila batch dibuat dari panel → Pesanan)
+            'order' => ($o = $batch->orderItem?->order) ? ['id' => $o->public_id, 'number' => $o->number] : null,
         ]);
     }
 

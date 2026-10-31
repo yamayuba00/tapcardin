@@ -9,11 +9,12 @@ use App\Exceptions\ApiError;
 use App\Models\Card;
 use App\Models\Connection;
 use App\Models\Invoice;
+use App\Models\Order;
 use App\Models\Plan;
 use App\Models\Subscription;
+use App\Services\Payment\Gateways\SimulatorGateway;
+use App\Services\Payment\PaymentService;
 use App\Support\Audit;
-use App\Support\Billing\Payments;
-use App\Support\Billing\SimulatorGateway;
 use App\Support\Http\Table;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -54,7 +55,7 @@ class BillingController extends WorkspaceController
             ],
             'plans' => $plans->map(fn (Plan $p) => self::presentPlan($p) + ['compare' => self::compare($p)])->values(),
             'open_invoice' => $open ? self::presentInvoice($open) : null,
-            'gateway' => Payments::gateway()->name(),
+            'gateway' => PaymentService::info(),
         ]]);
     }
 
@@ -64,11 +65,11 @@ class BillingController extends WorkspaceController
         $this->access()->authorize('billing.manage');
         $data = $request->validate([
             'plan' => ['required', Rule::exists('plans', 'key')->where('is_public', true)],
-            'cycle' => ['required', Rule::in(array_keys(Payments::CYCLES))],
+            'cycle' => ['required', Rule::in(array_keys(PaymentService::CYCLES))],
             'voucher' => ['nullable', 'string', 'max:32'],
         ]);
         $plan = Plan::where('key', $data['plan'])->firstOrFail();
-        $r = $create->handle($this->tenant(), $this->user(), $plan, $data['cycle'], $this->returnUrl($request, null), $data['voucher'] ?? null);
+        $r = $create->handle($this->tenant(), $this->user(), $plan, $data['cycle'], $request->getSchemeAndHttpHost(), $data['voucher'] ?? null);
 
         return response()->json(['data' => ['invoice' => self::presentInvoice($r['invoice']), 'payment_url' => $r['payment_url']]], 201);
     }
@@ -80,11 +81,11 @@ class BillingController extends WorkspaceController
         $data = $request->validate([
             'code' => ['required', 'string', 'max:32'],
             'plan' => ['required', Rule::exists('plans', 'key')->where('is_public', true)],
-            'cycle' => ['required', Rule::in(array_keys(Payments::CYCLES))],
+            'cycle' => ['required', Rule::in(array_keys(PaymentService::CYCLES))],
         ]);
         $plan = Plan::where('key', $data['plan'])->firstOrFail();
         $v = CreateCheckout::voucher($data['code'], $this->tenant(), $plan);
-        $price = Payments::price($plan, $data['cycle']);
+        $price = PaymentService::price($plan, $data['cycle']);
         $discount = $v->discountFor($price);
 
         return response()->json(['data' => ['code' => $v->code, 'description' => $v->description, 'price' => $price, 'discount' => $discount, 'total' => $price - $discount]]);
@@ -107,6 +108,8 @@ class BillingController extends WorkspaceController
             'tenant' => $this->tenant()->name,
             'bill_to' => $invoice->billing_snapshot,
             'simulator' => $invoice->payment_provider === 'simulator',
+            // halaman tujuan setelah bayar (pesanan kartu → halaman pesanan)
+            'return_to' => $invoice->order_id && ($o = Order::withoutGlobalScopes()->find($invoice->order_id)) ? "/orders/{$o->public_id}" : "/billing/invoices/{$invoice->public_id}",
         ]]);
     }
 
@@ -117,13 +120,24 @@ class BillingController extends WorkspaceController
         if (! $invoice->isPayable()) {
             throw new ApiError('invoice_not_payable', $invoice->status === 'paid' ? 'Invoice ini sudah lunas.' : 'Invoice ini sudah tidak berlaku. Buat pembayaran baru dari halaman Paket.');
         }
-        if (! $invoice->payment_url) {
-            $gw = Payments::gateway();
-            $p = $gw->checkout($invoice, $this->user(), $this->returnUrl($request, $invoice));
-            $invoice->update(['payment_provider' => $gw->name(), 'payment_url' => $p['url'], 'payment_ref' => $p['ref']]);
+        $back = $invoice->order_id && ($order = Order::withoutGlobalScopes()->find($invoice->order_id))
+            ? "/orders/{$order->public_id}" : "/billing/invoices/{$invoice->public_id}";
+
+        return response()->json(['data' => ['payment_url' => PaymentService::startPayment($invoice, $this->user(), $request->getSchemeAndHttpHost().$back)]]);
+    }
+
+    /**
+     * POST /api/billing/invoices/{id}/check — tanya status pembayaran langsung ke gateway (dipakai saat pengguna kembali
+     * dari halaman bayar, sebelum/tanpa menunggu webhook). Hasilnya lewat jalur yang sama: ApplyPayment.
+     */
+    public function check(Invoice $invoice, ApplyPayment $apply): JsonResponse
+    {
+        $this->access()->authorize('billing.view');
+        if ($invoice->isPayable() && ($gw = PaymentService::gatewayFor($invoice->payment_provider)) && ($n = $gw->fetchStatus($invoice))) {
+            $apply->handle($n);
         }
 
-        return response()->json(['data' => ['payment_url' => $invoice->payment_url]]);
+        return response()->json(['data' => self::presentInvoice($invoice->fresh('plan'))]);
     }
 
     /** POST /api/billing/invoices/{id}/simulate {result, method} — hanya gateway simulator (lokal/test). */
@@ -132,7 +146,7 @@ class BillingController extends WorkspaceController
         $this->access()->authorize('billing.manage');
         abort_unless($invoice->payment_provider === 'simulator' && ! app()->isProduction(), 404);
         $data = $request->validate(['result' => ['required', Rule::in(['paid', 'failed'])], 'method' => ['required', 'string', 'max:40']]);
-        $outcome = $apply->handle(SimulatorGateway::event($invoice, $data['result'], $data['method']));
+        $outcome = $apply->handle(SimulatorGateway::notification($invoice, $data['result'], $data['method']));
 
         return response()->json(['data' => ['outcome' => $outcome] + self::presentInvoice($invoice->fresh('plan'))]);
     }
@@ -149,18 +163,11 @@ class BillingController extends WorkspaceController
         return $this->show();
     }
 
-    private function returnUrl(Request $request, ?Invoice $invoice): string
-    {
-        $origin = $request->getSchemeAndHttpHost();
-
-        return $invoice ? "$origin/billing/invoices/{$invoice->public_id}" : "$origin/billing?paid=1";
-    }
-
     public static function presentPlan(?Plan $p): ?array
     {
         return $p ? [
             'key' => $p->key, 'name' => $p->name, 'price_monthly' => (int) $p->price_monthly, 'price_yearly' => (int) $p->price_yearly,
-            'yearly_saving' => Payments::yearlySaving($p), 'free' => (int) $p->price_monthly === 0,
+            'yearly_saving' => PaymentService::yearlySaving($p), 'free' => (int) $p->price_monthly === 0,
         ] : null;
     }
 

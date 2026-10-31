@@ -10,6 +10,7 @@ use App\Http\Controllers\Platform\DashboardController;
 use App\Http\Controllers\Platform\DomainController;
 use App\Http\Controllers\Platform\FinanceController;
 use App\Http\Controllers\Platform\MeController;
+use App\Http\Controllers\Platform\OrderController;
 use App\Http\Controllers\Platform\PlanController;
 use App\Http\Controllers\Platform\StaffController;
 use App\Http\Controllers\Platform\StationController;
@@ -71,6 +72,13 @@ Route::middleware(['auth', 'platform'])->prefix('api')->name('api.')->group(func
     Route::patch('/staff/{staff}', [StaffController::class, 'update'])->name('staff.update');
     Route::post('/staff/{staff}/reset-password', [StaffController::class, 'resetPassword'])->name('staff.reset-password');
 
+    Route::get('/orders', [OrderController::class, 'index'])->name('orders');
+    Route::get('/orders/{order}', [OrderController::class, 'show'])->name('orders.show');
+    Route::post('/orders/{order}/production', [OrderController::class, 'startProduction'])->name('orders.production');
+    Route::post('/orders/{order}/ship', [OrderController::class, 'ship'])->name('orders.ship');
+    Route::post('/orders/{order}/deliver', [OrderController::class, 'deliver'])->name('orders.deliver');
+    Route::post('/orders/{order}/cancel', [OrderController::class, 'cancel'])->name('orders.cancel');
+
     Route::get('/domains', [DomainController::class, 'index'])->name('domains');
     Route::post('/domains', [DomainController::class, 'store'])->name('domains.store');
     Route::post('/domains/{domain}/verify', [DomainController::class, 'verify'])->middleware('throttle:30,1')->name('domains.verify');
@@ -99,6 +107,10 @@ Route::middleware(['auth', 'platform'])->prefix('api')->name('api.')->group(func
     Route::patch('/catalog/lanyard-widths/{id}', [CatalogController::class, 'saveWidth'])->name('catalog.widths.update');
     Route::post('/catalog/lanyard-hardware', [CatalogController::class, 'saveHardware'])->name('catalog.hardware.store');
     Route::patch('/catalog/lanyard-hardware/{id}', [CatalogController::class, 'saveHardware'])->name('catalog.hardware.update');
+    Route::post('/catalog/card-products', [CatalogController::class, 'saveCardProduct'])->name('catalog.card-products.store');
+    Route::patch('/catalog/card-products/{id}', [CatalogController::class, 'saveCardProduct'])->name('catalog.card-products.update');
+    Route::post('/catalog/shipping', [CatalogController::class, 'saveShipping'])->name('catalog.shipping.store');
+    Route::patch('/catalog/shipping/{id}', [CatalogController::class, 'saveShipping'])->name('catalog.shipping.update');
     Route::patch('/catalog/addons/{id}', [CatalogController::class, 'updateAddon'])->name('catalog.addons.update');
     Route::patch('/catalog/contact-types/{id}', [CatalogController::class, 'updateContactType'])->name('catalog.contact-types.update');
 

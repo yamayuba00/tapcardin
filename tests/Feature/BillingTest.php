@@ -4,15 +4,15 @@ namespace Tests\Feature;
 
 use App\Enums\CardStatus;
 use App\Models\Invoice;
-use App\Models\PaymentEvent;
 use App\Models\Plan;
 use App\Models\Subscription;
+use App\Services\Payment\PaymentService;
 use App\Tenancy\TenantScope;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
-/** OR-05 — paket & tagihan: checkout, gateway (simulator & Midtrans), aktivasi paket, siklus langganan. */
+/** OR-05 — paket & tagihan: checkout, gateway (simulator & payment link), aktivasi paket, siklus langganan. */
 class BillingTest extends TestCase
 {
     use RefreshDatabase;
@@ -38,7 +38,7 @@ class BillingTest extends TestCase
         $pro = $d['plans'][1];
         $this->assertSame(49000 * 12 - 490000, $pro['yearly_saving']);
         $this->assertTrue(collect($pro['compare'])->firstWhere('label', 'QR aman (dinamis) sekali pakai')['value']);
-        $this->assertSame('simulator', $d['gateway']);
+        $this->assertSame('simulator', $d['gateway']['code']);
         $this->assertSame(2, $d['usage'][0]['limit']);
     }
 
@@ -76,33 +76,98 @@ class BillingTest extends TestCase
         $this->actingAs($this->makeUser('lain@example.com', 'Lain'))->api('GET', "/billing/invoices/{$c['invoice']['id']}")->assertNotFound();
     }
 
-    public function test_midtrans_webhook_verifies_signature_amount_and_is_idempotent(): void
+    /** Gateway "link" (mis. QRIS) dengan konfigurasi PAYMENT_* — tanpa nama penyedia di kode. */
+    private function useLinkGateway(array $webhook = []): void
     {
-        config(['services.payments.driver' => 'midtrans', 'services.midtrans.server_key' => 'SB-Mid-server-TEST']);
-        Http::fake(['app.sandbox.midtrans.com/*' => Http::response(['token' => 'tok', 'redirect_url' => 'https://app.sandbox.midtrans.com/snap/v4/redirection/tok'])]);
-        $rina = $this->makeUser();
-        $this->actingAs($rina);
-        $inv = $this->api('POST', '/billing/checkout', ['plan' => 'personal_pro', 'cycle' => 'monthly'])->assertCreated()->json('data');
-        $this->assertStringStartsWith('https://app.sandbox.midtrans.com/', $inv['payment_url']);
-        Http::assertSent(fn ($r) => $r['transaction_details']['gross_amount'] === 49000 && $r['transaction_details']['order_id'] === $inv['invoice']['number']);
+        config(['payment.driver' => 'link', 'payment.gateway' => [
+            'name' => 'Gateway Uji', 'code' => 'qrisgw', 'api_url' => 'https://pay.test/api/v1', 'api_key' => 'key-uji', 'api_key_header' => 'X-Api-Key',
+            'create_path' => '/payments', 'status_path' => '/payments/{id}', 'method' => 'QRIS', 'method_label' => 'QRIS', 'expires_hours' => 24, 'timeout' => 5,
+            'webhook' => $webhook + ['verify' => 'signature', 'secret' => 'whsec_'.base64_encode('rahasia-webhook'), 'tolerance' => 300],
+        ]]);
+    }
 
-        $notify = function (array $over = []) use ($inv) {
-            $p = $over + ['order_id' => $inv['invoice']['number'], 'status_code' => '200', 'gross_amount' => '49000.00', 'transaction_status' => 'settlement',
-                'transaction_id' => 'trx-1', 'payment_type' => 'bank_transfer', 'va_numbers' => [['bank' => 'bca']]];
-            $p['signature_key'] ??= hash('sha512', $p['order_id'].$p['status_code'].$p['gross_amount'].'SB-Mid-server-TEST');
+    /** Webhook bertanda tangan gaya Svix: v1,base64(HMAC-SHA256(id.timestamp.body)). */
+    private function signedWebhook(array $body, string $id, ?string $secret = 'rahasia-webhook')
+    {
+        $raw = json_encode($body);
+        $ts = (string) now()->getTimestamp();
+        $sig = 'v1,'.base64_encode(hash_hmac('sha256', "$id.$ts.$raw", (string) $secret, true));
 
-            return $this->postJson('http://localhost/webhooks/payments/midtrans', $p);
-        };
-        $notify(['signature_key' => 'palsu', 'transaction_id' => 'trx-x'])->assertOk()->assertJsonPath('outcome', 'rejected');
-        $notify(['gross_amount' => '1000.00', 'transaction_id' => 'trx-y'])->assertJsonPath('outcome', 'rejected');
+        return $this->call('POST', 'http://localhost/webhooks/payment', [], [], [], [
+            'CONTENT_TYPE' => 'application/json', 'HTTP_SVIX_ID' => $id, 'HTTP_SVIX_TIMESTAMP' => $ts, 'HTTP_SVIX_SIGNATURE' => $sig,
+        ], $raw);
+    }
+
+    public function test_link_gateway_checkout_and_signed_webhook_is_verified_amount_checked_and_idempotent(): void
+    {
+        $this->useLinkGateway();
+        Http::fake(['pay.test/api/v1/payments' => Http::response(['payment_id' => 'pay_123', 'status' => 'pending', 'payment_link_url' => 'https://pay.test/link/pay_123'])]);
+        $this->actingAs($this->makeUser());
+        $this->assertSame(['code' => 'qrisgw', 'name' => 'Gateway Uji', 'simulator' => false, 'method' => 'QRIS'], $this->api('GET', '/billing')->json('data.gateway'));
+
+        $c = $this->api('POST', '/billing/checkout', ['plan' => 'personal_pro', 'cycle' => 'monthly'])->assertCreated()->json('data');
+        $this->assertSame('https://pay.test/link/pay_123', $c['payment_url']);
+        Http::assertSent(fn ($r) => $r->hasHeader('X-Api-Key', 'key-uji') && $r['amount'] === 49000 && $r['order_id'] === $c['invoice']['id']
+            && $r['payment_method_type_code'] === 'QRIS' && str_ends_with($r['success_return_url'], "/billing/invoices/{$c['invoice']['id']}?paid=1"));
+        $inv = $this->invoices()->firstOrFail();
+        $this->assertSame(['qrisgw', 'pay_123'], [$inv->payment_provider, $inv->payment_ref]);
+
+        $body = fn ($amount = 49000) => ['type' => 'payment.completed', 'data' => ['payment_id' => 'pay_123', 'order_id' => $c['invoice']['id'], 'amount' => $amount, 'status' => 'completed', 'payment_method' => 'QRIS']];
+        $this->signedWebhook($body(1000), 'evt_kurang')->assertOk()->assertJsonPath('outcome', 'rejected'); // nominal tidak cocok
+        $this->assertSame('issued', $inv->fresh()->status);
+        $this->signedWebhook($body(), 'evt_ok')->assertOk()->assertJsonPath('outcome', 'paid');
+        $this->signedWebhook($body(), 'evt_ok')->assertJsonPath('outcome', 'duplicate');
+        $this->assertSame(['paid', 'QRIS'], [$inv->fresh()->status, $inv->fresh()->payment_method]);
+        $this->assertSame('personal_pro', $inv->tenant->fresh()->plan->key);
+    }
+
+    public function test_forged_webhook_never_pays_and_is_confirmed_via_gateway_api(): void
+    {
+        $this->useLinkGateway();
+        Http::fake([
+            'pay.test/api/v1/payments' => Http::response(['payment_id' => 'pay_9', 'payment_link_url' => 'https://pay.test/link/pay_9']),
+            'pay.test/api/v1/payments/pay_9' => Http::sequence()
+                ->push(['payment_id' => 'pay_9', 'status' => 'pending', 'amount' => 49000])
+                ->push(['payment_id' => 'pay_9', 'status' => 'completed', 'amount' => 49000, 'payment_method' => 'QRIS']),
+        ]);
+        $this->actingAs($this->makeUser());
+        $id = $this->api('POST', '/billing/checkout', ['plan' => 'personal_pro', 'cycle' => 'monthly'])->json('data.invoice.id');
+
+        // tanda tangan palsu → isi webhook diabaikan; API gateway bilang masih pending → tetap belum lunas
+        $forged = ['type' => 'payment.completed', 'data' => ['payment_id' => 'pay_9', 'order_id' => $id, 'amount' => 49000, 'status' => 'completed']];
+        $this->signedWebhook($forged, 'evt_palsu', 'kunci-salah')->assertOk()->assertJsonPath('outcome', 'pending');
         $this->assertSame('issued', $this->invoices()->first()->status);
+        $this->assertDatabaseHas('payment_events', ['external_id' => 'evt_palsu', 'signature_valid' => false]);
 
-        $notify()->assertJsonPath('outcome', 'paid');
-        $notify()->assertJsonPath('outcome', 'duplicate');
-        $this->assertSame('bank transfer BCA', $this->invoices()->first()->payment_method);
-        $this->assertSame(1, Subscription::withoutGlobalScope(TenantScope::class)->count());
-        $this->assertSame(3, PaymentEvent::count(), 'dua ditolak + satu lunas; notifikasi duplikat tidak disimpan lagi');
-        $this->postJson('http://localhost/webhooks/payments/tidak-ada', [])->assertNotFound();
+        // pengguna kembali dari halaman bayar → cek status ke gateway → lunas
+        $this->api('POST', "/billing/invoices/$id/check")->assertOk()->assertJsonPath('data.status', 'paid');
+    }
+
+    public function test_reconcile_command_confirms_paid_invoices_when_webhook_is_missing(): void
+    {
+        $this->useLinkGateway(['verify' => 'none']);
+        Http::fake([
+            'pay.test/api/v1/payments' => Http::response(['id' => 'pay_7', 'payment_link_url' => 'https://pay.test/link/pay_7']),
+            'pay.test/api/v1/payments/pay_7' => Http::response(['data' => ['id' => 'pay_7', 'status' => 'PAID', 'amount' => 490000]]),
+        ]);
+        $this->actingAs($this->makeUser());
+        $this->api('POST', '/billing/checkout', ['plan' => 'personal_pro', 'cycle' => 'yearly'])->assertCreated();
+
+        $this->artisan('tapcard:payments-reconcile')->expectsOutput('1 invoice dicek, 1 lunas.')->assertSuccessful();
+        $this->assertSame('paid', $this->invoices()->first()->status);
+        $this->artisan('tapcard:payments-reconcile')->expectsOutput('0 invoice dicek, 0 lunas.')->assertSuccessful();
+    }
+
+    public function test_unconfigured_gateway_gives_clear_error_and_simulator_is_refused_in_production(): void
+    {
+        config(['payment.driver' => 'link', 'payment.gateway.api_url' => null]);
+        $this->actingAs($this->makeUser());
+        $this->api('POST', '/billing/checkout', ['plan' => 'personal_pro', 'cycle' => 'monthly'])->assertStatus(503)->assertJsonPath('error.code', 'payment_unavailable');
+
+        config(['payment.driver' => 'simulator']);
+        $this->app['env'] = 'production';
+        $this->assertNull(PaymentService::info());
+        $this->app['env'] = 'testing';
     }
 
     public function test_renewal_cancel_and_downgrade_lifecycle(): void

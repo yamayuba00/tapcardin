@@ -41,15 +41,6 @@ return [
         'redirect' => env('GOOGLE_REDIRECT_URI'),
     ],
 
-    // Pembayaran langganan: simulator (lokal/test) atau midtrans (Snap). Produksi selalu midtrans.
-    'payments' => [
-        'driver' => env('TAPCARD_PAYMENT_DRIVER', 'simulator'),
-    ],
-
-    'midtrans' => [
-        'server_key' => env('MIDTRANS_SERVER_KEY', ''),
-        'client_key' => env('MIDTRANS_CLIENT_KEY', ''),
-        'production' => (bool) env('MIDTRANS_PRODUCTION', false),
-    ],
+    // Pembayaran langganan diatur di config/payment.php (PAYMENT_*).
 
 ];

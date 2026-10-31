@@ -39,6 +39,7 @@ final class GenerateBatchTokens
                     'tenant_id' => $batch->tenant_id,
                     'assigned_user_id' => $batch->holder_user_id,
                     'replaces_card_id' => $batch->replaces_card_id,
+                    'order_item_id' => $batch->order_item_id,
                     'batch_id' => $batch->id,
                     'sequence' => $seq,
                 ]);

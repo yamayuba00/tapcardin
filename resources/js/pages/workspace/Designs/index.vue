@@ -3,7 +3,7 @@
 // lanyard baru berdiri sendiri atau berpasangan dengan kartu (brand kit bersama, pratinjau gabungan).
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Link2, Plus } from 'lucide-vue-next'
+import { Link2, Pencil, Plus, ShoppingCart } from 'lucide-vue-next'
 import AppBadge from '@/components/ui/AppBadge/index.vue'
 import AppButton from '@/components/ui/AppButton/index.vue'
 import AppEmpty from '@/components/ui/AppEmpty/index.vue'
@@ -61,14 +61,14 @@ const open = (d) => (d.kind === 'lanyard' ? `/lanyards/${d.id}` : `/designs/${d.
     <AppButton :disabled="!catalog" @click="tab === 'card' ? (picking = true) : createLanyard()">{{ tab === 'card' ? 'Pilih titik awal' : 'Buat lanyard' }}</AppButton>
   </AppEmpty>
   <div v-else :class="['grid gap-4', tab === 'card' ? 'sm:grid-cols-2 lg:grid-cols-3' : 'lg:grid-cols-2']">
-    <RouterLink v-for="d in list" :key="d.id" :to="open(d)" class="grid content-start gap-3 rounded-md border border-line bg-surface p-4 no-underline hover:bg-surface-2">
+    <article v-for="d in list" :key="d.id" class="relative grid content-start gap-3 rounded-md border border-line bg-surface p-4 hover:bg-surface-2">
       <div v-if="d.kind === 'card'" :class="d.orientation === 'portrait' ? 'mx-auto w-1/2' : ''">
         <FlipCard :front="d.front" :back="d.back" :vars="vars(d)" :kit="d.kit" :qr="catalog?.qr" hover-flip />
       </div>
       <div v-else class="overflow-hidden rounded-sm"><LanyardStrip :side="d.front" :kit="d.kit" :vars="vars(d)" :length="260" :scale="2" /></div>
       <div class="flex items-center justify-between gap-2">
         <span class="grid min-w-0">
-          <span class="truncate font-medium text-fg">{{ d.name }}</span>
+          <RouterLink :to="open(d)" class="truncate font-medium text-fg no-underline after:absolute after:inset-0">{{ d.name }}</RouterLink>
           <span class="text-sm text-muted">
             <template v-if="d.kind === 'card'">{{ d.orientation === 'portrait' ? 'Potret' : 'Lanskap' }}{{ d.lanyard ? ' · lubang lanyard' : '' }}</template>
             <template v-else>{{ d.lanyard_spec?.width_mm }} mm · {{ d.lanyard_spec?.print_sides }} sisi</template>
@@ -78,7 +78,11 @@ const open = (d) => (d.kind === 'lanyard' ? `/lanyards/${d.id}` : `/designs/${d.
         </span>
         <AppBadge :tone="d.validated ? 'ok' : 'warn'">{{ d.validated ? 'Siap cetak' : 'Perlu cek' }}</AppBadge>
       </div>
-    </RouterLink>
+      <div class="relative z-10 flex flex-wrap gap-2">
+        <AppButton variant="secondary" :to="open(d)"><Pencil class="size-4" /> Edit</AppButton>
+        <AppButton v-if="d.validated" :to="{ path: '/orders/new', query: { design: d.id } }"><ShoppingCart class="size-4" /> Pesan cetak</AppButton>
+      </div>
+    </article>
   </div>
 
   <AppModal v-if="picking && catalog" size="lg" title="Kartu baru" description="Mulai dari kartu kosong, template TapCard, atau template milik Anda. Semua bisa diubah penuh di editor." @close="picking = false">

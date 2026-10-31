@@ -4,8 +4,7 @@
 import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import {
-  Activity, BadgePercent, Boxes, Building2, CircleCheck, CircleUser, ClipboardList, CreditCard, Cpu, Gem, Globe, House, LogOut,
-  Megaphone, Menu, Moon, Package, ShieldCheck, Users, Wallet,
+  Activity, BadgePercent, Boxes, Building2, CircleCheck, CircleUser, ClipboardList, Cpu, CreditCard, Gem, Globe, House, LogOut, Megaphone, Menu, Moon, Package, ShieldCheck, ShoppingCart, Users, Wallet,
 } from 'lucide-vue-next'
 import BrandLogo from '@/components/common/BrandLogo/index.vue'
 import { useAuthStore } from '@/stores/auth'
@@ -26,6 +25,7 @@ const groups = [
     { key: 'cards', label: 'Kartu', icon: CreditCard, to: '/cards', perm: 'cards.view' },
   ] },
   { label: 'Produksi', items: [
+    { key: 'orders', label: 'Pesanan', icon: ShoppingCart, to: '/orders', perm: 'orders.view' },
     { key: 'batches', label: 'Batch', icon: Boxes, to: '/batches', perm: 'production.manage' },
     { key: 'encode', label: 'Stasiun encode', icon: Cpu, to: '/encode-station', perm: 'production.manage' },
     { key: 'qc', label: 'QC', icon: CircleCheck, to: '/qc', perm: 'production.manage' },

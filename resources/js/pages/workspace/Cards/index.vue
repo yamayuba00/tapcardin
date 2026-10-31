@@ -2,7 +2,7 @@
 // U-02 — daftar kartu. Kartu digital (tanpa kartu fisik) selalu di atas dengan tombol Bagikan; bila belum ada
 // di workspace ini (mis. workspace perusahaan), tawarkan pembuatannya — gratis dan tidak memakai kuota kartu aktif.
 import { ref } from 'vue'
-import { Plus, Share2, Smartphone } from 'lucide-vue-next'
+import { Plus, Share2, ShoppingCart, Smartphone } from 'lucide-vue-next'
 import AppBadge from '@/components/ui/AppBadge/index.vue'
 import AppModal from '@/components/ui/AppModal/index.vue'
 import ClaimCardForm from '@/components/cards/ClaimCardForm/index.vue'
@@ -27,7 +27,8 @@ async function createDigital() {
 
 <template>
   <PageHeader eyebrow="Kartu" title="Kartu saya">
-    <AppButton @click="adding = true"><Plus class="size-5" /> Tambah kartu fisik</AppButton>
+    <AppButton variant="secondary" @click="adding = true"><Plus class="size-5" /> Aktifkan kartu fisik</AppButton>
+    <AppButton to="/orders/new"><ShoppingCart class="size-5" /> Pesan kartu fisik</AppButton>
   </PageHeader>
   <p v-if="error" class="text-danger" role="alert">{{ error.message }}</p>
 
@@ -71,7 +72,7 @@ async function createDigital() {
     </div>
   </template>
 
-  <AppModal v-if="adding" title="Tambah kartu fisik" @close="adding = false">
+  <AppModal v-if="adding" title="Aktifkan kartu fisik" @close="adding = false">
     <ClaimCardForm @cancel="adding = false" />
   </AppModal>
 </template>

@@ -6,7 +6,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
-  ArrowLeft, CircleAlert, CircleCheck, Grid3x3, ImageUp, LayoutTemplate, Link2, Magnet, Printer, Redo2, Trash2, Undo2, X,
+  ArrowLeft, CircleAlert, CircleCheck, Grid3x3, ImageUp, LayoutTemplate, Link2, Magnet, Printer, Redo2, ShoppingCart, Trash2, Undo2, X,
 } from 'lucide-vue-next'
 import AppButton from '@/components/ui/AppButton/index.vue'
 import AppInput from '@/components/ui/AppInput/index.vue'
@@ -64,6 +64,7 @@ const TABS = computed(() => [
 ])
 // aksi yang jarang dipakai → menu "Lainnya" agar bilah atas tetap ringkas
 const menu = computed(() => [
+  { label: 'Pesan cetak kartu ini', icon: ShoppingCart, onSelect: orderPrint },
   { label: 'Pratinjau cetak & unduh PNG', icon: Printer, onSelect: () => (previewing.value = true) },
   { label: 'Simpan sebagai template', icon: LayoutTemplate, onSelect: () => (savingTemplate.value = true) },
   { label: 'Hapus desain', icon: Trash2, danger: true, onSelect: () => (confirmDelete.value = true) },
@@ -120,6 +121,15 @@ async function destroy() {
   await studioApi.remove(id)
   dirty.value = false
   router.push('/designs')
+}
+/** Simpan dulu, lalu ke halaman pesan bila desain lolos cek cetak. */
+async function orderPrint() {
+  if (dirty.value && !(await ed.save())) return
+  if (errors.value.length) {
+    tab.value = 'issues'
+    return toast.error('Perbaiki masalah merah di tab Cek cetak sebelum memesan.')
+  }
+  router.push({ path: '/orders/new', query: { design: id } })
 }
 function focusIssue(i) {
   ed.switchSide(i.side)

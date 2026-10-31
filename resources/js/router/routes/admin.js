@@ -22,6 +22,8 @@ export default [
       { path: 'batches/:id/print', name: 'batch-print', component: page('BatchPrint'), meta: { title: 'Lembar QR', nav: 'batches', perm: 'production.manage' } },
       { path: 'encode-station', name: 'encode', component: page('EncodeStation'), meta: { title: 'Stasiun encode', nav: 'encode', perm: 'production.manage' } },
       { path: 'qc', name: 'qc', component: page('QcStation'), meta: { title: 'QC', nav: 'qc', perm: 'production.manage' } },
+      { path: 'orders', name: 'orders', component: page('Orders'), meta: { title: 'Pesanan', nav: 'orders', perm: 'orders.view' } },
+      { path: 'orders/:id', name: 'order-detail', component: page('OrderDetail'), meta: { title: 'Pesanan', nav: 'orders', perm: 'orders.view' } },
       { path: 'domains', name: 'domains', component: page('Domains'), meta: { title: 'Domain kustom', nav: 'domains', perm: 'tenants.view' } },
       { path: 'plans', name: 'plans', component: page('Plans'), meta: { title: 'Paket & harga', nav: 'plans', perm: 'plans.manage' } },
       { path: 'finance', name: 'finance', component: page('Finance'), meta: { title: 'Keuangan', nav: 'finance', perm: 'finance.view' } },
