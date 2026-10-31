@@ -16,10 +16,10 @@ final class LanyardPricing
             'safe' => LanyardGeometry::SAFE,
             'widths' => LanyardWidth::where('is_active', true)->orderBy('sort')->get()->map(fn (LanyardWidth $w) => [
                 'width_mm' => $w->width_mm, 'label' => $w->label, 'price_single' => $w->price_single, 'price_double' => $w->price_double, 'min_qty' => $w->min_qty,
-            ])->values(),
+            ])->values()->all(), // array biasa, bukan Collection: hasil ini ikut di-cache (serializable_classes=false)
             'hardware' => LanyardHardware::where('is_active', true)->orderBy('sort')->get()->map(fn (LanyardHardware $h) => [
                 'key' => $h->key, 'name' => $h->name, 'description' => $h->description, 'price' => $h->price,
-            ])->values(),
+            ])->values()->all(),
         ];
     }
 

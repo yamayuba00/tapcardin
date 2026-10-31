@@ -151,6 +151,17 @@ class WorkspaceApiTest extends TestCase
         $this->get('http://localhost/')->assertOk()->assertSee('id="app"', false);
     }
 
+    /** Regresi: `editor.widths.find is not a function` — daftar katalog harus array JSON, tetap saat dibaca dari cache. */
+    public function test_landing_showcase_catalog_lists_stay_json_arrays_when_cached(): void
+    {
+        foreach ([1, 2] as $_) { // panggilan ke-2 membaca dari cache
+            $res = $this->getJson('http://localhost/api/showcase')->assertOk();
+            $this->assertTrue(array_is_list($res->json('data.editor.widths')), 'widths harus list');
+            $this->assertTrue(array_is_list($res->json('data.editor.hardware')), 'hardware harus list');
+            $this->assertNotEmpty($res->json('data.editor.widths'));
+        }
+    }
+
     public function test_report_lost_then_found(): void
     {
         $rina = $this->makeUser();

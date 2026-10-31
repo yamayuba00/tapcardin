@@ -270,7 +270,7 @@ for h in "$DOMAIN" "app.$DOMAIN" "panel.$DOMAIN"; do
   code=$("${CURL[@]}" --resolve "$h:443:127.0.0.1" "https://$h/") || code=000
   [[ $code =~ ^(200|302)$ ]] && ok "https://$h → $code" || warn "https://$h → $code (cek DNS / log: /var/www/tapcard/shared/storage/logs)"
 done
-runuser -u www-data -- php "$APP/current/artisan" tapcard:mail-test 2>&1 | tail -1 | sed 's/^/  /'
+runuser -u www-data -- php "$APP/current/artisan" tapcard:mail-test 2>&1 | tail -1 | sed 's/^/  /' || true   # SMTP boleh menyusul; jangan hentikan ringkasan akhir
 
 cat <<EOF
 
