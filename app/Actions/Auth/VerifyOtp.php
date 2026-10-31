@@ -6,10 +6,10 @@ use App\Models\LoginOtp;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
-/** TRD §5.1 — maksimal 5 percobaan per OTP. Mengembalikan email yang terbukti dimiliki. */
+/** Maksimal 5 percobaan per kode. Mengembalikan kode yang sudah dipakai (beserta payload-nya). */
 final class VerifyOtp
 {
-    public function handle(string $email, string $code, string $purpose = 'login'): string
+    public function handle(string $email, string $code, string $purpose): LoginOtp
     {
         $email = strtolower(trim($email));
         $otp = LoginOtp::where('email', $email)->where('purpose', $purpose)
@@ -33,6 +33,6 @@ final class VerifyOtp
 
         $otp->update(['consumed_at' => now()]);
 
-        return $email;
+        return $otp;
     }
 }

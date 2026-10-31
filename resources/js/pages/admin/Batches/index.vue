@@ -43,12 +43,12 @@ async function create() {
 <template>
   <PageHeader title="Batch produksi" />
   <AppPanel title="Batch baru">
-    <form class="grid items-end gap-4 sm:grid-cols-2 lg:grid-cols-5" @submit.prevent="create">
+    <form class="grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-5" @submit.prevent="create">
       <AppField label="Chip"><AppSelect v-model="form.chip_type" :options="CHIPS" /></AppField>
       <AppField label="Jumlah kartu" :error="errors.quantity?.[0]"><AppInput v-model.number="form.quantity" type="number" min="1" max="1000" /></AppField>
       <AppField label="Email pembeli (opsional)" :error="errors.holder_email?.[0]"><AppInput v-model="form.holder_email" type="email" placeholder="aktivasi tanpa kode" /></AppField>
       <AppField label="Vendor cetak"><AppInput v-model="form.vendor" /></AppField>
-      <AppButton type="submit" :loading="busy"><Plus class="size-5" /> Buat batch</AppButton>
+      <AppButton type="submit" :loading="busy" class="lg:mt-7"><Plus class="size-5" /> Buat batch</AppButton>
     </form>
   </AppPanel>
 

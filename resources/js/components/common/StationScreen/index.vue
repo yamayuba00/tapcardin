@@ -8,7 +8,7 @@ defineProps({ state: { type: String, default: 'idle' } }) // idle | ok | fail
     role="status"
     aria-live="assertive"
     :class="[
-      'grid min-h-[calc(100vh-180px)] place-items-center rounded-lg border p-8 text-center',
+      'grid min-h-[420px] place-items-center rounded-lg border p-6 text-center sm:p-8',
       state === 'ok' ? 'border-solid-ok bg-solid-ok text-on-solid' : state === 'fail' ? 'border-solid-danger bg-solid-danger text-on-solid' : 'border-line bg-surface',
     ]"
   >

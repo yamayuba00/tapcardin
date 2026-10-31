@@ -1,7 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\GoogleController;
-use App\Http\Controllers\Auth\OtpController;
+use App\Http\Controllers\Auth\PasswordAuthController;
 use App\Http\Controllers\Workspace\ActivationController;
 use App\Http\Controllers\Workspace\AddonController;
 use App\Http\Controllers\Workspace\AnalyticsController;
@@ -27,9 +27,16 @@ use Illuminate\Support\Facades\Route;
 */
 
 // ── Autentikasi ────────────────────────────────────────────
-Route::post('/api/auth/otp/request', [OtpController::class, 'request'])->name('otp.request');
-Route::post('/api/auth/otp/verify', [OtpController::class, 'verify'])->name('otp.verify');
-Route::post('/api/auth/logout', [OtpController::class, 'logout'])->name('logout');
+// Login email + password (atau Google). Kode email hanya untuk verifikasi daftar & lupa password.
+Route::controller(PasswordAuthController::class)->prefix('api/auth')->group(function () {
+    Route::get('/altcha', 'altcha')->middleware('throttle:60,1')->name('auth.altcha');
+    Route::post('/login', 'login')->middleware('throttle:30,1')->name('auth.login');
+    Route::post('/register', 'register')->middleware('throttle:10,1')->name('auth.register');
+    Route::post('/register/verify', 'verifyRegistration')->middleware('throttle:20,1')->name('auth.register.verify');
+    Route::post('/password/forgot', 'forgot')->middleware('throttle:10,1')->name('auth.password.forgot');
+    Route::post('/password/reset', 'reset')->middleware('throttle:20,1')->name('auth.password.reset');
+    Route::post('/logout', 'logout')->name('logout');
+});
 Route::get('/auth/google/redirect', [GoogleController::class, 'redirect'])->name('google.redirect');
 Route::get('/auth/google/callback', [GoogleController::class, 'callback'])->name('google.callback');
 

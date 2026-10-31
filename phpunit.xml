@@ -46,6 +46,7 @@
         <env name="TAPCARD_RESOLVER_URL" value="http://tap.localhost"/>
         <env name="TAPCARD_IP_PEPPER" value="test-ip-pepper"/>
         <env name="TAPCARD_UID_PEPPER" value="test-uid-pepper"/>
+        <env name="ALTCHA_MAX_NUMBER" value="2000"/>
         <env name="SEED_PLATFORM_OWNER_EMAIL" value="owner@tapcard.test"/>
     </php>
 </phpunit>

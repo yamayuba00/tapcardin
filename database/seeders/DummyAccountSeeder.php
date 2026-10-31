@@ -11,8 +11,8 @@ use Illuminate\Database\Seeder;
 
 /**
  * Akun dummy untuk pengembangan lokal: `php artisan db:seed --class=DummyAccountSeeder`.
- * Aman dijalankan berulang. Pengguna (app.) login dengan kode OTP DEV_LOGIN_CODE (123456 di lokal);
- * staf (admin.) login dengan email + password STAFF_PASSWORD.
+ * Aman dijalankan berulang. Semua akun login dengan email + password DEV_PASSWORD
+ * (pengguna di app., staf di panel.). Kode verifikasi daftar/lupa password lokal = DEV_LOGIN_CODE.
  */
 class DummyAccountSeeder extends Seeder
 {
@@ -26,7 +26,7 @@ class DummyAccountSeeder extends Seeder
         'keuangan@tapcard.test' => ['Staf Keuangan', 'finance'],
     ];
 
-    public const STAFF_PASSWORD = 'password123';
+    public const DEV_PASSWORD = 'password123';
 
     public function run(): void
     {
@@ -34,27 +34,26 @@ class DummyAccountSeeder extends Seeder
             $user = User::whereRaw('lower(email) = ?', [$email])->first()
                 ?? app(RegisterUser::class)->handle($email, $name);
 
+            $user->forceFill(['password' => self::DEV_PASSWORD])->save();
             if ($role) {
                 PlatformStaff::updateOrCreate(
                     ['user_id' => $user->id],
                     ['role_id' => Role::system($role)->id, 'status' => 'active'],
                 );
-                $user->forceFill(['password' => self::STAFF_PASSWORD])->save();
             }
         }
 
         // Kartu, riwayat tap, dan koneksi contoh untuk akun demo (sekali saja).
         $demo = User::where('email', 'demo@tapcard.test')->first();
-        if (! Card::acrossTenants()->where('holder_user_id', $demo->id)->exists()) {
+        if (! Card::acrossTenants()->where('holder_user_id', $demo->id)->where('form', Card::PHYSICAL)->exists()) {
             $this->call(DemoSeeder::class);
         }
 
-        $code = config('tapcard.dev_login_code') ?: '(lihat storage/logs)';
-        $this->command?->table(['Email', 'Peran', 'Login di', 'Kredensial'], collect(self::ACCOUNTS)->map(fn ($v, $email) => [
+        $this->command?->table(['Email', 'Peran', 'Login di', 'Password'], collect(self::ACCOUNTS)->map(fn ($v, $email) => [
             $email,
             $v[1] ? Role::system($v[1])->name : 'Pengguna',
-            $v[1] ? 'admin.localhost:8000' : 'app.localhost:8000',
-            $v[1] ? 'password: '.self::STAFF_PASSWORD : "kode OTP: $code",
+            $v[1] ? config('tapcard.panel_subdomain').'.localhost:8000' : 'app.localhost:8000',
+            self::DEV_PASSWORD,
         ])->values()->all());
     }
 }

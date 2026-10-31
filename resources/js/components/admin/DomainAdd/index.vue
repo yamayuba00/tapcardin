@@ -30,11 +30,16 @@ async function add() {
 </script>
 
 <template>
-  <form class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end" @submit.prevent="add">
-    <AppField v-if="!props.tenant" label="ID workspace" :error="errors.tenant?.[0]"><AppInput v-model="tenantId" code maxlength="26" required /></AppField>
-    <AppField label="Domain" hint="mis. kartu.perusahaan.com" :error="errors.domain?.[0]" :class="props.tenant ? 'sm:col-span-2' : ''">
-      <AppInput v-model="domain" code maxlength="190" required placeholder="kartu.perusahaan.com" />
-    </AppField>
-    <AppButton type="submit" :loading="busy"><Plus class="size-5" /> Tambah domain</AppButton>
+  <!-- label di atas, input & tombol satu baris (rata atas) — petunjuk/galat di bawah baris agar tidak menggeser tombol -->
+  <form class="grid gap-2" @submit.prevent="add">
+    <div class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
+      <AppField v-if="!props.tenant" label="ID workspace"><AppInput v-model="tenantId" code maxlength="26" required placeholder="26 karakter, salin dari detail workspace" :invalid="!!errors.tenant" /></AppField>
+      <AppField label="Domain" :class="props.tenant ? 'sm:col-span-2' : ''">
+        <AppInput v-model="domain" code maxlength="190" required placeholder="kartu.perusahaan.com" :invalid="!!errors.domain" />
+      </AppField>
+      <AppButton type="submit" :loading="busy"><Plus class="size-5" /> Tambah domain</AppButton>
+    </div>
+    <p v-if="errors.tenant || errors.domain" class="text-sm text-danger" role="alert">{{ errors.tenant?.[0] ?? errors.domain?.[0] }}</p>
+    <p v-else class="text-sm text-muted">Tulis nama domain saja tanpa http://, mis. <span class="font-mono">kartu.perusahaan.com</span>. Setelah ditambahkan, kirim record DNS di bawah ke pelanggan.</p>
   </form>
 </template>

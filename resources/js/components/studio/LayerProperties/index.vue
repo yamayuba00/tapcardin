@@ -116,8 +116,8 @@ const n2 = 'grid grid-cols-2 gap-3'
           <AppField label="Pusat X (mm)"><AppInput type="number" step="0.5" :model-value="layer.cx" @update:model-value="(v) => num('cx', v)" /></AppField>
           <AppField label="Pusat Y (mm)"><AppInput type="number" step="0.5" :model-value="layer.cy" @update:model-value="(v) => num('cy', v)" /></AppField>
           <template v-if="layer.type === 'rings'">
-            <AppField label="Dari r (mm)"><AppInput type="number" step="1" :model-value="layer.from" @update:model-value="(v) => num('from', v, 1, 80)" /></AppField>
-            <AppField label="Sampai r (mm)"><AppInput type="number" step="1" :model-value="layer.to" @update:model-value="(v) => num('to', v, 2, 120)" /></AppField>
+            <AppField label="Jari-jari terkecil (mm)"><AppInput type="number" step="1" :model-value="layer.from" @update:model-value="(v) => num('from', v, 1, 80)" /></AppField>
+            <AppField label="Jari-jari terbesar (mm)"><AppInput type="number" step="1" :model-value="layer.to" @update:model-value="(v) => num('to', v, 2, 120)" /></AppField>
             <AppField label="Jarak (mm)"><AppInput type="number" step="1" min="1" :model-value="layer.step" @update:model-value="(v) => num('step', v, 1, 30)" /></AppField>
             <AppField label="Opasitas"><AppInput type="number" step="0.05" min="0.05" max="1" :model-value="layer.opacity" @update:model-value="(v) => num('opacity', v, 0.05, 1)" /></AppField>
           </template>
@@ -140,7 +140,7 @@ const n2 = 'grid grid-cols-2 gap-3'
           <AppField v-if="layer.type === 'rect'" label="Sudut (mm)"><AppInput type="number" step="0.5" min="0" :model-value="layer.rx ?? 0" @update:model-value="(v) => num('rx', v, 0, 50)" /></AppField>
           <template v-if="layer.type === 'polygon'">
             <AppField label="Jumlah sisi"><AppInput type="number" step="1" min="3" max="12" :model-value="layer.sides" @update:model-value="(v) => num('sides', v, 3, 12)" /></AppField>
-            <AppField v-if="layer.star" label="Kedalaman"><AppInput type="number" step="0.05" min="0.2" max="0.9" :model-value="layer.inner ?? 0.5" @update:model-value="(v) => num('inner', v, 0.2, 0.9)" /></AppField>
+            <AppField v-if="layer.star" label="Kedalaman lekuk"><AppInput type="number" step="0.05" min="0.2" max="0.9" :model-value="layer.inner ?? 0.5" @update:model-value="(v) => num('inner', v, 0.2, 0.9)" /></AppField>
           </template>
         </div>
         <AppToggle v-if="layer.type === 'polygon'" :model-value="!!layer.star" @update:model-value="(v) => set('star', v)">Bentuk bintang</AppToggle>

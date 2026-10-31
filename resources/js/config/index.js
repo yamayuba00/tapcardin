@@ -10,7 +10,7 @@ export const config = {
   adminUrl: '',
   marketingUrl: '',
   googleEnabled: false,
-  /** @type {null | {code: string, staff_password: string, accounts: {email: string, name: string, staff: boolean}[]}} hanya di APP_ENV=local */
+  /** @type {null | {code: string, password: string, accounts: {email: string, name: string, staff: boolean}[]}} hanya di APP_ENV=local */
   devLogin: null,
   /** Data awal yang disisipkan server untuk halaman sensitif kecepatan (mis. `card` di /c/{token}). */
   initial: null,

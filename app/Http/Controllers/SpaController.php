@@ -46,7 +46,7 @@ class SpaController extends Controller
                 // Hanya terisi di APP_ENV=local: petunjuk login untuk akun dummy.
                 'devLogin' => RequestOtp::devCode() ? [
                     'code' => RequestOtp::devCode(),
-                    'staff_password' => DummyAccountSeeder::STAFF_PASSWORD,
+                    'password' => DummyAccountSeeder::DEV_PASSWORD,
                     'accounts' => collect(DummyAccountSeeder::ACCOUNTS)
                         ->map(fn ($v, $email) => ['email' => $email, 'name' => $v[0], 'staff' => $v[1] !== null])->values(),
                 ] : null,

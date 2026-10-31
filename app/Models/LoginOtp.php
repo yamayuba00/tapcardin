@@ -12,6 +12,6 @@ class LoginOtp extends Model
 
     protected function casts(): array
     {
-        return ['expires_at' => 'datetime', 'consumed_at' => 'datetime'];
+        return ['expires_at' => 'datetime', 'consumed_at' => 'datetime', 'payload' => 'array'];
     }
 }

@@ -32,7 +32,7 @@ const perks = (p) => [
       <ul class="grid gap-2 text-sm">
         <li v-for="perk in perks(p)" :key="perk" class="flex gap-2"><Check class="size-5 flex-none text-ok" aria-hidden="true" /> {{ perk }}</li>
       </ul>
-      <AppButton :variant="i === 1 ? 'primary' : 'secondary'" block :href="`${config.appUrl}/login`">{{ p.price_monthly ? 'Coba Pro' : 'Mulai gratis' }}</AppButton>
+      <AppButton :variant="i === 1 ? 'primary' : 'secondary'" block :href="`${config.appUrl}/register`">{{ p.price_monthly ? 'Coba Pro' : 'Mulai gratis' }}</AppButton>
     </article>
 
     <article class="grid content-start gap-5 rounded-lg border border-dashed border-line-strong p-6">

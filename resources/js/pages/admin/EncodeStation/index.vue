@@ -1,6 +1,6 @@
 <script setup>
 // M-03 / AFD F-04 — per kartu: tulis → verifikasi → kunci → lapor UID. Layar penuh hijau/merah + suara.
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import AppButton from '@/components/ui/AppButton/index.vue'
 import AppCheckbox from '@/components/ui/AppCheckbox/index.vue'
@@ -26,9 +26,10 @@ let abort
 const { data: batches } = useAsync(async () => {
   const res = await adminApi.stationBatches()
   if (!batch.value && res.data[0]) batch.value = res.data[0].id
-  next()
   return res
 })
+// ganti batch → muat kartu berikutnya dari batch itu (AppSelect tidak memancarkan `change`)
+watch(batch, () => next(), { immediate: true })
 
 async function next(after = 0) {
   state.value = 'idle'
@@ -74,7 +75,7 @@ async function manual() {
 
 <template>
   <PageHeader eyebrow="Produksi" title="Stasiun encode">
-    <AppSelect v-if="batches?.length" v-model="batch" :options="batches.map((b) => ({ value: b.id, label: `${b.code} · ${b.quantity} kartu · ${b.chip.toUpperCase()}` }))" class="!w-auto" aria-label="Batch" @change="next()" />
+    <AppSelect v-if="batches?.length" v-model="batch" :options="batches.map((b) => ({ value: b.id, label: `${b.code} · ${b.quantity} kartu · ${b.chip.toUpperCase()}` }))" class="!w-auto" aria-label="Batch" />
   </PageHeader>
 
   <p v-if="!supported" class="rounded-md border border-line-strong bg-surface-2 px-4 py-3 text-sm">

@@ -9,12 +9,14 @@ import { ArrowLeft, CircleAlert, CircleCheck, CreditCard, Grid3x3, Magnet, Print
 import AppButton from '@/components/ui/AppButton/index.vue'
 import AppField from '@/components/ui/AppField/index.vue'
 import AppInput from '@/components/ui/AppInput/index.vue'
+import AppMenu from '@/components/ui/AppMenu/index.vue'
 import AppModal from '@/components/ui/AppModal/index.vue'
 import AppSegmented from '@/components/ui/AppSegmented/index.vue'
 import AppSelect from '@/components/ui/AppSelect/index.vue'
 import AppSkeleton from '@/components/ui/AppSkeleton/index.vue'
 import ArrangeBar from '@/components/studio/ArrangeBar/index.vue'
 import BrandKitPanel from '@/components/studio/BrandKitPanel/index.vue'
+import CanvasLegend from '@/components/studio/CanvasLegend/index.vue'
 import CardSide from '@/components/studio/CardSide/index.vue'
 import ColorPicker from '@/components/studio/ColorPicker/index.vue'
 import EditorShell from '@/components/studio/EditorShell/index.vue'
@@ -24,6 +26,7 @@ import LanyardStrip from '@/components/studio/LanyardStrip/index.vue'
 import LayerList from '@/components/studio/LayerList/index.vue'
 import LayerProperties from '@/components/studio/LayerProperties/index.vue'
 import PrintPreview from '@/components/studio/PrintPreview/index.vue'
+import SaveStatus from '@/components/studio/SaveStatus/index.vue'
 import ToolRail from '@/components/studio/ToolRail/index.vue'
 import ZoomControl from '@/components/studio/ZoomControl/index.vue'
 import { studioApi } from '@/api/studio'
@@ -56,11 +59,16 @@ const anyLocked = computed(() => selected.value.some((l) => l.lock))
 const cardOptions = computed(() => cards.value.map((c) => ({ value: c.id, label: c.name, description: c.paired && c.paired.id !== id ? 'sudah punya lanyard' : c.orientation === 'portrait' ? 'potret' : 'lanskap', disabled: !!(c.paired && c.paired.id !== id) })))
 const TABS = computed(() => [
   { value: 'spec', label: 'Spesifikasi' },
-  { value: 'props', label: 'Properti' },
+  { value: 'props', label: 'Edit' },
   { value: 'layers', label: 'Lapisan' },
   { value: 'kit', label: 'Brand kit' },
-  { value: 'preview', label: 'Pratinjau' },
-  { value: 'issues', label: issues.value.length ? `Cek (${issues.value.length})` : 'Cek' },
+  { value: 'issues', label: issues.value.length ? `Cek cetak (${issues.value.length})` : 'Cek cetak' },
+])
+// aksi yang jarang dipakai → menu "Lainnya" agar bilah atas tetap ringkas
+const menu = computed(() => [
+  { label: 'Pratinjau cetak & unduh PNG', icon: Printer, onSelect: () => (previewing.value = true) },
+  ...(paired.value ? [{ label: 'Buka kartu pasangan', icon: CreditCard, onSelect: openCard }] : []),
+  { label: 'Hapus desain lanyard', icon: Trash2, danger: true, onSelect: () => (confirmDelete.value = true) },
 ])
 
 async function setSpec(patch) {
@@ -115,23 +123,29 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
   <div v-if="!catalog || !sides.front" class="grid gap-4 p-6" aria-busy="true"><AppSkeleton class="!h-14" /><AppSkeleton class="!h-[360px]" /></div>
   <EditorShell v-else :busy="saving">
     <template #top>
-      <AppButton variant="ghost" icon aria-label="Kembali ke daftar desain" :to="{ path: '/designs', query: { tab: 'lanyard' } }"><ArrowLeft class="size-5" /></AppButton>
-      <AppInput v-model="design.name" maxlength="120" aria-label="Nama desain lanyard" class="!min-h-10 max-w-56" @change="dirty = true" />
+      <AppButton variant="ghost" icon aria-label="Kembali ke daftar desain" title="Kembali ke daftar desain" :to="{ path: '/designs', query: { tab: 'lanyard' } }"><ArrowLeft class="size-5" /></AppButton>
+      <AppInput v-model="design.name" maxlength="120" aria-label="Nama desain lanyard" title="Nama desain (klik untuk mengubah)" class="!min-h-10 max-w-52" @change="dirty = true" />
       <AppSegmented
         v-if="twoSided" :model-value="active" label="Sisi tali"
         :options="[{ value: 'front', label: 'Sisi depan' }, { value: 'back', label: 'Sisi belakang' }]" @update:model-value="ed.switchSide"
       />
-      <span class="mx-1 h-6 w-px bg-line" aria-hidden="true"></span>
-      <AppButton variant="ghost" icon aria-label="Urungkan" title="Urungkan (Ctrl+Z)" :disabled="!ed.canUndo.value" @click="ed.undo"><Undo2 class="size-5" /></AppButton>
-      <AppButton variant="ghost" icon aria-label="Ulangi" title="Ulangi (Ctrl+Y)" :disabled="!ed.canRedo.value" @click="ed.redo"><Redo2 class="size-5" /></AppButton>
-      <ZoomControl ref="zoomer" v-model="zoom" :levels="[1, 1.5, 2, 3, 4, 6]" />
-      <AppButton variant="ghost" icon :aria-pressed="grid > 0" aria-label="Grid 5 mm" title="Grid 5 mm" :class="grid ? '!text-accent-text' : '!text-muted'" @click="grid = grid ? 0 : 5"><Grid3x3 class="size-5" /></AppButton>
-      <AppButton variant="ghost" icon :aria-pressed="snap" aria-label="Snap" title="Snap (tahan Alt untuk bebas)" :class="snap ? '!text-accent-text' : '!text-muted'" @click="snap = !snap"><Magnet class="size-5" /></AppButton>
-      <span class="hidden font-mono text-xs text-muted md:inline">{{ spec.width_mm }} mm × {{ spec.length_mm / 10 }} cm · pola {{ spec.tile_mm }} mm</span>
-      <span class="ml-auto hidden text-sm text-muted sm:inline">{{ dirty ? 'Belum disimpan' : 'Tersimpan' }}</span>
-      <AppButton v-if="paired" variant="ghost" :title="`Buka kartu ${paired.name}`" @click="openCard"><CreditCard class="size-5" /> Kartu</AppButton>
-      <AppButton variant="ghost" icon aria-label="Pratinjau cetak" title="Pratinjau cetak & unduh PNG" @click="previewing = true"><Printer class="size-5" /></AppButton>
-      <AppButton :loading="saving" @click="ed.save()">Simpan</AppButton>
+      <span class="mx-1 hidden h-6 w-px bg-line md:block" aria-hidden="true"></span>
+      <div class="flex items-center">
+        <AppButton variant="ghost" icon aria-label="Urungkan" title="Urungkan (Ctrl+Z)" :disabled="!ed.canUndo.value" @click="ed.undo"><Undo2 class="size-5" /></AppButton>
+        <AppButton variant="ghost" icon aria-label="Ulangi" title="Ulangi (Ctrl+Y)" :disabled="!ed.canRedo.value" @click="ed.redo"><Redo2 class="size-5" /></AppButton>
+      </div>
+      <div class="flex items-center">
+        <ZoomControl ref="zoomer" v-model="zoom" :levels="[1, 1.5, 2, 3, 4, 6]" />
+        <AppButton variant="ghost" icon :aria-pressed="grid > 0" aria-label="Tampilkan grid 5 mm" title="Grid 5 mm" :class="grid ? '!text-accent-text' : '!text-muted'" @click="grid = grid ? 0 : 5"><Grid3x3 class="size-5" /></AppButton>
+        <AppButton variant="ghost" icon :aria-pressed="snap" aria-label="Tempel ke garis bantu" title="Tempel ke garis bantu (tahan Alt saat menggeser untuk bebas)" :class="snap ? '!text-accent-text' : '!text-muted'" @click="snap = !snap"><Magnet class="size-5" /></AppButton>
+      </div>
+      <span class="hidden rounded-full bg-surface-2 px-2.5 py-1 font-mono text-xs text-muted xl:inline">Tali {{ spec.width_mm }} mm × {{ spec.length_mm / 10 }} cm · pola {{ spec.tile_mm }} mm · {{ spec.print_sides }} sisi</span>
+      <div class="ml-auto flex items-center gap-2">
+        <SaveStatus :dirty="dirty" :saving="saving" />
+        <AppButton v-if="paired" variant="secondary" class="hidden lg:inline-flex" :title="`Buka desain kartu ${paired.name}`" @click="openCard"><CreditCard class="size-5" /> Kartu pasangan</AppButton>
+        <AppMenu :items="menu" />
+        <AppButton :loading="saving" title="Simpan (Ctrl+S)" @click="ed.save()">Simpan</AppButton>
+      </div>
     </template>
 
     <template #tools>
@@ -146,17 +160,28 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
           @align="ed.align" @distribute="ed.distribute" @group="ed.group" @ungroup="ed.ungroup" @z="ed.zOrder" @lock="ed.toggleLock()"
           @other-side="ed.copyToOtherSide" @to-pair="copyToCard" @duplicate="ed.duplicate" @remove="ed.remove"
         />
-        <p v-else class="text-xs text-muted">Desain satu pola — garis merah putus = batas pola yang diulang · biru = margin aman tepi tali {{ ed.safe.value }} mm</p>
+        <p v-else class="rounded-full bg-surface px-3 py-1 text-xs text-muted">Anda mendesain <b class="text-fg">satu pola</b> — pola ini diulang otomatis sepanjang tali. Klik elemen untuk mengedit.</p>
       </div>
-      <div class="grid gap-8 px-4 pt-6 pb-10 sm:px-10">
-        <div class="mx-auto" :style="canvasStyle">
-          <CardSide :side="side" :vars="vars" :kit="kit" :selection="selection" :grid="grid" :snap="snap" editable @select="ed.select" @change="ed.change" @commit="ed.commit" />
-        </div>
-        <div class="grid gap-2">
-          <span class="label">Sepanjang tali (45 cm pertama)</span>
-          <div class="overflow-x-auto rounded-md border border-line bg-surface p-3 scrollbar-none">
-            <LanyardStrip :side="side" :kit="kit" :vars="vars" :length="450" :scale="2" />
+      <div class="grid gap-8 px-4 pt-4 pb-10 sm:px-10">
+        <div class="grid gap-3">
+          <div class="mx-auto" :style="canvasStyle">
+            <CardSide :side="side" :vars="vars" :kit="kit" :selection="selection" :grid="grid" :snap="snap" editable @select="ed.select" @change="ed.change" @commit="ed.commit" />
           </div>
+          <CanvasLegend kind="lanyard" :safe="ed.safe.value" />
+        </div>
+
+        <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px] xl:items-start">
+          <section class="grid gap-2" aria-labelledby="strip-title">
+            <h2 id="strip-title" class="label">Hasil sepanjang tali · 45 cm pertama{{ twoSided ? ` · sisi ${active === 'front' ? 'depan' : 'belakang'}` : '' }}</h2>
+            <div class="overflow-x-auto rounded-md border border-line bg-surface p-3 scrollbar-none">
+              <LanyardStrip :side="side" :kit="kit" :vars="vars" :length="450" :scale="2" />
+            </div>
+          </section>
+          <section class="grid gap-2" aria-labelledby="mockup-title">
+            <h2 id="mockup-title" class="label">Pratinjau dipakai{{ paired ? ` · dengan kartu ${paired.name}` : '' }}</h2>
+            <LanyardMockup :lanyard="sides.front" :back="twoSided ? sides.back : sides.front" :card="paired?.front" :kit="kit" :vars="vars" :qr="catalog.qr" :hardware="spec.hardware" :scale="1.7" />
+            <p v-if="!paired" class="text-xs text-muted">Pasangkan dengan kartu di tab <b>Spesifikasi</b> untuk melihat kartu Anda menggantung di sini.</p>
+          </section>
         </div>
       </div>
     </template>
@@ -167,17 +192,22 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       </div>
       <div class="grid gap-4 p-4">
         <template v-if="tab === 'spec'">
-          <AppField label="Kartu pasangan" hint="Kartu terpasang otomatis mendapat lubang lanyard & brand kit yang sama.">
+          <AppField label="Kartu pasangan">
             <AppSelect :model-value="paired?.id ?? ''" :options="cardOptions" searchable clearable placeholder="Belum dipasangkan" @update:model-value="pairWith" />
           </AppField>
+          <p class="-mt-2 text-xs text-muted">Kartu yang dipasangkan otomatis mendapat lubang lanyard dan memakai brand kit yang sama.</p>
           <LanyardSpecPanel :spec="spec" :catalog="catalog.lanyard" @change="setSpec" />
         </template>
 
         <template v-else-if="tab === 'props'">
           <LayerProperties v-if="selected.length" :layers="selected" :palette="catalog.palette" :fonts="catalog.fonts" :vars="vars" :kit="kit" @change="ed.patch" />
           <template v-else>
-            <ColorPicker :model-value="side.background.value" :palette="catalog.palette" :kit="kit" label="Warna dasar tali" @update:model-value="(v) => ed.setBackground({ ...side.background, value: v })" />
-            <p class="text-sm text-muted">Tips: pakai warna dari <em>Brand kit</em> agar tali selalu serasi dengan kartu. Teks <span class="font-mono" v-text="'{' + '{brand}' + '}'"></span> terisi nama merek.</p>
+            <div class="grid gap-1">
+              <h2 class="text-base font-semibold">Pengaturan tali</h2>
+              <p class="text-sm text-muted">Belum ada elemen dipilih. Klik elemen di pola untuk mengeditnya, atau tambahkan elemen dari bilah kiri.</p>
+            </div>
+            <ColorPicker :model-value="side.background.value" :palette="catalog.palette" :kit="kit" :label="`Warna dasar tali${twoSided ? (active === 'front' ? ' · sisi depan' : ' · sisi belakang') : ''}`" @update:model-value="(v) => ed.setBackground({ ...side.background, value: v })" />
+            <p class="text-sm text-muted">Tips: pakai warna dari <b>Brand kit</b> agar tali selalu serasi dengan kartu. Teks <span class="font-mono" v-text="'{' + '{brand}' + '}'"></span> otomatis berisi nama merek.</p>
           </template>
         </template>
 
@@ -188,24 +218,20 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 
         <BrandKitPanel v-else-if="tab === 'kit'" :kit="kit" :kits="catalog.kits" :palette="catalog.palette" :paired-name="paired ? 'kartu pasangannya' : null" @use="ed.useKit" @changed="ed.kitChanged" />
 
-        <template v-else-if="tab === 'preview'">
-          <LanyardMockup :lanyard="sides.front" :back="twoSided ? sides.back : sides.front" :card="paired?.front" :kit="kit" :vars="vars" :qr="catalog.qr" :hardware="spec.hardware" :scale="1.7" />
-          <AppButton v-if="paired" variant="secondary" :disabled="!ed.editable.value.length" @click="copyToCard">Salin elemen terpilih ke kartu</AppButton>
-          <p v-else class="text-sm text-muted">Pasangkan kartu di tab Spesifikasi untuk melihat kartu menggantung di lanyard ini.</p>
-        </template>
-
         <template v-else>
-          <p v-if="!issues.length" class="flex items-center gap-2 text-sm text-ok"><CircleCheck class="size-5" /> Siap cetak. Simpan untuk memeriksa ulang.</p>
-          <ul v-else class="grid gap-1">
-            <li v-for="(i, n) in issues" :key="n">
-              <button type="button" class="flex w-full cursor-pointer items-start gap-2 rounded-sm px-1 py-1.5 text-left text-sm hover:bg-surface-2" @click="focusIssue(i)">
-                <CircleAlert :class="['mt-0.5 size-4 flex-none', i.level === 'error' ? 'text-danger' : 'text-warn']" />
-                <span><span class="label !text-[10px]">{{ i.side === 'front' ? 'Depan' : 'Belakang' }}</span> {{ i.message }}</span>
-              </button>
-            </li>
-          </ul>
-          <p v-if="errors.length" class="text-xs text-danger">{{ errors.length }} masalah harus diperbaiki sebelum dicetak.</p>
-          <AppButton variant="ghost" class="justify-self-start" @click="confirmDelete = true"><Trash2 class="size-5" /> Hapus desain lanyard</AppButton>
+          <p v-if="!issues.length" class="flex items-center gap-2 text-sm text-ok"><CircleCheck class="size-5" /> Siap cetak. Pemeriksaan diperbarui setiap kali disimpan.</p>
+          <template v-else>
+            <p class="text-sm text-muted">Klik masalah untuk langsung memilih elemennya.</p>
+            <ul class="grid gap-1">
+              <li v-for="(i, n) in issues" :key="n">
+                <button type="button" class="flex w-full cursor-pointer items-start gap-2 rounded-sm px-1 py-1.5 text-left text-sm hover:bg-surface-2" @click="focusIssue(i)">
+                  <CircleAlert :class="['mt-0.5 size-4 flex-none', i.level === 'error' ? 'text-danger' : 'text-warn']" />
+                  <span><span class="label !text-[10px]">{{ i.side === 'front' ? 'Depan' : 'Belakang' }}</span> {{ i.message }}</span>
+                </button>
+              </li>
+            </ul>
+          </template>
+          <p v-if="errors.length" class="text-xs text-danger">{{ errors.length }} masalah merah harus diperbaiki sebelum lanyard bisa dicetak. Yang kuning hanya saran.</p>
         </template>
       </div>
     </template>
@@ -213,10 +239,10 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 
   <PrintPreview v-if="previewing" kind="lanyard" :print-sides="spec.print_sides" :name="design.name" :sides="sides" :kit="kit" :vars="vars" @close="previewing = false" />
 
-  <AppModal v-if="confirmDelete" size="sm" title="Hapus desain lanyard?" :description="`“${design.name}” akan dihapus. Kartu pasangannya tetap ada.`" @close="confirmDelete = false">
+  <AppModal v-if="confirmDelete" size="sm" title="Hapus desain lanyard?" :description="`“${design.name}” akan dihapus permanen.${paired ? ' Kartu pasangannya tetap ada.' : ''}`" @close="confirmDelete = false">
     <template #footer>
       <AppButton variant="secondary" @click="confirmDelete = false">Batal</AppButton>
-      <AppButton variant="danger" @click="destroy">Hapus</AppButton>
+      <AppButton variant="danger" @click="destroy">Hapus desain</AppButton>
     </template>
   </AppModal>
 </template>

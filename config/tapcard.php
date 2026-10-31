@@ -22,6 +22,16 @@ return [
     // Kode OTP tetap untuk pengembangan lokal (diabaikan jika APP_ENV bukan local).
     'dev_login_code' => env('DEV_LOGIN_CODE'),
 
+    // ALTCHA anti-bot di login/daftar/lupa password. max_number = tingkat kesulitan (±0,2–1 dtk di ponsel).
+    'altcha' => [
+        'enabled' => (bool) env('ALTCHA_ENABLED', true),
+        'key' => env('ALTCHA_HMAC_KEY'), // kosong = diturunkan dari APP_KEY
+        'max_number' => (int) env('ALTCHA_MAX_NUMBER', 100000),
+    ],
+
+    // "Ingat saya" = cookie login 7 hari; tanpa centang, sesi berakhir mengikuti SESSION_LIFETIME.
+    'remember_minutes' => (int) env('AUTH_REMEMBER_MINUTES', 60 * 24 * 7),
+
     'consent_text_version' => 'v1',
 
     'reserved_slugs' => [

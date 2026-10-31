@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\CardStatus;
 use App\Models\Invoice;
 use App\Models\PlatformStaff;
 use App\Models\Role;
@@ -179,5 +180,18 @@ class PanelBusinessTest extends TestCase
         $this->panel('POST', '/announcements', ['title' => 'Fitur baru', 'body' => 'Mode Event sudah tersedia.', 'audience' => 'personal'])->assertCreated();
         $this->assertDatabaseHas('notifications', ['type' => 'announcement']);
         $this->assertGreaterThanOrEqual(1, $this->panel('GET', '/announcements')->json('data.0.recipients'));
+    }
+
+    /** Regresi: setiap halaman daftar panel harus terbuka (mis. /audit pernah 500 karena argumen Table::json kurang). */
+    public function test_every_panel_list_endpoint_responds_for_owner(): void
+    {
+        $this->makeCard(CardStatus::Active, $this->makeUser());
+        $this->actingAs($this->staff('platform_owner'));
+        $this->panel('PATCH', '/plans/personal_pro', ['price_monthly' => 49000]); // isi audit log
+        foreach (['announcements', 'audit', 'batches', 'cards', 'catalog', 'dashboard', 'domains', 'finance/events', 'finance/invoices',
+            'finance/subscriptions', 'finance/summary', 'me', 'plans', 'staff', 'stations/batches', 'system', 'tenants', 'users', 'vouchers'] as $path) {
+            $this->panel('GET', "/$path?sort=")->assertOk();
+        }
+        $this->panel('GET', '/audit?scope=platform&action=plan.')->assertOk()->assertJsonPath('data.0.action', 'plan.updated')->assertJsonPath('meta.per_page', 50);
     }
 }

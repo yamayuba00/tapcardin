@@ -18,7 +18,7 @@ const props = defineProps({
   token: { type: String, required: true },
   name: { type: String, default: 'kartu' }, // untuk nama berkas
   editable: Boolean, // tampilkan "Ganti desain" (kartu digital milik sendiri)
-  compact: Boolean, // hanya kartu + balik (mis. di daftar kartu)
+  compact: Boolean, // thumbnail saja (mis. di daftar kartu): tanpa tombol, tidak bisa dibalik
 })
 const emit = defineEmits(['changed'])
 const toast = useToastStore()
@@ -81,7 +81,8 @@ defineExpose({ reload })
     <template v-else>
       <!-- kartu bisa dibalik (klik / Enter) -->
       <button
-        type="button" class="group mx-auto block w-full cursor-pointer [perspective:1600px]" :class="v.orientation === 'portrait' ? 'max-w-[300px]' : 'max-w-[520px]'"
+        type="button" class="group mx-auto block w-full cursor-pointer [perspective:1600px]" :disabled="compact" :tabindex="compact ? -1 : undefined"
+        :class="[v.orientation === 'portrait' ? (compact ? 'max-w-[86px]' : 'max-w-[300px]') : 'max-w-[520px]', compact ? '!cursor-default' : '']"
         :aria-label="flipped ? 'Tampilkan sisi depan' : 'Tampilkan sisi belakang (QR)'" @click="flipped = !flipped"
       >
         <div :style="{ aspectRatio: `${v.front.size.w} / ${v.front.size.h}` }" class="relative w-full transition-transform duration-700 ease-[cubic-bezier(.2,.8,.2,1)] [transform-style:preserve-3d]" :class="flipped ? '[transform:rotateY(180deg)]' : ''">
@@ -94,13 +95,11 @@ defineExpose({ reload })
         </div>
       </button>
 
-      <div class="flex flex-wrap items-center justify-center gap-2">
+      <div v-if="!compact" class="flex flex-wrap items-center justify-center gap-2">
         <AppButton variant="ghost" @click="flipped = !flipped"><RefreshCw class="size-4" /> {{ flipped ? 'Lihat depan' : 'Lihat belakang (QR)' }}</AppButton>
-        <template v-if="!compact">
-          <AppButton :loading="exporting" @click="save('both')"><Download class="size-5" /> Unduh gambar</AppButton>
-          <AppButton variant="secondary" :disabled="exporting" @click="save('front')">Depan</AppButton>
-          <AppButton variant="secondary" :disabled="exporting" @click="save('back')">Belakang</AppButton>
-        </template>
+        <AppButton :loading="exporting" @click="save('both')"><Download class="size-5" /> Unduh gambar (2 sisi)</AppButton>
+        <AppButton variant="secondary" :disabled="exporting" @click="save('front')">Unduh depan</AppButton>
+        <AppButton variant="secondary" :disabled="exporting" @click="save('back')">Unduh belakang</AppButton>
       </div>
       <div v-if="editable && !compact" class="flex flex-wrap items-center justify-center gap-2 text-sm text-muted">
         <span>Desain: {{ v.design?.name ?? 'Onyx (bawaan)' }}</span>

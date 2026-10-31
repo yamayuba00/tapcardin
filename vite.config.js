@@ -10,7 +10,10 @@ export default defineConfig({
             input: ['resources/css/app.css', 'resources/js/main.js'],
             refresh: true,
         }),
-        vue(),
+        vue({
+            // <altcha-widget> = web component ALTCHA (anti-bot), bukan komponen Vue
+            template: { compilerOptions: { isCustomElement: (tag) => tag === 'altcha-widget' } },
+        }),
         tailwindcss(),
     ],
     resolve: {

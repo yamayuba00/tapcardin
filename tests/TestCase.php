@@ -9,6 +9,7 @@ use App\Models\Batch;
 use App\Models\Card;
 use App\Models\Profile;
 use App\Models\User;
+use App\Support\Altcha;
 use App\Support\Base62;
 use App\Support\Crockford;
 use App\Tenancy\CurrentTenant;
@@ -23,6 +24,19 @@ abstract class TestCase extends BaseTestCase
     protected function host(string $sub, string $path = '/'): string
     {
         return "http://$sub.localhost".$path;
+    }
+
+    /** Selesaikan challenge ALTCHA sungguhan (seperti widget di browser) → payload base64 untuk field `altcha`. */
+    protected function altcha(): string
+    {
+        $c = Altcha::challenge();
+        for ($n = 0; $n <= 0xFFFFFF; $n++) {
+            $key = Altcha::derive($c['parameters'], $n);
+            if (str_starts_with($key, $c['parameters']['keyPrefix'])) {
+                return base64_encode(json_encode(['challenge' => $c, 'solution' => ['counter' => $n, 'derivedKey' => $key, 'time' => 1]]));
+            }
+        }
+        $this->fail('Challenge ALTCHA tidak terpecahkan.');
     }
 
     protected function makeUser(string $email = 'rina@example.com', string $name = 'Rina Saputra'): User

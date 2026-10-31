@@ -22,15 +22,17 @@ final class RegisterUser
 {
     public function __construct(private readonly CurrentTenant $current, private readonly CreateDigitalCard $digital) {}
 
-    public function handle(string $email, ?string $name = null, ?string $googleId = null): User
+    /** @param  string|null  $passwordHash  hash bcrypt dari pendaftaran manual (null untuk akun Google) */
+    public function handle(string $email, ?string $name = null, ?string $googleId = null, ?string $passwordHash = null): User
     {
-        return DB::transaction(function () use ($email, $name, $googleId) {
+        return DB::transaction(function () use ($email, $name, $googleId, $passwordHash) {
             $name = trim($name ?: ucwords(str_replace(['.', '_', '-'], ' ', strstr($email, '@', true))));
 
             $user = User::create([
                 'email' => strtolower(trim($email)),
                 'name' => mb_substr($name, 0, 120),
                 'google_id' => $googleId,
+                'password' => $passwordHash, // cast `hashed` tidak meng-hash ulang nilai yang sudah berupa hash
                 'locale' => 'id',
                 'timezone' => 'Asia/Jakarta',
                 'notification_prefs' => [],

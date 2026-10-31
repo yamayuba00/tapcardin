@@ -32,6 +32,6 @@ class AuditController extends PlatformController
             'subject' => "{$l->subject_type}#{$l->subject_id}",
             'before' => $l->before,
             'after' => $l->after,
-        ]);
+        ], $request);
     }
 }

@@ -13,15 +13,17 @@ const picking = ref(false)
 const q = ref('')
 const glyphs = computed(() => Object.entries(GLYPHS).filter(([n]) => n.includes(q.value.trim().toLowerCase())))
 const TOOLS = computed(() => [
-  { type: 'text', label: 'Teks (T)', icon: Type },
-  { type: 'rect', label: 'Kotak (R)', icon: Square },
-  { type: 'ellipse', label: 'Elips (O)', icon: Circle },
-  { type: 'polygon', label: 'Poligon', icon: Hexagon },
-  { type: 'star', label: 'Bintang', icon: Star },
-  { type: 'line', label: 'Garis (L)', icon: Minus },
-  ...(props.rings ? [{ type: 'rings', label: 'Cincin sinyal', icon: Radio }] : []),
+  { type: 'text', label: 'Teks (T)', short: 'Teks', icon: Type },
+  { type: 'rect', label: 'Kotak (R)', short: 'Kotak', icon: Square },
+  { type: 'ellipse', label: 'Elips (O)', short: 'Elips', icon: Circle },
+  { type: 'polygon', label: 'Poligon', short: 'Poligon', icon: Hexagon },
+  { type: 'star', label: 'Bintang', short: 'Bintang', icon: Star },
+  { type: 'line', label: 'Garis (L)', short: 'Garis', icon: Minus },
+  ...(props.rings ? [{ type: 'rings', label: 'Cincin sinyal NFC', short: 'Sinyal', icon: Radio }] : []),
 ])
-const btn = 'grid size-11 cursor-pointer place-items-center rounded-md text-muted hover:bg-surface-2 hover:text-fg'
+// ponsel: ikon saja (bilah horizontal); layar lebar: ikon + nama singkat di bawahnya
+const btn = 'grid size-11 cursor-pointer place-items-center content-center gap-0.5 rounded-md text-muted hover:bg-surface-2 hover:text-fg lg:h-auto lg:w-full lg:py-1.5'
+const cap = 'hidden text-[10px] leading-none lg:block'
 function pick(name) {
   emit('glyph', name)
   picking.value = false
@@ -36,12 +38,12 @@ function onFile(e) {
 <template>
   <nav class="flex gap-1 overflow-x-auto rounded-md border border-line bg-surface p-1.5 lg:flex-col lg:overflow-visible" aria-label="Sisipkan elemen">
     <button v-for="t in TOOLS" :key="t.type" type="button" :class="btn" :aria-label="`Tambah ${t.label}`" :title="t.label" @click="emit('add', t.type)">
-      <component :is="t.icon" class="size-5" />
+      <component :is="t.icon" class="size-5" /><span :class="cap">{{ t.short }}</span>
     </button>
-    <button type="button" :class="btn" aria-label="Tambah ikon" title="Ikon" @click="picking = true"><Shapes class="size-5" /></button>
+    <button type="button" :class="btn" aria-label="Tambah ikon" title="Ikon" @click="picking = true"><Shapes class="size-5" /><span :class="cap">Ikon</span></button>
     <span class="mx-1 w-px self-stretch bg-line lg:mx-0 lg:my-1 lg:h-px lg:w-auto" aria-hidden="true"></span>
-    <button type="button" :class="btn" aria-label="Unggah gambar atau logo" title="Gambar / logo (PNG, JPG, WebP)" @click="fileInput.click()"><ImagePlus class="size-5" /></button>
-    <button type="button" :class="[btn, hasKitLogo ? '' : 'opacity-50']" aria-label="Tambah logo brand kit" title="Logo brand kit" @click="emit('kit-logo')"><BadgeCheck class="size-5" /></button>
+    <button type="button" :class="btn" aria-label="Unggah gambar atau logo" title="Gambar / logo (PNG, JPG, WebP)" @click="fileInput.click()"><ImagePlus class="size-5" /><span :class="cap">Gambar</span></button>
+    <button type="button" :class="[btn, hasKitLogo ? '' : 'opacity-50']" aria-label="Tambah logo brand kit" :title="hasKitLogo ? 'Logo dari brand kit' : 'Brand kit belum punya logo — tambahkan di tab Brand kit'" @click="emit('kit-logo')"><BadgeCheck class="size-5" /><span :class="cap">Logo kit</span></button>
     <input ref="fileInput" type="file" accept="image/png,image/jpeg,image/webp" class="sr-only" @change="onFile" />
   </nav>
 

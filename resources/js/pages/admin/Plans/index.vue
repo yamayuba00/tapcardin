@@ -2,13 +2,12 @@
 // Paket & harga — harga bulanan/tahunan, batas, fitur, tampil di halaman harga. Harga baru berlaku untuk tagihan
 // berikutnya; batas & fitur langsung berlaku untuk semua workspace di paket itu.
 import { computed, reactive, ref } from 'vue'
-import { Pencil, Plus } from 'lucide-vue-next'
+import { Check, Minus, Pencil, Plus } from 'lucide-vue-next'
 import AppBadge from '@/components/ui/AppBadge/index.vue'
 import AppButton from '@/components/ui/AppButton/index.vue'
 import AppField from '@/components/ui/AppField/index.vue'
 import AppInput from '@/components/ui/AppInput/index.vue'
 import AppModal from '@/components/ui/AppModal/index.vue'
-import AppPanel from '@/components/ui/AppPanel/index.vue'
 import AppSegmented from '@/components/ui/AppSegmented/index.vue'
 import AppSkeleton from '@/components/ui/AppSkeleton/index.vue'
 import AppToggle from '@/components/ui/AppToggle/index.vue'
@@ -56,7 +55,7 @@ async function save() {
     reload()
   } catch (e) { errors.value = e.fields ?? {} }
 }
-const limitText = (v) => (v === null ? 'Tanpa batas' : num(v))
+const limitText = (v) => (v === null || v === undefined ? '∞' : num(v))
 </script>
 
 <template>
@@ -66,38 +65,65 @@ const limitText = (v) => (v === null ? 'Tanpa batas' : num(v))
   <AppSegmented v-model="type" label="Tipe workspace" :options="[{ value: 'personal', label: 'Personal' }, { value: 'company', label: 'Perusahaan' }]" />
 
   <AppSkeleton v-if="!plans" class="!h-60" />
-  <div v-else class="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4">
-    <AppPanel v-for="p in shown" :key="p.key">
-      <div class="grid gap-4">
-        <div class="flex items-start justify-between gap-3">
-          <div>
-            <h2 class="text-lg font-semibold">{{ p.name }}</h2>
-            <span class="font-mono text-xs text-muted">{{ p.key }}</span>
-          </div>
-          <AppBadge :tone="p.is_public ? 'ok' : 'muted'">{{ p.is_public ? 'Publik' : 'Tersembunyi' }}</AppBadge>
-        </div>
-        <div>
-          <span class="font-display text-2xl">{{ p.price_monthly ? rupiah(p.price_monthly) : 'Gratis' }}</span>
-          <span v-if="p.price_monthly" class="text-muted"> /bulan{{ p.per_seat ? ' /anggota' : '' }}</span>
-          <span v-if="p.price_yearly" class="block text-sm text-muted">{{ rupiah(p.price_yearly) }} /tahun</span>
-        </div>
-        <dl class="grid grid-cols-[1fr_max-content] gap-x-4 gap-y-1 text-sm">
-          <template v-for="(label, k) in meta?.limits" :key="k">
-            <template v-if="k in p.limits && (p.limits[k] !== null || ['members', 'cards_active', 'connections'].includes(k))">
-              <dt class="text-muted">{{ label }}</dt><dd class="font-mono">{{ limitText(p.limits[k]) }}</dd>
-            </template>
-          </template>
-        </dl>
-        <div class="flex flex-wrap gap-1.5">
-          <AppBadge v-for="(label, k) in meta?.features" v-show="p.features[k]" :key="k" tone="outline" :dot="false">{{ label }}</AppBadge>
-        </div>
-        <div class="flex items-center justify-between gap-3 border-t border-line pt-3 text-sm text-muted">
-          <span>{{ num(p.tenants_count) }} workspace · {{ num(p.subscriptions_count) }} langganan</span>
-          <AppButton variant="ghost" @click="open(p)"><Pencil class="size-4" /> Ubah</AppButton>
-        </div>
-      </div>
-    </AppPanel>
+  <p v-else-if="!shown.length" class="text-muted">Belum ada paket untuk tipe ini.</p>
+  <!-- tabel perbandingan: kolom = paket, baris = harga / batas / fitur -->
+  <div v-else class="overflow-x-auto rounded-lg border border-line bg-surface">
+    <table class="w-full min-w-[640px] border-collapse text-sm">
+      <thead>
+        <tr class="border-b border-line align-top">
+          <th scope="col" class="sticky left-0 z-10 w-56 bg-surface px-4 py-4 text-left font-medium text-muted">Paket</th>
+          <th v-for="p in shown" :key="p.key" scope="col" class="px-4 py-4 text-left font-normal">
+            <div class="grid gap-2">
+              <div class="flex items-center gap-2">
+                <span class="text-base font-semibold text-fg">{{ p.name }}</span>
+                <AppBadge :tone="p.is_public ? 'ok' : 'muted'">{{ p.is_public ? 'Publik' : 'Tersembunyi' }}</AppBadge>
+              </div>
+              <span class="font-mono text-xs text-muted">{{ p.key }}</span>
+              <AppButton variant="secondary" class="justify-self-start" @click="open(p)"><Pencil class="size-4" /> Ubah</AppButton>
+            </div>
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="bg-surface-2"><th colspan="99" scope="colgroup" class="px-4 py-2 text-left"><span class="label">Harga</span></th></tr>
+        <tr class="border-b border-line">
+          <th scope="row" class="sticky left-0 bg-surface px-4 py-3 text-left font-normal text-muted">Bulanan</th>
+          <td v-for="p in shown" :key="p.key" class="px-4 py-3">
+            <span class="font-display text-lg">{{ p.price_monthly ? rupiah(p.price_monthly) : 'Gratis' }}</span>
+            <span v-if="p.price_monthly && p.per_seat" class="text-xs text-muted"> / anggota</span>
+          </td>
+        </tr>
+        <tr class="border-b border-line">
+          <th scope="row" class="sticky left-0 bg-surface px-4 py-3 text-left font-normal text-muted">Tahunan</th>
+          <td v-for="p in shown" :key="p.key" class="px-4 py-3 font-mono">{{ p.price_yearly ? rupiah(p.price_yearly) : '—' }}</td>
+        </tr>
+        <tr class="border-b border-line">
+          <th scope="row" class="sticky left-0 bg-surface px-4 py-3 text-left font-normal text-muted">Uji coba</th>
+          <td v-for="p in shown" :key="p.key" class="px-4 py-3">{{ p.trial_days ? `${p.trial_days} hari` : '—' }}</td>
+        </tr>
+        <tr class="border-b border-line">
+          <th scope="row" class="sticky left-0 bg-surface px-4 py-3 text-left font-normal text-muted">Dipakai</th>
+          <td v-for="p in shown" :key="p.key" class="px-4 py-3 text-muted"><span class="num text-fg">{{ num(p.tenants_count) }}</span> workspace · <span class="num text-fg">{{ num(p.subscriptions_count) }}</span> langganan</td>
+        </tr>
+
+        <tr class="bg-surface-2"><th colspan="99" scope="colgroup" class="px-4 py-2 text-left"><span class="label">Batas</span></th></tr>
+        <tr v-for="(label, k) in meta?.limits" :key="k" class="border-b border-line">
+          <th scope="row" class="sticky left-0 bg-surface px-4 py-3 text-left font-normal text-muted">{{ label }}</th>
+          <td v-for="p in shown" :key="p.key" class="px-4 py-3 font-mono">{{ limitText(p.limits[k]) }}</td>
+        </tr>
+
+        <tr class="bg-surface-2"><th colspan="99" scope="colgroup" class="px-4 py-2 text-left"><span class="label">Fitur</span></th></tr>
+        <tr v-for="(label, k) in meta?.features" :key="k" class="border-b border-line last:border-b-0">
+          <th scope="row" class="sticky left-0 bg-surface px-4 py-3 text-left font-normal text-muted">{{ label }}</th>
+          <td v-for="p in shown" :key="p.key" class="px-4 py-3">
+            <Check v-if="p.features[k]" class="size-5 text-ok" aria-label="Termasuk" />
+            <Minus v-else class="size-5 text-line-strong" aria-label="Tidak termasuk" />
+          </td>
+        </tr>
+      </tbody>
+    </table>
   </div>
+  <p class="text-sm text-muted">Harga baru berlaku untuk checkout & perpanjangan berikutnya. Batas dan fitur langsung berlaku untuk semua workspace di paket itu. Kolom kosong pada batas = tanpa batas.</p>
 
   <AppModal v-if="editing" size="lg" :title="editing === 'new' ? 'Paket baru' : `Ubah paket ${editing.name}`"
     description="Harga baru dipakai untuk checkout & perpanjangan berikutnya. Batas dan fitur langsung berlaku." @close="editing = null">
