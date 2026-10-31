@@ -1,0 +1,48 @@
+<?php
+
+namespace App\Console\Commands;
+
+use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
+
+/** BSD §7.5 `tapcard:prune` — OTP, QR dinamis, sesi, cache kedaluwarsa, notifikasi lama. */
+class Prune extends Command
+{
+    protected $signature = 'tapcard:prune';
+
+    protected $description = 'Bersihkan data sementara (retensi TRD §12)';
+
+    public function handle(): int
+    {
+        $counts = [
+            'login_otps' => DB::table('login_otps')->where('created_at', '<', now()->subDay())->delete(),
+            'dynamic_qr_tokens' => DB::table('dynamic_qr_tokens')->where('expires_at', '<', now()->subDay())->delete(),
+            'sessions' => DB::table('sessions')->where('last_activity', '<', now()->subMinutes(config('session.lifetime'))->timestamp)->delete(),
+            'cache' => DB::table('cache')->where('expiration', '<', time())->delete(),
+            'notifications' => DB::table('notifications')->whereNotNull('read_at')->where('created_at', '<', now()->subDays(90))->delete(),
+            'users (hard delete > 30 hari)' => $this->purgeUsers(),
+        ];
+        foreach ($counts as $table => $n) {
+            $this->line("$table: $n");
+        }
+
+        return self::SUCCESS;
+    }
+
+    /** TRD §12 — akun soft delete 30 hari lalu hard delete + anonimisasi tap. */
+    private function purgeUsers(): int
+    {
+        $ids = DB::table('users')->whereNotNull('deleted_at')->where('deleted_at', '<', now()->subDays(30))->pluck('id');
+        foreach ($ids as $id) {
+            DB::transaction(function () use ($id) {
+                DB::table('taps')->where('holder_user_id', $id)->update(['holder_user_id' => null, 'ip_hash' => str_repeat('0', 64), 'visitor_hash' => str_repeat('0', 64)]);
+                DB::table('users')->where('id', $id)->update([
+                    'name' => 'Pengguna dihapus', 'email' => "deleted-$id@invalid", 'phone' => null, 'google_id' => null,
+                    'handle' => null, 'avatar_path' => null, 'remember_token' => null,
+                ]);
+            });
+        }
+
+        return $ids->count();
+    }
+}

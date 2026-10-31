@@ -1,0 +1,9 @@
+{
+  "name": "TapCard",
+  "short_name": "TapCard",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#0D0D0E",
+  "theme_color": "#0D0D0E",
+  "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}
