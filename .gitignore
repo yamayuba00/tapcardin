@@ -30,3 +30,4 @@ docs
 
 # panduan deploy manual pribadi (tidak di-commit)
 /deploy/setup-vps.md
+/deploy/vps-dari-nol.md
