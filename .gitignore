@@ -27,3 +27,6 @@ Homestead.yaml
 Thumbs.db
 .env
 docs
+
+# panduan deploy manual pribadi (tidak di-commit)
+/deploy/setup-vps.md

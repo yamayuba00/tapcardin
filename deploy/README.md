@@ -1,7 +1,5 @@
 # Deploy TapCard ke VPS
 
-> Lebih suka memasang manual langkah demi langkah? Lihat **[setup-vps.md](setup-vps.md)**.
-
 Satu perintah memasang server kosong sampai aplikasi online: Nginx, PHP 8.3-FPM, Composer, Node 22,
 Supervisor (worker antrean + scheduler), sertifikat SSL, firewall, rilis pertama, data awal, dan akun Pemilik Platform.
 
