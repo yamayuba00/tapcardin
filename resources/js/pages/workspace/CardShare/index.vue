@@ -24,6 +24,7 @@ async function copy(text, what) {
   try {
     await navigator.clipboard.writeText(text)
     toast.ok(`${what} disalin.`)
+    cardsApi.shared(token, 'copy')
   } catch {
     toast.error('Tidak bisa menyalin — tekan lama tautan untuk menyalin manual.')
   }
@@ -31,12 +32,16 @@ async function copy(text, what) {
 async function share() {
   try {
     await navigator.share({ title: name.value, text: `Kontak ${name.value}`, url: best.value })
+    cardsApi.shared(token, 'native')
   } catch { /* dibatalkan pengguna */ }
 }
 const waUrl = computed(() => `https://wa.me/?text=${encodeURIComponent(message.value)}`)
 
 let wake = null
-onMounted(async () => { wake = await navigator.wakeLock?.request('screen').catch(() => null) })
+onMounted(async () => {
+  wake = await navigator.wakeLock?.request('screen').catch(() => null)
+  cardsApi.shared(token, 'qr') // QR ditampilkan di layar untuk di-scan
+})
 onBeforeUnmount(() => wake?.release?.())
 </script>
 
@@ -78,7 +83,7 @@ onBeforeUnmount(() => wake?.release?.())
       </div>
 
       <div class="grid w-full gap-2 sm:grid-cols-2">
-        <AppButton :href="waUrl" target="_blank" rel="noopener"><MessageCircle class="size-5" /> Kirim via WhatsApp</AppButton>
+        <AppButton :href="waUrl" target="_blank" rel="noopener" @click="cardsApi.shared(token, 'whatsapp')"><MessageCircle class="size-5" /> Kirim via WhatsApp</AppButton>
         <AppButton v-if="canShare" variant="secondary" @click="share"><Share2 class="size-5" /> Bagikan…</AppButton>
         <AppButton v-else variant="secondary" @click="copy(message, 'Pesan')"><Copy class="size-5" /> Salin pesan</AppButton>
       </div>

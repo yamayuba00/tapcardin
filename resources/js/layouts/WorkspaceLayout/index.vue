@@ -8,6 +8,7 @@ import {
   BellRing, CalendarDays, ChartColumn, ChevronsUpDown, CreditCard, Gem, House, LayoutDashboard, LogOut, Moon, Palette, ScanLine, Settings, ShieldCheck, User, Users,
 } from 'lucide-vue-next'
 import BrandLogo from '@/components/common/BrandLogo/index.vue'
+import InstallApp from '@/components/common/InstallApp/index.vue'
 import { config } from '@/config'
 import { useAuthStore } from '@/stores/auth'
 import { useNotificationStore } from '@/stores/notifications'
@@ -84,6 +85,7 @@ const link = 'group flex min-h-9 cursor-pointer items-center gap-3 rounded-lg px
         <div v-if="menu" class="absolute inset-x-0 bottom-full mb-2 grid gap-0.5 rounded-md border border-line-strong bg-surface p-1.5" role="menu">
           <RouterLink to="/settings" class="flex min-h-9 cursor-pointer items-center gap-3 rounded-sm px-3 text-sm text-fg no-underline hover:bg-surface-2" role="menuitem" @click="menu = false"><User class="size-4" /> Akun & pengaturan</RouterLink>
           <button type="button" class="flex min-h-9 cursor-pointer items-center gap-3 rounded-sm px-3 text-sm text-fg hover:bg-surface-2" role="menuitem" @click="toggle"><Moon class="size-4" /> Ganti tema</button>
+          <InstallApp link-class="flex min-h-9 w-full items-center gap-3 rounded-sm px-3 text-sm text-fg hover:bg-surface-2 [&_svg]:size-4" />
           <button type="button" class="flex min-h-9 cursor-pointer items-center gap-3 rounded-sm px-3 text-sm text-danger hover:bg-surface-2" role="menuitem" @click="auth.logout()"><LogOut class="size-4" /> Keluar</button>
         </div>
         <button type="button" class="flex w-full cursor-pointer items-center gap-3 rounded-md border border-line-strong bg-surface p-2.5 text-left hover:bg-surface-2" :aria-expanded="menu" aria-haspopup="menu" @click="menu = !menu">

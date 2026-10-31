@@ -1,9 +1,23 @@
 {
+  "id": "/dashboard",
   "name": "TapCard",
   "short_name": "TapCard",
-  "start_url": "/dashboard",
+  "description": "Kartu nama NFC & digital, bio link, dan koneksi Anda.",
+  "lang": "id",
+  "start_url": "/dashboard?source=pwa",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#0D0D0E",
   "theme_color": "#0D0D0E",
-  "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Bagikan kartu", "short_name": "Bagikan", "description": "QR & tautan kartu digital", "url": "/share?source=pwa", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Scan kartu", "short_name": "Scan", "url": "/scan?source=pwa", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Koneksi", "short_name": "Koneksi", "url": "/connections?source=pwa", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] }
+  ]
 }

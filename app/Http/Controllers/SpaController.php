@@ -29,8 +29,13 @@ class SpaController extends Controller
         $suffix = $port && ! in_array($port, [80, 443], true) ? ':'.$port : '';
         $scheme = request()->getScheme();
 
+        // PWA hanya untuk aplikasi (app., subdomain workspace, domain kustom) — bukan resolver tap., panel, atau landing.
+        $host = request()->getHost();
+        $pwa = $host !== $base && ! preg_match('/^(tap|www|admin|'.preg_quote(config('tapcard.panel_subdomain'), '/').')\./', $host);
+
         return response()->view('app', [
             'meta' => $meta,
+            'pwa' => $pwa,
             'config' => [
                 'baseDomain' => $base,
                 'resolverUrl' => config('tapcard.resolver_url'),

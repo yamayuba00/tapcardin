@@ -99,6 +99,7 @@ Route::middleware(['auth', 'platform'])->prefix('api')->name('api.')->group(func
     Route::patch('/catalog/lanyard-widths/{id}', [CatalogController::class, 'saveWidth'])->name('catalog.widths.update');
     Route::post('/catalog/lanyard-hardware', [CatalogController::class, 'saveHardware'])->name('catalog.hardware.store');
     Route::patch('/catalog/lanyard-hardware/{id}', [CatalogController::class, 'saveHardware'])->name('catalog.hardware.update');
+    Route::patch('/catalog/addons/{id}', [CatalogController::class, 'updateAddon'])->name('catalog.addons.update');
     Route::patch('/catalog/contact-types/{id}', [CatalogController::class, 'updateContactType'])->name('catalog.contact-types.update');
 
     Route::get('/announcements', [AnnouncementController::class, 'index'])->name('announcements');

@@ -137,6 +137,18 @@ class MeController extends WorkspaceController
         );
     }
 
+    /** POST /api/me/onboarding {dismissed} — tutup / tampilkan lagi panduan pengguna baru di Beranda. */
+    public function onboarding(Request $request): JsonResponse
+    {
+        $data = $request->validate(['dismissed' => ['required', 'boolean']]);
+        $u = $this->user();
+        $prefs = $u->preferences ?? [];
+        $prefs['onboarding_dismissed_at'] = $data['dismissed'] ? now()->toIso8601String() : null;
+        $u->forceFill(['preferences' => array_filter($prefs, fn ($v) => $v !== null)])->save();
+
+        return response()->json(null, 204);
+    }
+
     /** PV-02 / AFD F-15 — hapus akun: kartu dicabut, soft delete 30 hari. */
     public function destroy(Request $request, ChangeCardStatus $status): JsonResponse
     {

@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0D0D0E">
+  <title>Tidak ada koneksi · TapCard</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #0D0D0E; color: #F3EFE6; font: 16px/1.5 system-ui, sans-serif; }
+    main { min-height: 100%; display: grid; place-items: center; padding: 24px; box-sizing: border-box; text-align: center; }
+    .box { max-width: 360px; display: grid; gap: 16px; justify-items: center; }
+    img { width: 72px; height: 72px; border-radius: 16px; }
+    h1 { margin: 0; font-size: 24px; }
+    p { margin: 0; color: #9B978F; }
+    button { cursor: pointer; min-height: 44px; padding: 0 20px; border: 0; border-radius: 8px; background: #C9A96E; color: #0D0D0E; font: 600 15px system-ui, sans-serif; }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="box">
+      <img src="/icons/icon-192.png" alt="">
+      <h1>Anda sedang offline</h1>
+      <p>TapCard butuh internet untuk memuat data terbaru. QR kartu fisik Anda tetap bisa di-scan orang lain — mereka yang membutuhkan internet, bukan Anda.</p>
+      <button type="button" onclick="location.reload()">Coba lagi</button>
+    </div>
+  </main>
+</body>
+</html>

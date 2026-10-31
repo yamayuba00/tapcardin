@@ -15,6 +15,7 @@ export default [
       { path: 'cards', name: 'cards', component: page('Cards'), meta: { title: 'Kartu', nav: 'cards' } },
       { path: 'cards/:token', name: 'card-detail', component: page('CardDetail'), meta: { title: 'Kartu', nav: 'cards' } },
       { path: 'cards/:token/bio', name: 'card-bio', component: page('BioEditor'), meta: { title: 'Bio link', nav: 'cards' } },
+      { path: 'share', name: 'share-shortcut', component: page('ShareShortcut'), meta: { title: 'Bagikan kartu', nav: 'cards' } },
       { path: 'cards/:token/share', name: 'card-share', component: page('CardShare'), meta: { title: 'Bagikan kartu', nav: 'cards' } },
       { path: 'cards/:token/qr', name: 'card-qr', component: page('CardQr'), meta: { title: 'QR aman', nav: 'cards' } },
       { path: 'cards/:token/setup', name: 'card-setup', component: page('CardSetup'), meta: { title: 'Siapkan kartu', nav: 'cards' } },

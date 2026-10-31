@@ -40,6 +40,7 @@ async function save(which) {
     const svgs = { both: [frontEl.value, backEl.value], front: [frontEl.value], back: [backEl.value] }[which].map((el) => el.querySelector('svg'))
     const blob = await cardsToPng(svgs, { widthPx: v.value.orientation === 'portrait' ? 1000 : 1600, radius: radius.value })
     download(blob, `${fileBase.value}${which === 'both' ? '' : which === 'front' ? '-depan' : '-belakang'}.png`)
+    cardsApi.shared(props.token, 'download')
   } catch {
     toast.error('Gambar gagal dibuat. Coba lagi.')
   } finally {

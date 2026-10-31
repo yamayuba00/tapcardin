@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Platform;
 
+use App\Models\Addon;
 use App\Models\ContactType;
 use App\Models\LanyardHardware;
 use App\Models\LanyardWidth;
@@ -12,7 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
-/** Katalog (platform.catalog.manage): harga lebar tali & pengait lanyard, jenis kontak bio link (aktif/label/urutan). */
+/** Katalog (platform.catalog.manage): harga lanyard, jenis kontak bio link, dan add-on (harga, status, jumlah peminat). */
 class CatalogController extends PlatformController
 {
     public function show(): JsonResponse
@@ -22,6 +23,9 @@ class CatalogController extends PlatformController
         return $this->ok([
             'lanyard_widths' => LanyardWidth::orderBy('sort')->get()->map(fn ($w) => $w->only(['public_id', 'width_mm', 'label', 'price_single', 'price_double', 'min_qty', 'sort', 'is_active'])),
             'lanyard_hardware' => LanyardHardware::orderBy('sort')->get()->map(fn ($h) => $h->only(['public_id', 'key', 'name', 'description', 'price', 'sort', 'is_active'])),
+            'addons' => Addon::withCount('interests')->orderBy('sort')->get()->map(fn (Addon $a) => $a->only([
+                'public_id', 'key', 'name', 'description', 'features', 'price_monthly', 'status', 'sort',
+            ]) + ['interests' => $a->interests_count]),
             'contact_types' => ContactType::with('group')->orderBy('group_id')->orderBy('sort')->get()->map(fn ($t) => [
                 'public_id' => $t->public_id, 'key' => $t->key, 'label' => $t->label, 'group' => $t->group->name, 'input' => $t->input,
                 'icon' => $t->icon, 'sort' => $t->sort, 'is_active' => $t->is_active,
@@ -66,6 +70,26 @@ class CatalogController extends PlatformController
         $before = $h->exists ? $h->toArray() : null;
         $h->fill($data)->save();
         Audit::platform($id ? 'catalog.hardware.updated' : 'catalog.hardware.created', $h, $before, $h->toArray());
+
+        return $this->show();
+    }
+
+    public function updateAddon(Request $request, string $id): JsonResponse
+    {
+        $this->can('catalog.manage');
+        $a = Addon::where('public_id', $id)->firstOrFail();
+        $data = $request->validate([
+            'name' => ['sometimes', 'string', 'max:80'],
+            'description' => ['sometimes', 'string', 'max:300'],
+            'features' => ['sometimes', 'array', 'max:8'],
+            'features.*' => ['string', 'max:80'],
+            'price_monthly' => ['sometimes', 'nullable', 'integer', 'min:0'],
+            'status' => ['sometimes', Rule::in(Addon::STATUSES)],
+            'sort' => ['sometimes', 'integer'],
+        ]);
+        $before = $a->only(array_keys($data));
+        $a->update($data);
+        Audit::platform('catalog.addon.updated', $a, $before, $a->only(array_keys($data)));
 
         return $this->show();
     }

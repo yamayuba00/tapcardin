@@ -72,6 +72,7 @@ export const adminApi = {
   catalog: () => http.get('/api/catalog'),
   saveLanyardWidth: (id, body) => (id ? http.patch(`/api/catalog/lanyard-widths/${id}`, body) : http.post('/api/catalog/lanyard-widths', body)),
   saveLanyardHardware: (id, body) => (id ? http.patch(`/api/catalog/lanyard-hardware/${id}`, body) : http.post('/api/catalog/lanyard-hardware', body)),
+  updateAddon: (id, body) => http.patch(`/api/catalog/addons/${id}`, body),
   updateContactType: (id, body) => http.patch(`/api/catalog/contact-types/${id}`, body),
 
   announcements: (params) => http.get('/api/announcements', params),

@@ -11,6 +11,7 @@ use App\Exceptions\ApiError;
 use App\Http\Resources\Present;
 use App\Models\Card;
 use App\Models\Design;
+use App\Models\ProductEvent;
 use App\Models\Tap;
 use App\Support\Audit;
 use App\Support\Design\CardGeometry;
@@ -138,6 +139,16 @@ class CardController extends WorkspaceController
         Audit::tenant($card->tenant_id, 'card.design_changed', $card, null, ['design' => $design->public_id]);
 
         return $this->visual($token);
+    }
+
+    /** POST /api/cards/{token}/shared {channel} — catat aksi berbagi (langkah onboarding & analitik produk). */
+    public function shared(Request $request, string $token): JsonResponse
+    {
+        $card = $this->find($token);
+        $data = $request->validate(['channel' => ['required', Rule::in(['copy', 'whatsapp', 'native', 'download', 'qr'])]]);
+        ProductEvent::record('card_shared', $card->tenant_id, $this->user()->id, ['channel' => $data['channel'], 'form' => $card->form]);
+
+        return response()->json(null, 204);
     }
 
     /** POST /api/cards/{token}/dynamic-qr — QR sekali pakai 60 detik untuk ditampilkan di layar (AFD F-11, fitur paket). */

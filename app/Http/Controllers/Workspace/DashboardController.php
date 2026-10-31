@@ -7,6 +7,7 @@ use App\Http\Resources\Present;
 use App\Models\Card;
 use App\Models\Connection;
 use App\Models\Tap;
+use App\Support\Onboarding;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -87,6 +88,7 @@ class DashboardController extends WorkspaceController
         // tombol "Bagikan" cepat: kartu digital aktif, atau kartu aktif pertama
         $data['share_token'] = Card::query()->where('holder_user_id', $uid)->where('status', CardStatus::Active->value)
             ->orderByRaw("form = 'digital' desc")->orderBy('activated_at')->value('card_token');
+        $data['onboarding'] = Onboarding::for($this->user(), $this->tenant());
 
         return response()->json(['data' => $data]);
     }

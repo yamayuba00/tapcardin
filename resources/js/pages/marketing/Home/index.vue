@@ -3,7 +3,7 @@
 // Template & bio link dirender dengan komponen yang sama dengan produk (data dari GET /api/showcase).
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import {
-  ArrowRight, Bell, ChartColumn, Check, Download, Layers, MapPin, Nfc, Palette, Pencil, QrCode, ShieldCheck, Smartphone, UserPlus, Users, X, Zap,
+  ArrowRight, Bell, Blocks, ChartColumn, Check, Download, Layers, MapPin, Nfc, Palette, Pencil, QrCode, ShieldCheck, Smartphone, UserPlus, Users, X, Zap,
 } from 'lucide-vue-next'
 import AppButton from '@/components/ui/AppButton/index.vue'
 import AppSkeleton from '@/components/ui/AppSkeleton/index.vue'
@@ -225,6 +225,13 @@ const FAQ = [
           <SectionHeading eyebrow="Harga" title="Mulai gratis, upgrade saat jaringan Anda tumbuh" text="Harga langganan aplikasi; kartu fisik dipesan terpisah sesuai desain Anda." />
           <PricingTable v-if="show" :plans="show.plans" />
           <div v-else class="grid gap-4 md:grid-cols-3"><AppSkeleton v-for="i in 3" :key="i" class="!h-80" /></div>
+          <div class="flex flex-wrap items-center gap-4 rounded-md border border-line bg-surface px-5 py-4">
+            <Blocks class="size-6 flex-none text-accent-text" aria-hidden="true" />
+            <div class="grid min-w-0 flex-1 gap-0.5">
+              <span class="font-semibold">Add-on Integrasi CRM <span class="ml-1 rounded-full bg-surface-2 px-2 py-0.5 text-xs font-medium text-info">Segera hadir</span></span>
+              <span class="text-sm text-muted">Kirim koneksi & lead otomatis ke Google Sheets dan HubSpot. Dibayar terpisah dari paket — pasang hanya bila perlu.</span>
+            </div>
+          </div>
         </div>
       </section>
 

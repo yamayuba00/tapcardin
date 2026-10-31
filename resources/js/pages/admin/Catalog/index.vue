@@ -1,13 +1,16 @@
 <script setup>
 // Katalog — harga lanyard (lebar tali: cetak 1/2 sisi, minimal pesan; pengait) dan jenis kontak bio link
-// (aktif/nonaktif, label, urutan). Perubahan harga langsung dipakai editor & katalog lanyard pelanggan.
+// (aktif/nonaktif, label, urutan), dan add-on (harga, status, jumlah workspace yang mendaftar minat).
+// Perubahan harga langsung dipakai editor & katalog lanyard pelanggan.
 import { computed, reactive, ref, watch } from 'vue'
 import { Plus, Save } from 'lucide-vue-next'
 import AppBadge from '@/components/ui/AppBadge/index.vue'
 import AppButton from '@/components/ui/AppButton/index.vue'
 import AppInput from '@/components/ui/AppInput/index.vue'
 import AppPanel from '@/components/ui/AppPanel/index.vue'
+import AppSelect from '@/components/ui/AppSelect/index.vue'
 import AppSkeleton from '@/components/ui/AppSkeleton/index.vue'
+import AppTextarea from '@/components/ui/AppTextarea/index.vue'
 import AppToggle from '@/components/ui/AppToggle/index.vue'
 import PageHeader from '@/components/common/PageHeader/index.vue'
 import { adminApi } from '@/api/admin'
@@ -19,8 +22,10 @@ const { busy, run } = useAction()
 const widths = ref([])
 const hardware = ref([])
 const types = ref([])
+const addons = ref([])
 watch(c, (v) => {
   if (!v) return
+  addons.value = v.addons.map((a) => ({ ...a, featuresText: (a.features ?? []).join('\n'), price_monthly: a.price_monthly ?? '' }))
   widths.value = v.lanyard_widths.map((w) => ({ ...w }))
   hardware.value = v.lanyard_hardware.map((h) => ({ ...h }))
   types.value = v.contact_types.map((t) => ({ ...t }))
@@ -43,6 +48,14 @@ const fresh = reactive({ name: '', price: 0 })
 async function addHardware() {
   const res = await run(() => adminApi.saveLanyardHardware(null, { name: fresh.name, price: Number(fresh.price) }), 'Pengait ditambahkan.').catch(() => null)
   if (res) { c.value = res.data; fresh.name = ''; fresh.price = 0 }
+}
+const ADDON_STATUS = [{ value: 'coming_soon', label: 'Segera hadir (daftar minat)' }, { value: 'available', label: 'Tersedia' }, { value: 'retired', label: 'Dihentikan' }]
+async function saveAddon(a) {
+  const res = await run(() => adminApi.updateAddon(a.public_id, {
+    name: a.name, description: a.description, status: a.status, price_monthly: a.price_monthly === '' ? null : Number(a.price_monthly),
+    features: a.featuresText.split('\n').map((f) => f.trim()).filter(Boolean),
+  }), `${a.name} disimpan.`).catch(() => null)
+  if (res) c.value = res.data
 }
 async function saveType(t, patch) {
   const res = await run(() => adminApi.updateContactType(t.public_id, patch)).catch(() => null)
@@ -105,6 +118,27 @@ async function saveType(t, patch) {
             </tr>
           </tbody>
         </table>
+      </div>
+    </AppPanel>
+
+    <AppPanel title="Add-on">
+      <div class="grid gap-6">
+        <article v-for="a in addons" :key="a.public_id" class="grid gap-4 border-b border-line pb-6 last:border-b-0 last:pb-0">
+          <div class="flex flex-wrap items-center gap-3">
+            <span class="font-mono text-sm text-muted">{{ a.key }}</span>
+            <AppBadge :tone="a.status === 'available' ? 'ok' : a.status === 'retired' ? 'muted' : 'info'">{{ ADDON_STATUS.find((s) => s.value === a.status)?.label }}</AppBadge>
+            <span class="ml-auto text-sm text-muted"><span class="num text-fg">{{ a.interests }}</span> workspace mendaftar minat</span>
+          </div>
+          <div class="grid gap-4 sm:grid-cols-[minmax(0,1fr)_180px_220px]">
+            <AppInput v-model="a.name" maxlength="80" :aria-label="`Nama add-on ${a.key}`" />
+            <AppInput v-model="a.price_monthly" type="number" min="0" placeholder="Harga / bulan" :aria-label="`Harga bulanan ${a.key}`" />
+            <AppSelect v-model="a.status" :options="ADDON_STATUS" :aria-label="`Status ${a.key}`" />
+          </div>
+          <AppTextarea v-model="a.description" maxlength="300" rows="2" :aria-label="`Deskripsi ${a.key}`" />
+          <AppTextarea v-model="a.featuresText" rows="4" :aria-label="`Manfaat ${a.key} (satu per baris)`" placeholder="Satu manfaat per baris (maks. 8)" />
+          <div><AppButton variant="secondary" :loading="busy" @click="saveAddon(a)"><Save class="size-4" /> Simpan add-on</AppButton></div>
+        </article>
+        <p class="text-sm text-muted">Pembayaran add-on belum dibuka. Selama "Segera hadir", pelanggan hanya bisa mendaftar minat dari halaman Paket &amp; tagihan.</p>
       </div>
     </AppPanel>
 

@@ -3,6 +3,8 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { CircleAlert, CreditCard, Nfc, Share2, Users } from 'lucide-vue-next'
 import AppButton from '@/components/ui/AppButton/index.vue'
+import InstallApp from '@/components/common/InstallApp/index.vue'
+import OnboardingChecklist from '@/components/onboarding/OnboardingChecklist/index.vue'
 import AppBadge from '@/components/ui/AppBadge/index.vue'
 import AppEmpty from '@/components/ui/AppEmpty/index.vue'
 import AppPanel from '@/components/ui/AppPanel/index.vue'
@@ -63,6 +65,9 @@ const empty = computed(() => data.value && data.value.kpi.taps_30 === 0 && data.
   </div>
 
   <template v-if="data">
+    <OnboardingChecklist v-if="data.onboarding" :data="data.onboarding" @dismissed="data.onboarding = null" />
+    <InstallApp variant="banner" />
+
     <div class="grid grid-cols-[repeat(auto-fit,minmax(170px,1fr))] gap-4">
       <KpiCard label="Tap 7 hari" :value="num(data.kpi.taps_7)" :delta="tapDelta" hint="Minggu lalu belum ada tap" />
       <KpiCard label="Pengunjung unik 30 hari" :value="num(data.kpi.visitors_30)" />

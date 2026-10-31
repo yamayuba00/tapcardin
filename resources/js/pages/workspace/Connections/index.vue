@@ -3,7 +3,7 @@
 // halaman & jumlah per halaman tersimpan di URL. Input manual, ekspor CSV sesuai cakupan izin.
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { ChartColumn, Download, FileUp, Plus, ScanLine } from 'lucide-vue-next'
+import { Blocks, ChartColumn, Download, FileUp, Plus, ScanLine } from 'lucide-vue-next'
 import AppButton from '@/components/ui/AppButton/index.vue'
 import AppEmpty from '@/components/ui/AppEmpty/index.vue'
 import AppField from '@/components/ui/AppField/index.vue'
@@ -87,6 +87,7 @@ const overdue = (iso) => iso && new Date(iso) < new Date()
     <AppButton variant="ghost" to="/connections/dashboard"><ChartColumn class="size-5" /> Dashboard</AppButton>
     <AppButton v-if="auth.can('leads.edit.*')" variant="ghost" to="/scan"><ScanLine class="size-5" /> Scan kartu</AppButton>
     <AppButton v-if="auth.can('leads.edit.*')" variant="ghost" to="/connections/import"><FileUp class="size-5" /> Impor CSV</AppButton>
+    <AppButton v-if="auth.can('billing.view')" variant="ghost" to="/billing#addons" title="Add-on Integrasi CRM — segera hadir"><Blocks class="size-5" /> Kirim ke CRM <span class="text-xs text-muted">segera</span></AppButton>
     <AppButton v-if="auth.can('leads.export.*')" variant="secondary" :href="exportHref"><Download class="size-5" /> Ekspor</AppButton>
     <AppButton v-if="auth.can('leads.edit.*')" @click="adding = true"><Plus class="size-5" /> Tambah</AppButton>
   </PageHeader>

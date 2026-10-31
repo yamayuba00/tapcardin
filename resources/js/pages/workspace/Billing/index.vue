@@ -4,6 +4,7 @@
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowRight, Check, CircleCheck, CreditCard, Landmark, Lock, QrCode, Receipt, Smartphone, Sparkles, TriangleAlert, Wallet, X } from 'lucide-vue-next'
+import AddonList from '@/components/billing/AddonList/index.vue'
 import AppBadge from '@/components/ui/AppBadge/index.vue'
 import AppButton from '@/components/ui/AppButton/index.vue'
 import AppMeter from '@/components/ui/AppMeter/index.vue'
@@ -183,6 +184,8 @@ const COLUMNS = [
       </div>
       <p class="flex items-center gap-2 text-sm text-muted"><Lock class="size-4" /> Pembayaran aman lewat {{ b.gateway === 'midtrans' ? 'Midtrans' : 'gateway simulasi (mode pengembangan)' }}. Harga sudah termasuk pajak.</p>
     </section>
+
+    <AddonList v-if="auth.can('billing.view')" />
 
     <!-- riwayat invoice -->
     <section class="grid gap-3">

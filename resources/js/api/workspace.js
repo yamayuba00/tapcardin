@@ -6,7 +6,14 @@ export const meApi = {
   update: (body) => http.patch('/api/me', body),
   settings: () => http.get('/api/me/settings'),
   destroy: (confirmEmail) => http.del('/api/me', { confirm_email: confirmEmail }),
+  onboarding: (dismissed) => http.post('/api/me/onboarding', { dismissed }),
   exportUrl: '/api/me/export',
+}
+
+export const addonsApi = {
+  list: () => http.get('/api/addons'),
+  interest: (key, note = null) => http.post(`/api/addons/${key}/interest`, { note }),
+  withdraw: (key) => http.del(`/api/addons/${key}/interest`),
 }
 
 export const dashboardApi = {
@@ -19,6 +26,8 @@ export const cardsApi = {
   get: (token) => http.get(`/api/cards/${token}`),
   visual: (token) => http.get(`/api/cards/${token}/visual`),
   setDesign: (token, body) => http.put(`/api/cards/${token}/design`, body),
+  /** Catat aksi berbagi (copy | whatsapp | native | download | qr) — gagal diam-diam, tidak mengganggu pengguna. */
+  shared: (token, channel) => http.post(`/api/cards/${token}/shared`, { channel }).catch(() => null),
   update: (token, body) => http.patch(`/api/cards/${token}`, body),
   activation: (token) => http.get(`/api/cards/${token}/activation`),
   activate: (token, code) => http.post('/api/cards/activate', { token, code }),

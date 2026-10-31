@@ -3,6 +3,7 @@
 use App\Http\Controllers\Auth\GoogleController;
 use App\Http\Controllers\Auth\OtpController;
 use App\Http\Controllers\Workspace\ActivationController;
+use App\Http\Controllers\Workspace\AddonController;
 use App\Http\Controllers\Workspace\AnalyticsController;
 use App\Http\Controllers\Workspace\BillingController;
 use App\Http\Controllers\Workspace\BrandKitController;
@@ -36,6 +37,7 @@ Route::middleware('auth')->prefix('api')->name('api.')->group(function () {
     Route::get('/me', [MeController::class, 'show'])->name('me');
     Route::patch('/me', [MeController::class, 'update'])->name('me.update');
     Route::get('/me/settings', [MeController::class, 'settings'])->name('me.settings');
+    Route::post('/me/onboarding', [MeController::class, 'onboarding'])->name('me.onboarding');
     Route::get('/me/permissions', [MeController::class, 'permissions'])->name('me.permissions');
     Route::get('/me/export', [MeController::class, 'export'])->name('me.export');
     Route::delete('/me', [MeController::class, 'destroy'])->name('me.destroy');
@@ -49,6 +51,7 @@ Route::middleware('auth')->prefix('api')->name('api.')->group(function () {
     Route::post('/cards/{token}/dynamic-qr', [CardController::class, 'dynamicQr'])->middleware('throttle:30,1')->name('cards.dynamic-qr');
     Route::get('/cards/{token}/activation', [ActivationController::class, 'info'])->name('cards.activation');
     Route::get('/cards', [CardController::class, 'list'])->name('cards.list');
+    Route::post('/cards/{token}/shared', [CardController::class, 'shared'])->middleware('throttle:60,1')->name('cards.shared');
     Route::get('/cards/{token}/visual', [CardController::class, 'visual'])->name('cards.visual');
     Route::put('/cards/{token}/design', [CardController::class, 'design'])->name('cards.design');
     Route::get('/cards/{token}', [CardController::class, 'detail'])->name('cards.detail');
@@ -129,6 +132,9 @@ Route::middleware('auth')->prefix('api')->name('api.')->group(function () {
     Route::post('/billing/invoices/{invoice}/pay', [BillingController::class, 'pay'])->name('billing.pay');
     Route::post('/billing/invoices/{invoice}/simulate', [BillingController::class, 'simulate'])->name('billing.simulate');
 
+    Route::get('/addons', [AddonController::class, 'index'])->name('addons');
+    Route::post('/addons/{addon}/interest', [AddonController::class, 'interest'])->middleware('throttle:20,1')->name('addons.interest');
+    Route::delete('/addons/{addon}/interest', [AddonController::class, 'withdraw'])->name('addons.withdraw');
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications');
     Route::post('/notifications/read', [NotificationController::class, 'read'])->name('notifications.read');
     Route::get('/stream', StreamController::class)->name('stream');
