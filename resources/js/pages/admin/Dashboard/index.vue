@@ -1,5 +1,6 @@
 <script setup>
 // PL-01 — pengguna, kartu per status, rasio aktivasi ≤ 7 hari, tap, batch berjalan; MRR & pendapatan untuk pemilik.
+import { computed } from 'vue'
 import { CopyPlus } from 'lucide-vue-next'
 import AppBadge from '@/components/ui/AppBadge/index.vue'
 import AppButton from '@/components/ui/AppButton/index.vue'
@@ -15,6 +16,17 @@ import { CARD_STATUS, delta, num, rupiah } from '@/lib/format'
 
 const { data: m } = useAsync(() => adminApi.dashboard())
 const total = (cards) => Object.values(cards).reduce((a, b) => a + b, 0)
+// antrean yang menunggu orang ini (null = bukan wewenangnya; 0 = kosong)
+const todo = computed(() => {
+  const a = m.value?.attention ?? {}
+  return [
+    { n: a.payment_reviews, label: 'Pembayaran bermasalah perlu ditinjau', to: '/approvals?tab=reviews' },
+    { n: a.approvals, label: 'Permintaan keuangan menunggu persetujuan', to: '/approvals' },
+    { n: a.refunds_decide, label: 'Refund menunggu keputusan', to: '/approvals?tab=refunds' },
+    { n: a.refunds_payout, label: 'Refund disetujui, menunggu pencatatan transfer', to: '/approvals?tab=refunds' },
+    { n: a.orders_review, label: 'Pesanan bertanda risiko menunggu tinjauan', to: '/orders?status=paid' },
+  ].filter((x) => x.n)
+})
 </script>
 
 <template>
@@ -63,6 +75,15 @@ const total = (cards) => Object.values(cards).reduce((a, b) => a + b, 0)
           <AppBadge tone="info">{{ b.status_label }}</AppBadge>
         </li>
         <li v-if="!m.batches_open.length" class="text-muted">Tidak ada batch yang sedang berjalan.</li>
+      </ul>
+    </AppPanel>
+
+    <AppPanel v-if="todo.length" title="Perlu tindakan Anda">
+      <ul>
+        <li v-for="t in todo" :key="t.label" class="flex items-center justify-between gap-3 border-b border-line py-3 last:border-b-0">
+          <RouterLink :to="t.to" class="font-medium no-underline">{{ t.label }}</RouterLink>
+          <AppBadge tone="warn">{{ num(t.n) }}</AppBadge>
+        </li>
       </ul>
     </AppPanel>
 

@@ -28,6 +28,7 @@ export default [
       { path: 'plans', name: 'plans', component: page('Plans'), meta: { title: 'Paket & harga', nav: 'plans', perm: 'plans.manage' } },
       { path: 'finance', name: 'finance', component: page('Finance'), meta: { title: 'Keuangan', nav: 'finance', perm: 'finance.view' } },
       { path: 'finance/invoices/:id', name: 'finance-invoice', component: page('FinanceInvoice'), meta: { title: 'Invoice', nav: 'finance', perm: 'finance.view' } },
+      { path: 'approvals', name: 'approvals', component: page('Approvals'), meta: { title: 'Persetujuan & tinjauan', nav: 'approvals', perm: 'finance.view' } },
       { path: 'vouchers', name: 'vouchers', component: page('Vouchers'), meta: { title: 'Voucher', nav: 'vouchers', perm: 'vouchers.manage' } },
       { path: 'catalog', name: 'catalog', component: page('Catalog'), meta: { title: 'Katalog', nav: 'catalog', perm: 'catalog.manage' } },
       { path: 'announcements', name: 'announcements', component: page('Announcements'), meta: { title: 'Pengumuman', nav: 'announcements', perm: 'comms.manage' } },

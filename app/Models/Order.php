@@ -27,6 +27,7 @@ class Order extends Model
     {
         return [
             'subtotal' => 'integer', 'shipping_fee' => 'integer', 'total' => 'integer',
+            'risk_score' => 'integer', 'risk_flags' => 'array', 'reviewed_at' => 'datetime',
             'paid_at' => 'datetime', 'production_started_at' => 'datetime', 'shipped_at' => 'datetime',
             'delivered_at' => 'datetime', 'cancelled_at' => 'datetime',
         ];
@@ -40,6 +41,11 @@ class Order extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function reviewer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
     }
 
     public function tenant(): BelongsTo

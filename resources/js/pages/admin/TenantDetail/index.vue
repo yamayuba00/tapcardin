@@ -76,7 +76,7 @@ const domainRemoved = (did) => { t.value.domains = t.value.domains.filter((x) =>
 
 // beri paket tanpa pembayaran
 const granting = ref(false)
-const grant = reactive({ plan: '', months: 1, reason: '' })
+const grant = reactive({ plan: '', months: 1, reason: '', reference: '' })
 const grantErrors = ref({})
 function openGrant() {
   grant.plan = t.value.plans.find((p) => p.id === t.value.plan_id)?.key ?? t.value.plans[0]?.key
@@ -85,10 +85,10 @@ function openGrant() {
 async function doGrant() {
   grantErrors.value = {}
   try {
-    await run(() => adminApi.grantPlan({ tenant: id, plan: grant.plan, months: Number(grant.months), reason: grant.reason }), 'Paket diberikan & langsung aktif.')
+    await run(() => adminApi.grantPlan({ tenant: id, plan: grant.plan, months: Number(grant.months), reason: grant.reason, reference: grant.reference }), 'Permintaan dikirim — menunggu persetujuan staf lain.')
     granting.value = false
     grant.reason = ''
-    t.value = (await adminApi.tenant(id)).data
+    grant.reference = ''
   } catch (e) { grantErrors.value = e.fields ?? {} }
 }
 </script>
@@ -148,7 +148,7 @@ async function doGrant() {
 
     <div class="grid gap-4 md:grid-cols-2">
       <AppPanel title="Langganan">
-        <template v-if="auth.can('finance.invoices')" #actions><AppButton variant="ghost" @click="openGrant"><Gift class="size-4" /> Beri paket</AppButton></template>
+        <template v-if="auth.can('finance.invoices')" #actions><AppButton variant="ghost" @click="openGrant"><Gift class="size-4" /> Ajukan beri paket</AppButton></template>
         <dl v-if="t.subscription" class="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-2 text-sm">
           <dt class="text-muted">Paket</dt><dd>{{ t.subscription.plan }} · {{ t.subscription.cycle === 'yearly' ? 'tahunan' : 'bulanan' }}</dd>
           <dt class="text-muted">Status</dt>
@@ -189,11 +189,12 @@ async function doGrant() {
 
     <CardsTable :list="cards" :show="['holder']" empty-text="Belum ada kartu." />
 
-    <AppModal v-if="granting" size="sm" title="Beri paket tanpa pembayaran" description="Kompensasi, mitra, atau uji coba khusus. Tercatat sebagai invoice penyesuaian Rp0 + audit log." @close="granting = false">
+    <AppModal v-if="granting" size="sm" title="Ajukan pemberian paket" description="Kompensasi, mitra, atau uji coba khusus. Tidak langsung berjalan: staf lain harus menyetujui di menu Persetujuan." @close="granting = false">
       <form id="tenant-grant" class="grid gap-4" @submit.prevent="doGrant">
         <AppField label="Paket" :error="grantErrors.plan?.[0]"><AppSelect v-model="grant.plan" :options="t.plans.map((p) => ({ value: p.key, label: p.name }))" /></AppField>
         <AppField label="Durasi (bulan)" :error="grantErrors.months?.[0]"><AppInput v-model="grant.months" type="number" min="1" max="36" /></AppField>
-        <AppField label="Alasan (wajib)" :error="grantErrors.reason?.[0]"><AppInput v-model="grant.reason" maxlength="200" required /></AppField>
+        <AppField label="Alasan (wajib)" :error="grantErrors.reason?.[0]"><AppInput v-model="grant.reason" maxlength="200" minlength="5" required /></AppField>
+        <AppField label="Nomor tiket / referensi (wajib)" :error="grantErrors.reference?.[0]"><AppInput v-model="grant.reference" maxlength="80" minlength="3" required /></AppField>
       </form>
       <template #footer>
         <AppButton variant="secondary" @click="granting = false">Batal</AppButton>

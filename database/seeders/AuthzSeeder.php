@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Authz\Catalog;
+use App\Authz\PermissionResolver;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\RolePermission;
@@ -37,5 +38,6 @@ class AuthzSeeder extends Seeder
         }
 
         Cache::forget('authz:feature-map');
+        PermissionResolver::bumpPlatform(); // izin staf yang di-cache langsung diperbarui setelah katalog berubah
     }
 }

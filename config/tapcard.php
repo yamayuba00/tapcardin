@@ -34,6 +34,25 @@ return [
 
     'consent_text_version' => 'v1',
 
+    // Kebijakan refund (nominal dalam rupiah). Refund ≥ owner_threshold harus disetujui Pemilik Platform.
+    'refund' => [
+        'owner_threshold' => (int) env('REFUND_OWNER_THRESHOLD', 500000),
+        'claim_window_days' => (int) env('REFUND_CLAIM_WINDOW_DAYS', 7),            // klaim cacat / salah cetak setelah barang tiba
+        'not_delivered_after_days' => (int) env('REFUND_NOT_DELIVERED_AFTER_DAYS', 14), // "tidak sampai" baru bisa diajukan setelah N hari dikirim
+        'approval_ttl_days' => (int) env('APPROVAL_TTL_DAYS', 3),                   // permintaan persetujuan kedaluwarsa bila tak diputuskan
+    ],
+
+    // Tanda risiko pesanan sebelum produksi. Pesanan bertanda risiko menunggu tinjauan staf.
+    'risk' => [
+        'high_value' => (int) env('ORDER_RISK_HIGH_VALUE', 2000000),
+        'new_account_days' => 7,
+        'new_account_value' => (int) env('ORDER_RISK_NEW_ACCOUNT_VALUE', 500000),
+        'same_address_orders' => 3,
+        'same_user_burst' => 5,
+        // kata yang memicu tinjauan (pisahkan dengan koma), mis. nama merek yang tidak boleh dicetak
+        'blocked_terms' => array_values(array_filter(array_map('trim', explode(',', (string) env('ORDER_RISK_TERMS', ''))))),
+    ],
+
     'reserved_slugs' => [
         'www', 'app', 'admin', 'panel', 'tap', 'api', 'mail', 'help', 'status', 'docs', 'blog',
         'cdn', 'static', 'staging', 'dev', 'support', 'billing', 'login', 'auth',

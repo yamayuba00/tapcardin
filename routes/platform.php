@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\AdminLoginController;
 use App\Http\Controllers\Platform\AnnouncementController;
+use App\Http\Controllers\Platform\ApprovalController;
 use App\Http\Controllers\Platform\AuditController;
 use App\Http\Controllers\Platform\BatchController;
 use App\Http\Controllers\Platform\CardController;
@@ -11,7 +12,9 @@ use App\Http\Controllers\Platform\DomainController;
 use App\Http\Controllers\Platform\FinanceController;
 use App\Http\Controllers\Platform\MeController;
 use App\Http\Controllers\Platform\OrderController;
+use App\Http\Controllers\Platform\PaymentReviewController;
 use App\Http\Controllers\Platform\PlanController;
+use App\Http\Controllers\Platform\RefundController;
 use App\Http\Controllers\Platform\StaffController;
 use App\Http\Controllers\Platform\StationController;
 use App\Http\Controllers\Platform\SystemController;
@@ -74,6 +77,8 @@ Route::middleware(['auth', 'platform'])->prefix('api')->name('api.')->group(func
 
     Route::get('/orders', [OrderController::class, 'index'])->name('orders');
     Route::get('/orders/{order}', [OrderController::class, 'show'])->name('orders.show');
+    Route::post('/orders/{order}/review', [OrderController::class, 'review'])->name('orders.review');
+    Route::post('/orders/{order}/refunds', [RefundController::class, 'store'])->name('orders.refunds.store');
     Route::post('/orders/{order}/production', [OrderController::class, 'startProduction'])->name('orders.production');
     Route::post('/orders/{order}/ship', [OrderController::class, 'ship'])->name('orders.ship');
     Route::post('/orders/{order}/deliver', [OrderController::class, 'deliver'])->name('orders.deliver');
@@ -97,6 +102,21 @@ Route::middleware(['auth', 'platform'])->prefix('api')->name('api.')->group(func
     Route::get('/finance/events', [FinanceController::class, 'events'])->name('finance.events');
     Route::get('/finance/subscriptions', [FinanceController::class, 'subscriptions'])->name('finance.subscriptions');
     Route::post('/finance/grant', [FinanceController::class, 'grant'])->name('finance.grant');
+
+    Route::get('/refunds', [RefundController::class, 'index'])->name('refunds');
+    Route::get('/refunds/{refund}', [RefundController::class, 'show'])->name('refunds.show');
+    Route::post('/refunds/{refund}/approve', [RefundController::class, 'approve'])->middleware('throttle:30,1')->name('refunds.approve');
+    Route::post('/refunds/{refund}/reject', [RefundController::class, 'reject'])->middleware('throttle:30,1')->name('refunds.reject');
+    Route::post('/refunds/{refund}/payout', [RefundController::class, 'payout'])->middleware('throttle:30,1')->name('refunds.payout');
+    Route::post('/refunds/{refund}/cancel', [RefundController::class, 'cancel'])->name('refunds.cancel');
+
+    Route::get('/approvals', [ApprovalController::class, 'index'])->name('approvals');
+    Route::post('/approvals/{approval}/approve', [ApprovalController::class, 'approve'])->middleware('throttle:30,1')->name('approvals.approve');
+    Route::post('/approvals/{approval}/reject', [ApprovalController::class, 'reject'])->middleware('throttle:30,1')->name('approvals.reject');
+    Route::post('/approvals/{approval}/cancel', [ApprovalController::class, 'cancel'])->name('approvals.cancel');
+
+    Route::get('/payment-reviews', [PaymentReviewController::class, 'index'])->name('payment-reviews');
+    Route::post('/payment-reviews/{review}/resolve', [PaymentReviewController::class, 'resolve'])->name('payment-reviews.resolve');
 
     Route::get('/vouchers', [VoucherController::class, 'index'])->name('vouchers');
     Route::post('/vouchers', [VoucherController::class, 'store'])->name('vouchers.store');

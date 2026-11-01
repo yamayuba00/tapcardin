@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Platform;
 
+use App\Actions\Finance\Refunds;
 use App\Actions\Production\CreateBatch;
 use App\Actions\Production\ShipBatch;
 use App\Enums\BatchStatus;
@@ -11,9 +12,11 @@ use App\Models\Batch;
 use App\Models\Invoice;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\Refund;
 use App\Support\Audit;
 use App\Support\Http\Table;
 use App\Support\Notify;
+use App\Support\OrderRisk;
 use App\Support\Qr\QrEncoder;
 use App\Support\Qr\SvgRenderer;
 use Illuminate\Http\JsonResponse;
@@ -49,7 +52,22 @@ class OrderController extends PlatformController
         $qr = QrEncoder::encode(config('tapcard.resolver_url').'/c/XXXXXXXXXX?src=qr');
         $batches = Batch::whereIn('order_item_id', $o->items->pluck('id'))->get();
 
+        $refund = Refund::where('order_id', $o->id)->latest('id')->first();
+        $paid = Refunds::paidInvoice($o);
+
         return $this->ok(WorkspaceOrders::detail($o) + [
+            'review' => [
+                'status' => $o->review_status, 'score' => $o->risk_score, 'flags' => $o->risk_flags ?? [], 'note' => $o->review_note,
+                'reviewed_by' => $o->reviewer?->email, 'reviewed_at' => self::dt($o->reviewed_at),
+                'texts' => OrderRisk::textsOf($o), // semua teks yang akan tercetak, untuk diperiksa reviewer
+                'customer_since' => self::dt($o->user?->created_at),
+            ],
+            'refund' => [
+                'current' => $refund ? RefundController::row($refund->load(['order', 'tenant', 'requester', 'decider', 'payoutBy'])) : null,
+                'allowed_reasons' => $paid ? Refunds::allowedReasons($o) : [],
+                'refundable' => $paid ? max(0, (int) $paid->total - (int) $paid->refunded_amount) : 0,
+                'owner_threshold' => (int) config('tapcard.refund.owner_threshold'),
+            ],
             'tenant' => ['id' => $o->tenant->public_id, 'name' => $o->tenant->name],
             'customer' => $o->user ? ['id' => $o->user->public_id, 'name' => $o->user->name, 'email' => $o->user->email] : null,
             'batches' => $batches->map(fn (Batch $b) => [
@@ -68,6 +86,12 @@ class OrderController extends PlatformController
         if ($o->status !== 'paid') {
             throw new ApiError('order_not_paid', 'Produksi hanya bisa dimulai untuk pesanan yang sudah dibayar.');
         }
+        if ($o->review_status === 'pending') {
+            throw new ApiError('review_required', 'Pesanan ini bertanda risiko dan harus ditinjau (setujui / tolak) dulu sebelum produksi.', 409);
+        }
+        if ($o->review_status === 'rejected') {
+            throw new ApiError('review_rejected', 'Pesanan ini ditolak saat tinjauan dan tidak bisa diproduksi.', 409);
+        }
         DB::transaction(function () use ($o, $create) {
             foreach ($o->items->where('kind', 'card') as $item) {
                 if (! Batch::where('order_item_id', $item->id)->exists()) {
@@ -78,6 +102,36 @@ class OrderController extends PlatformController
         });
         $this->notifyCustomer($o);
         Audit::platform('order.production_started', $o, null, ['number' => $o->number]);
+
+        return $this->show($order);
+    }
+
+    /**
+     * POST /api/orders/{id}/review {decision: approve|reject, note} — tinjau pesanan bertanda risiko sebelum produksi
+     * (cek isi desain, alamat, riwayat akun). Menolak = pesanan batal dan otomatis diajukan refund penuh ke pembayar asal.
+     */
+    public function review(Request $request, string $order): JsonResponse
+    {
+        $this->can('orders.review');
+        $data = $request->validate(['decision' => ['required', 'in:approve,reject'], 'note' => ['required', 'string', 'min:5', 'max:300']],
+            ['note.required' => 'Catatan tinjauan wajib diisi.']);
+        $o = $this->find($order);
+        if ($o->status !== 'paid' || $o->review_status !== 'pending') {
+            throw new ApiError('review_not_pending', 'Pesanan ini tidak sedang menunggu tinjauan.', 409);
+        }
+        $approve = $data['decision'] === 'approve';
+        DB::transaction(function () use ($o, $data, $approve) {
+            $o->update(['review_status' => $approve ? 'approved' : 'rejected', 'reviewed_by' => auth()->id(), 'reviewed_at' => now(), 'review_note' => $data['note']]);
+            if (! $approve) {
+                $o->update(['status' => 'cancelled', 'cancelled_at' => now(), 'cancel_reason' => 'Pesanan tidak lolos tinjauan: '.$data['note']]);
+            }
+        });
+        Audit::platform($approve ? 'order.review_approved' : 'order.review_rejected', $o, null, ['note' => $data['note'], 'score' => $o->risk_score]);
+        $this->notifyCustomer($o->fresh());
+        if (! $approve) {
+            // dana pembeli sudah masuk → ajukan refund penuh otomatis; keputusan & transfer tetap oleh staf keuangan (orang lain)
+            Refunds::request($o->fresh(), auth()->user(), ['reason_code' => 'not_started', 'reason' => 'Pesanan tidak lolos tinjauan: '.$data['note']]);
+        }
 
         return $this->show($order);
     }
@@ -137,13 +191,17 @@ class OrderController extends PlatformController
         $o->update(['status' => 'cancelled', 'cancelled_at' => now(), 'cancel_reason' => $data['reason']]);
         $this->notifyCustomer($o);
         Audit::platform('order.cancelled', $o, null, ['reason' => $data['reason'], 'was_paid' => $o->paid_at !== null]);
+        if ($o->paid_at !== null && Refunds::paidInvoice($o) && ! Refund::where('order_id', $o->id)->whereIn('status', Refund::ACTIVE)->exists()) {
+            // dana pembeli sudah masuk → ajukan refund penuh otomatis agar uang tidak tertahan; keputusan & transfer oleh staf lain
+            Refunds::request($o->fresh(), auth()->user(), ['reason_code' => 'not_started', 'reason' => 'Pesanan dibatalkan staf: '.$data['reason']]);
+        }
 
         return $this->show($order);
     }
 
     private function find(string $id): Order
     {
-        return Order::acrossTenants()->with(['tenant', 'user', 'items.cardProduct', 'shippingMethod'])->where('public_id', $id)->firstOrFail();
+        return Order::acrossTenants()->with(['tenant', 'user', 'reviewer', 'items.cardProduct', 'shippingMethod'])->where('public_id', $id)->firstOrFail();
     }
 
     private function notifyCustomer(Order $o): void

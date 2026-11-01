@@ -91,9 +91,14 @@ class OrderTest extends TestCase
         $this->assertDatabaseHas('notifications', ['user_id' => $rina->id, 'type' => 'order_status']);
         $this->app_('POST', "/orders/{$o['order']['id']}/cancel")->assertJsonPath('error.code', 'order_not_cancellable');
 
-        // panel: mulai produksi → 1 batch untuk item kartu, masuk workspace pemesan
+        // akun baru + nilai besar → bertanda risiko: produksi diblokir sampai ditinjau
         $this->actingAs($this->staff('platform_owner'));
         $this->panel('GET', '/orders?status=paid')->assertOk()->assertJsonPath('meta.total', 1);
+        $this->panel('GET', "/orders/{$o['order']['id']}")->assertJsonPath('data.review.status', 'pending')->assertJsonPath('data.review.flags.0.code', 'new_account');
+        $this->panel('POST', "/orders/{$o['order']['id']}/production")->assertStatus(409)->assertJsonPath('error.code', 'review_required');
+        $this->panel('POST', "/orders/{$o['order']['id']}/review", ['decision' => 'approve', 'note' => 'Desain & alamat wajar'])->assertOk()->assertJsonPath('data.review.status', 'approved');
+
+        // panel: mulai produksi → 1 batch untuk item kartu, masuk workspace pemesan
         $p = $this->panel('POST', "/orders/{$o['order']['id']}/production")->assertOk()->assertJsonPath('data.status', 'in_production')->json('data');
         $this->assertCount(1, $p['batches']);
         $batch = Batch::where('public_id', $p['batches'][0]['id'])->firstOrFail();

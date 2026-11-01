@@ -4,8 +4,12 @@ namespace App\Http\Controllers\Platform;
 
 use App\Authz\PlatformAccess;
 use App\Enums\CardStatus;
+use App\Models\ApprovalRequest;
 use App\Models\Batch;
 use App\Models\Card;
+use App\Models\Order;
+use App\Models\PaymentReview;
+use App\Models\Refund;
 use App\Models\Tap;
 use App\Models\Tenant;
 use App\Models\User;
@@ -48,6 +52,14 @@ class DashboardController extends PlatformController
         $m['batches_open'] = Batch::whereNotIn('status', ['completed', 'cancelled'])->latest()->limit(5)->get()
             ->map(fn (Batch $b) => ['id' => $b->public_id, 'code' => $b->code, 'quantity' => $b->quantity,
                 'chip' => $b->chip_type->value, 'status' => $b->status->value, 'status_label' => $b->status->label()]);
+        // antrean "perlu tindakan" — hitungan hanya untuk yang berwenang menanganinya, tidak di-cache
+        $m['attention'] = [
+            'payment_reviews' => $access->has('finance.reviews') ? PaymentReview::where('status', 'open')->count() : null,
+            'approvals' => $access->has('finance.approve') ? ApprovalRequest::where('status', 'pending')->where('expires_at', '>', now())->count() : null,
+            'refunds_decide' => $access->has('finance.refund.approve') ? Refund::where('status', 'requested')->count() : null,
+            'refunds_payout' => $access->has('finance.refund.payout') ? Refund::where('status', 'approved')->count() : null,
+            'orders_review' => $access->has('orders.review') ? Order::acrossTenants()->where('status', 'paid')->where('review_status', 'pending')->count() : null,
+        ];
         $m['show_business'] = $access->has('dashboard.business');
         $m['business'] = $m['show_business'] ? Cache::remember('platform:finance:'.intdiv(now()->timestamp, 300), 300, fn () => FinanceController::metrics()) : null;
         $m['replacements_pending'] = Card::acrossTenants()->whereNotNull('replacement_requested_at')->where('status', CardStatus::Lost->value)

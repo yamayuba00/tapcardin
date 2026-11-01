@@ -2,8 +2,7 @@
 
 namespace App\Http\Controllers\Platform;
 
-use App\Actions\Billing\ApplyPayment;
-use App\Authz\PlanFeatures;
+use App\Actions\Finance\Approvals;
 use App\Exceptions\ApiError;
 use App\Http\Controllers\Workspace\BillingController;
 use App\Models\Invoice;
@@ -11,13 +10,9 @@ use App\Models\PaymentEvent;
 use App\Models\Plan;
 use App\Models\Subscription;
 use App\Models\Tenant;
-use App\Services\Payment\PaymentNotification;
-use App\Support\Audit;
 use App\Support\Http\Table;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 /**
@@ -80,34 +75,43 @@ class FinanceController extends PlatformController
         ]);
     }
 
-    /** POST /api/finance/invoices/{id}/mark-paid {method, reference} — transfer manual; jalur sama dengan webhook. */
-    public function markPaid(Request $request, string $id, ApplyPayment $apply): JsonResponse
+    /**
+     * POST /api/finance/invoices/{id}/mark-paid {method, reference} — transfer manual. TIDAK langsung berjalan:
+     * dibuat sebagai permintaan persetujuan; staf lain (finance.approve) yang menyetujui, baru invoice dilunasi.
+     * `reference` (nomor transfer / mutasi) wajib dan tidak boleh dipakai dua kali.
+     */
+    public function markPaid(Request $request, string $id): JsonResponse
     {
         $this->can('finance.invoices');
-        $data = $request->validate(['method' => ['required', 'string', 'max:40'], 'reference' => ['nullable', 'string', 'max:80']]);
+        $data = $request->validate([
+            'method' => ['required', 'string', 'max:40'],
+            'reference' => ['required', 'string', 'min:4', 'max:80'],
+        ], ['reference.required' => 'Nomor referensi transfer wajib diisi.', 'reference.min' => 'Referensi terlalu pendek.']);
         $i = $this->find($id);
         if (! $i->isPayable()) {
             throw new ApiError('invoice_not_payable', 'Hanya invoice terbuka yang bisa ditandai lunas.');
         }
-        $outcome = $apply->handle(new PaymentNotification('manual', 'manual-'.Str::ulid(), $i->number, PaymentNotification::PAID, (int) $i->total,
-            mb_substr($data['method'], 0, 40), true, ['by' => auth()->id(), 'reference' => $data['reference'] ?? null]));
-        Audit::platform('invoice.marked_paid', $i, null, ['method' => $data['method'], 'reference' => $data['reference'] ?? null, 'outcome' => $outcome]);
+        $a = Approvals::submit('invoice.mark_paid', ['invoice' => $i->public_id, 'method' => $data['method']],
+            "Tandai lunas {$i->number} (Rp ".number_format((int) $i->total, 0, ',', '.').") via {$data['method']}", $data['reference'], null, (int) $i->total, auth()->user());
 
-        return $this->invoice($id);
+        return $this->ok(ApprovalController::row($a->load(['requester', 'decider'])), 202);
     }
 
     public function void(Request $request, string $id): JsonResponse
     {
         $this->can('finance.invoices');
-        $data = $request->validate(['reason' => ['required', 'string', 'max:200']]);
+        $data = $request->validate([
+            'reason' => ['required', 'string', 'min:5', 'max:200'],
+            'reference' => ['required', 'string', 'min:3', 'max:80'],
+        ], ['reference.required' => 'Isi nomor tiket / referensi permintaan.']);
         $i = $this->find($id);
         if (! $i->isPayable()) {
             throw new ApiError('invoice_not_payable', 'Hanya invoice terbuka yang bisa dibatalkan.');
         }
-        $i->update(['status' => 'void']);
-        Audit::platform('invoice.voided', $i, null, ['reason' => $data['reason']]);
+        $a = Approvals::submit('invoice.void', ['invoice' => $i->public_id], "Batalkan invoice {$i->number} (Rp ".number_format((int) $i->total, 0, ',', '.').')',
+            $data['reference'], $data['reason'], (int) $i->total, auth()->user());
 
-        return $this->invoice($id);
+        return $this->ok(ApprovalController::row($a->load(['requester', 'decider'])), 202);
     }
 
     public function events(Request $request): JsonResponse
@@ -140,36 +144,18 @@ class FinanceController extends PlatformController
             'tenant' => ['required', 'string', 'size:26'],
             'plan' => ['required', Rule::exists('plans', 'key')],
             'months' => ['required', 'integer', 'min:1', 'max:36'],
-            'reason' => ['required', 'string', 'max:200'],
-        ]);
+            'reason' => ['required', 'string', 'min:5', 'max:200'],
+            'reference' => ['required', 'string', 'min:3', 'max:80'],
+        ], ['reference.required' => 'Isi nomor tiket / referensi persetujuan internal.']);
         $tenant = Tenant::where('public_id', $data['tenant'])->firstOrFail();
         $plan = Plan::where('key', $data['plan'])->firstOrFail();
         if ($plan->tenant_type !== $tenant->type->value) {
             throw new ApiError('plan_unavailable', 'Paket ini untuk tipe workspace lain.');
         }
+        $a = Approvals::submit('plan.grant', ['tenant' => $tenant->public_id, 'plan' => $plan->key, 'months' => (int) $data['months']],
+            "Beri paket {$plan->name} {$data['months']} bulan ke {$tenant->name}", $data['reference'], $data['reason'], null, auth()->user());
 
-        $sub = DB::transaction(function () use ($tenant, $plan, $data) {
-            $sub = Subscription::acrossTenants()->where('tenant_id', $tenant->id)->lockForUpdate()->first();
-            $extend = $sub && $sub->plan_id === $plan->id && $sub->current_period_end->isFuture() && $sub->status !== 'expired';
-            $end = ($extend ? $sub->current_period_end : now())->copy()->addMonthsNoOverflow($data['months']);
-            $attrs = ['plan_id' => $plan->id, 'cycle' => $sub->cycle ?? 'monthly', 'status' => 'active', 'current_period_start' => $extend ? $sub->current_period_start : now(),
-                'current_period_end' => $end, 'grace_until' => null, 'cancel_at_period_end' => false, 'cancelled_at' => null];
-            $sub ? $sub->update($attrs) : $sub = Subscription::create(['tenant_id' => $tenant->id] + $attrs);
-            $inv = Invoice::create([
-                'tenant_id' => $tenant->id, 'number' => 'TMP-'.Str::random(16), 'type' => 'adjustment', 'status' => 'paid',
-                'subscription_id' => $sub->id, 'plan_id' => $plan->id, 'cycle' => $sub->cycle,
-                'lines' => [['code' => 'grant', 'label' => "Paket {$plan->name} — {$data['months']} bulan (diberikan: {$data['reason']})", 'qty' => 1, 'amount' => 0]],
-                'subtotal' => 0, 'total' => 0, 'issued_at' => now(), 'paid_at' => now(), 'payment_method' => 'Diberikan staf',
-            ]);
-            $inv->update(['number' => sprintf('INV/%s/%06d', now('Asia/Jakarta')->format('Y/m'), $inv->id)]);
-            $tenant->update(['plan_id' => $plan->id, 'status' => 'active']);
-            PlanFeatures::forget($tenant);
-
-            return $sub;
-        });
-        Audit::platform('subscription.granted', $tenant, null, ['plan' => $plan->key, 'months' => $data['months'], 'reason' => $data['reason']]);
-
-        return $this->ok(self::subscriptionRow($sub->load(['plan', 'tenant'])));
+        return $this->ok(ApprovalController::row($a->load(['requester', 'decider'])), 202);
     }
 
     private function find(string $id): Invoice

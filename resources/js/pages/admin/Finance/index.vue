@@ -52,24 +52,23 @@ const growth = computed(() => (m.value ? delta(m.value.revenue_month, m.value.re
 // beri paket
 const { busy, run } = useAction()
 const granting = ref(false)
-const grant = reactive({ tenant: '', plan: 'personal_pro', months: 1, reason: '' })
+const grant = reactive({ tenant: '', plan: 'personal_pro', months: 1, reason: '', reference: '' })
 const { data: plans } = useAsync(() => (auth.can('plans.manage') ? adminApi.plans() : Promise.resolve({ data: [] })))
 const planOptions = computed(() => (plans.value ?? []).map((p) => ({ value: p.key, label: `${p.name} (${p.tenant_type === 'personal' ? 'personal' : 'perusahaan'})` })))
 const grantErrors = ref({})
 async function doGrant() {
   grantErrors.value = {}
   try {
-    await run(() => adminApi.grantPlan({ ...grant, months: Number(grant.months) }), 'Paket diberikan & langsung aktif.')
+    await run(() => adminApi.grantPlan({ ...grant, months: Number(grant.months) }), 'Permintaan dikirim — menunggu persetujuan staf lain.')
     granting.value = false
-    subs.reload()
-    invoices.reload()
+    router.push('/approvals')
   } catch (e) { grantErrors.value = e.fields ?? {} }
 }
 </script>
 
 <template>
   <PageHeader eyebrow="Bisnis" title="Keuangan">
-    <AppButton v-if="auth.can('finance.invoices')" variant="secondary" @click="granting = true"><Gift class="size-5" /> Beri paket</AppButton>
+    <AppButton v-if="auth.can('finance.invoices')" variant="secondary" @click="granting = true"><Gift class="size-5" /> Ajukan beri paket</AppButton>
   </PageHeader>
 
   <div v-if="m" class="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-4">
@@ -130,7 +129,7 @@ async function doGrant() {
     </template>
   </DataTable>
 
-  <AppModal v-if="granting" title="Beri paket tanpa pembayaran" description="Untuk kompensasi, mitra, atau uji coba khusus. Paket langsung aktif; tercatat sebagai invoice penyesuaian Rp0 dan audit log." @close="granting = false">
+  <AppModal v-if="granting" title="Ajukan pemberian paket" description="Untuk kompensasi, mitra, atau uji coba khusus. Tidak langsung berjalan: staf lain harus menyetujui dulu di menu Persetujuan." @close="granting = false">
     <form id="grant-form" class="grid gap-4" @submit.prevent="doGrant">
       <AppField label="ID workspace" hint="Salin dari halaman detail workspace (26 karakter)." :error="grantErrors.tenant?.[0]"><AppInput v-model="grant.tenant" code maxlength="26" required /></AppField>
       <div class="grid gap-4 sm:grid-cols-[1fr_140px]">
@@ -140,11 +139,12 @@ async function doGrant() {
         </AppField>
         <AppField label="Durasi (bulan)" :error="grantErrors.months?.[0]"><AppInput v-model="grant.months" type="number" min="1" max="36" /></AppField>
       </div>
-      <AppField label="Alasan (wajib)" :error="grantErrors.reason?.[0]"><AppInput v-model="grant.reason" maxlength="200" required /></AppField>
+      <AppField label="Alasan (wajib)" :error="grantErrors.reason?.[0]"><AppInput v-model="grant.reason" maxlength="200" minlength="5" required /></AppField>
+      <AppField label="Nomor tiket / referensi (wajib)" :error="grantErrors.reference?.[0]"><AppInput v-model="grant.reference" maxlength="80" minlength="3" required /></AppField>
     </form>
     <template #footer>
       <AppButton variant="secondary" @click="granting = false">Batal</AppButton>
-      <AppButton type="submit" form="grant-form" :loading="busy">Beri paket</AppButton>
+      <AppButton type="submit" form="grant-form" :loading="busy">Ajukan</AppButton>
     </template>
   </AppModal>
 </template>

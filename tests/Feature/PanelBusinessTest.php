@@ -100,16 +100,25 @@ class PanelBusinessTest extends TestCase
         $this->actingAs($this->staff('support', 'support@tapcard.test'));
         $this->panel('GET', '/finance/invoices')->assertForbidden();
 
+        // hanya satu staf berwenang (Pemilik bawaan seeder dicabut) → mode tunggal: boleh menyetujui sendiri, tercatat
+        PlatformStaff::where('user_id', User::where('email', 'owner@tapcard.test')->value('id'))->update(['status' => 'revoked']);
         $this->actingAs($this->staff('platform_owner'));
         $this->panel('GET', '/finance/invoices?status=issued')->assertOk()->assertJsonPath('meta.total', 1);
-        $this->panel('POST', "/finance/invoices/{$inv['id']}/mark-paid", ['method' => 'Transfer BCA', 'reference' => 'TRX-1'])
-            ->assertOk()->assertJsonPath('data.status', 'paid');
-        $this->panel('POST', "/finance/invoices/{$inv['id']}/void", ['reason' => 'x'])->assertJsonPath('error.code', 'invoice_not_payable');
+        // tandai lunas manual TIDAK langsung berjalan: jadi permintaan persetujuan (hanya satu staf berwenang → mode tunggal)
+        $req = $this->panel('POST', "/finance/invoices/{$inv['id']}/mark-paid", ['method' => 'Transfer BCA', 'reference' => 'TRX-1001'])
+            ->assertStatus(202)->assertJsonPath('data.status', 'pending')->json('data');
+        $this->panel('GET', "/finance/invoices/{$inv['id']}")->assertJsonPath('data.status', 'issued');
+        $this->panel('POST', "/approvals/{$req['id']}/approve")->assertOk()->assertJsonPath('data.self_approved', true);
+        $this->panel('GET', "/finance/invoices/{$inv['id']}")->assertJsonPath('data.status', 'paid');
+        $this->panel('POST', "/finance/invoices/{$inv['id']}/void", ['reason' => 'sudah lunas', 'reference' => 'TKT-1'])->assertJsonPath('error.code', 'invoice_not_payable');
         $this->assertSame(49000, $this->panel('GET', '/finance/summary')->json('data.revenue_month'));
         $this->assertSame(49000, $this->panel('GET', '/dashboard')->json('data.business.mrr'));
 
         $lain = $this->makeUser('lain@example.com', 'Lain');
-        $this->panel('POST', '/finance/grant', ['tenant' => $lain->personalTenant->public_id, 'plan' => 'personal_pro', 'months' => 3, 'reason' => 'Mitra'])->assertOk();
+        $grant = $this->panel('POST', '/finance/grant', ['tenant' => $lain->personalTenant->public_id, 'plan' => 'personal_pro', 'months' => 3, 'reason' => 'Mitra resmi', 'reference' => 'TKT-77'])
+            ->assertStatus(202)->json('data');
+        $this->assertNull(Subscription::withoutGlobalScope(TenantScope::class)->where('tenant_id', $lain->personalTenant->id)->first(), 'belum berjalan sebelum disetujui');
+        $this->panel('POST', "/approvals/{$grant['id']}/approve")->assertOk();
         $sub = Subscription::withoutGlobalScope(TenantScope::class)->where('tenant_id', $lain->personalTenant->id)->firstOrFail();
         $this->assertSame('active', $sub->status);
         $this->assertEqualsWithDelta(now()->addMonths(3)->timestamp, $sub->current_period_end->timestamp, 5);

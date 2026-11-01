@@ -29,13 +29,16 @@ const marking = ref(false)
 const paid = reactive({ method: 'Transfer bank', reference: '' })
 const voiding = ref(false)
 const reason = ref('')
+const voidRef = ref('')
+// Aksi sensitif tidak langsung berjalan: dikirim sebagai permintaan, lalu disetujui orang lain di menu Persetujuan.
+const sent = ref('')
 async function markPaid() {
-  const res = await run(() => adminApi.markInvoicePaid(id, paid), 'Invoice ditandai lunas — paket workspace aktif.').catch(() => null)
-  if (res) { inv.value = res.data; marking.value = false }
+  const res = await run(() => adminApi.markInvoicePaid(id, paid), 'Permintaan dikirim — menunggu persetujuan.').catch(() => null)
+  if (res) { sent.value = 'Permintaan “tandai lunas” menunggu persetujuan staf lain.'; marking.value = false }
 }
 async function doVoid() {
-  const res = await run(() => adminApi.voidInvoice(id, reason.value), 'Invoice dibatalkan.').catch(() => null)
-  if (res) { inv.value = res.data; voiding.value = false }
+  const res = await run(() => adminApi.voidInvoice(id, { reason: reason.value, reference: voidRef.value }), 'Permintaan dikirim — menunggu persetujuan.').catch(() => null)
+  if (res) { sent.value = 'Permintaan pembatalan invoice menunggu persetujuan staf lain.'; voiding.value = false }
 }
 </script>
 
@@ -50,10 +53,13 @@ async function doVoid() {
         </div>
       </template>
       <template v-if="payable() && auth.can('finance.invoices')">
-        <AppButton variant="secondary" @click="voiding = true"><Ban class="size-5" /> Batalkan</AppButton>
-        <AppButton @click="marking = true"><CircleCheck class="size-5" /> Tandai lunas</AppButton>
+        <AppButton variant="secondary" @click="voiding = true"><Ban class="size-5" /> Ajukan batal</AppButton>
+        <AppButton @click="marking = true"><CircleCheck class="size-5" /> Ajukan lunas manual</AppButton>
       </template>
     </PageHeader>
+    <p v-if="sent" class="flex items-center gap-2 rounded-md border border-line-strong bg-surface-2 px-4 py-3 text-sm" role="status">
+      {{ sent }} <RouterLink to="/approvals" class="ml-auto font-semibold">Buka Persetujuan</RouterLink>
+    </p>
 
     <div class="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
       <AppPanel title="Rincian">
@@ -98,19 +104,22 @@ async function doVoid() {
     <AppModal v-if="marking" size="sm" title="Tandai lunas" :description="`Konfirmasi dana ${rupiah(inv.total)} sudah diterima. Paket workspace langsung aktif.`" @close="marking = false">
       <form id="paid-form" class="grid gap-4" @submit.prevent="markPaid">
         <AppField label="Metode"><AppInput v-model="paid.method" maxlength="40" required /></AppField>
-        <AppField label="Referensi (opsional)" hint="No. transfer / mutasi"><AppInput v-model="paid.reference" maxlength="80" /></AppField>
+        <AppField label="Nomor referensi transfer (wajib)" hint="No. transfer / mutasi bank. Satu referensi hanya untuk satu permintaan."><AppInput v-model="paid.reference" maxlength="80" minlength="4" required /></AppField>
       </form>
       <template #footer>
         <AppButton variant="secondary" @click="marking = false">Batal</AppButton>
-        <AppButton type="submit" form="paid-form" :loading="busy">Tandai lunas</AppButton>
+        <AppButton type="submit" form="paid-form" :loading="busy">Ajukan</AppButton>
       </template>
     </AppModal>
 
-    <AppModal v-if="voiding" size="sm" title="Batalkan invoice?" description="Pelanggan tidak bisa membayar invoice ini lagi. Paket tidak berubah." @close="voiding = false">
-      <form id="void-form" @submit.prevent="doVoid"><AppField label="Alasan (wajib)"><AppInput v-model="reason" maxlength="200" required /></AppField></form>
+    <AppModal v-if="voiding" size="sm" title="Ajukan pembatalan invoice" description="Pelanggan tidak bisa membayar invoice ini lagi. Perlu disetujui staf lain." @close="voiding = false">
+      <form id="void-form" class="grid gap-4" @submit.prevent="doVoid">
+        <AppField label="Alasan (wajib)"><AppInput v-model="reason" maxlength="200" minlength="5" required /></AppField>
+        <AppField label="Nomor tiket / referensi (wajib)"><AppInput v-model="voidRef" maxlength="80" minlength="3" required /></AppField>
+      </form>
       <template #footer>
         <AppButton variant="secondary" @click="voiding = false">Kembali</AppButton>
-        <AppButton type="submit" form="void-form" variant="danger" :loading="busy">Batalkan invoice</AppButton>
+        <AppButton type="submit" form="void-form" variant="danger" :loading="busy">Ajukan pembatalan</AppButton>
       </template>
     </AppModal>
   </template>

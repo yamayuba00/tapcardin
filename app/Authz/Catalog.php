@@ -77,8 +77,15 @@ final class Catalog
         'platform.production.manage' => ['production', 'Batch, encode, QC, kirim'],
         'platform.production.keys' => ['production', 'Kunci SDM kartu'],
         'platform.finance.view' => ['finance', 'Lihat pembayaran'],
-        'platform.finance.refund' => ['finance', 'Refund'],
-        'platform.finance.invoices' => ['finance', 'Invoice & rekonsiliasi'],
+        // Refund: pengajuan, keputusan, dan pencatatan transfer dipisah agar tidak berada di satu tangan.
+        'platform.finance.refund' => ['finance', 'Ajukan refund'],
+        'platform.finance.refund.approve' => ['finance', 'Setujui / tolak refund'],
+        'platform.finance.refund.large' => ['finance', 'Setujui refund nominal besar'],
+        'platform.finance.refund.payout' => ['finance', 'Catat transfer refund'],
+        // Tandai lunas manual, batalkan invoice, beri paket: diajukan di sini, DIPUTUSKAN orang lain (finance.approve).
+        'platform.finance.invoices' => ['finance', 'Ajukan: lunas manual, batal invoice, beri paket'],
+        'platform.finance.approve' => ['finance', 'Setujui / tolak permintaan keuangan'],
+        'platform.finance.reviews' => ['finance', 'Tinjau pembayaran bermasalah'],
         'platform.catalog.manage' => ['catalog', 'Katalog, harga, ongkir'],
         'platform.vouchers.manage' => ['catalog', 'Voucher'],
         'platform.plans.manage' => ['catalog', 'Paket & batas fitur'],
@@ -112,11 +119,12 @@ final class Catalog
             )),
             'finance' => self::role('Keuangan', 'Pembayaran, refund, invoice, laporan pendapatan', 'platform', $p(
                 'dashboard.business', 'dashboard.ops', 'tenants.view', 'users.view', 'orders.view',
-                'finance.view', 'finance.refund', 'finance.invoices', 'reports.export',
+                'finance.view', 'finance.refund', 'finance.refund.approve', 'finance.refund.payout', 'finance.invoices',
+                'finance.approve', 'finance.reviews', 'reports.export',
             )),
-            'support' => self::role('Support', 'Bantu pengguna, kartu, dan pesanan', 'platform', $p(
+            'support' => self::role('Support', 'Bantu pengguna, kartu, dan pesanan. Mengajukan refund (tidak memutuskan)', 'platform', $p(
                 'dashboard.ops', 'tenants.view', 'users.view', 'impersonate', 'cards.view', 'cards.manage',
-                'orders.view', 'moderation.manage',
+                'orders.view', 'moderation.manage', 'finance.refund',
             )),
             'production' => self::role('Produksi', 'Batch, cetak, encode, QC, pengiriman', 'platform', $p(
                 'dashboard.ops', 'cards.view', 'cards.manage', 'orders.view', 'production.manage', 'production.keys',
