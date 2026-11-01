@@ -84,21 +84,23 @@ const overdue = (iso) => iso && new Date(iso) < new Date()
 
 <template>
   <PageHeader :eyebrow="list.meta.value ? `${list.meta.value.total} ${label.toLowerCase()}` : label" :title="label">
-    <AppButton variant="ghost" to="/connections/dashboard"><ChartColumn class="size-5" /> Dashboard</AppButton>
-    <AppButton v-if="auth.can('leads.edit.*')" variant="ghost" to="/scan"><ScanLine class="size-5" /> Scan kartu</AppButton>
-    <AppButton v-if="auth.can('leads.edit.*')" variant="ghost" to="/connections/import"><FileUp class="size-5" /> Impor CSV</AppButton>
-    <AppButton v-if="auth.can('billing.view')" variant="ghost" to="/billing#addons" title="Add-on Integrasi CRM — segera hadir"><Blocks class="size-5" /> Kirim ke CRM <span class="text-xs text-muted">segera</span></AppButton>
-    <AppButton v-if="auth.can('leads.export.*')" variant="secondary" :href="exportHref"><Download class="size-5" /> Ekspor</AppButton>
+    <!-- tindakan utama dulu; tautan sekunder jadi ikon + teks ringkas di ponsel agar tidak memenuhi layar -->
     <AppButton v-if="auth.can('leads.edit.*')" @click="adding = true"><Plus class="size-5" /> Tambah</AppButton>
+    <AppButton v-if="auth.can('leads.export.*')" variant="secondary" :href="exportHref"><Download class="size-5" /> Ekspor</AppButton>
+    <AppButton variant="ghost" to="/connections/dashboard"><ChartColumn class="size-5" /> Dashboard</AppButton>
+    <AppButton v-if="auth.can('leads.edit.*')" variant="ghost" to="/scan"><ScanLine class="size-5" /> Scan</AppButton>
+    <AppButton v-if="auth.can('leads.edit.*')" variant="ghost" to="/connections/import"><FileUp class="size-5" /> Impor CSV</AppButton>
+    <AppButton v-if="auth.can('billing.view')" class="hidden sm:inline-flex" variant="ghost" to="/billing#addons" title="Add-on Integrasi CRM — segera hadir"><Blocks class="size-5" /> Kirim ke CRM <span class="text-xs text-muted">segera</span></AppButton>
   </PageHeader>
 
-  <div class="flex flex-wrap gap-2">
-    <AppInput v-model="filters.q" type="search" placeholder="Cari nama, perusahaan, email, nomor" aria-label="Cari" class="max-w-xs" />
-    <AppSelect v-model="stageSel" multiple placeholder="Semua tahap" :options="stages.map((s) => ({ value: s.id, label: s.name }))" aria-label="Tahap" class="!w-auto min-w-44" />
-    <AppSelect v-model="sourceSel" multiple placeholder="Semua sumber" :options="LEAD_SOURCES" aria-label="Sumber" class="!w-auto min-w-44" />
-    <AppSelect v-if="tags.length" v-model="tagSel" multiple searchable placeholder="Semua tag" :options="tags.map((t) => ({ value: t.value, label: t.value, description: `${t.count} ${label.toLowerCase()}` }))" aria-label="Tag" class="!w-auto min-w-44" />
-    <AppSelect v-model="filters.due" clearable placeholder="Semua follow-up" :options="DUE" aria-label="Follow-up" class="!w-auto min-w-44" />
-    <AppSelect v-if="events.length" v-model="filters.event" clearable placeholder="Semua event" :options="events.map((e) => ({ value: e.id, label: e.name, description: e.location }))" aria-label="Event" class="!w-auto min-w-44" />
+  <!-- Ponsel: pencarian selebar layar, filter 2 kolom. Desktop: berderet membungkus. -->
+  <div class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+    <AppInput v-model="filters.q" type="search" placeholder="Cari nama, perusahaan, email, nomor" aria-label="Cari" class="col-span-2 sm:max-w-xs" />
+    <AppSelect v-model="stageSel" multiple placeholder="Semua tahap" :options="stages.map((s) => ({ value: s.id, label: s.name }))" aria-label="Tahap" class="sm:!w-auto sm:min-w-44" />
+    <AppSelect v-model="sourceSel" multiple placeholder="Semua sumber" :options="LEAD_SOURCES" aria-label="Sumber" class="sm:!w-auto sm:min-w-44" />
+    <AppSelect v-if="tags.length" v-model="tagSel" multiple searchable placeholder="Semua tag" :options="tags.map((t) => ({ value: t.value, label: t.value, description: `${t.count} ${label.toLowerCase()}` }))" aria-label="Tag" class="sm:!w-auto sm:min-w-44" />
+    <AppSelect v-model="filters.due" clearable placeholder="Semua follow-up" :options="DUE" aria-label="Follow-up" class="sm:!w-auto sm:min-w-44" />
+    <AppSelect v-if="events.length" v-model="filters.event" clearable placeholder="Semua event" :options="events.map((e) => ({ value: e.id, label: e.name, description: e.location }))" aria-label="Event" class="sm:!w-auto sm:min-w-44" />
   </div>
 
   <AppEmpty

@@ -27,21 +27,21 @@ async function createDigital() {
 
 <template>
   <PageHeader eyebrow="Kartu" title="Kartu saya">
-    <AppButton variant="secondary" @click="adding = true"><Plus class="size-5" /> Aktifkan kartu fisik</AppButton>
     <AppButton to="/orders/new"><ShoppingCart class="size-5" /> Pesan kartu fisik</AppButton>
+    <AppButton variant="secondary" @click="adding = true"><Plus class="size-5" /> Aktifkan kartu fisik</AppButton>
   </PageHeader>
   <p v-if="error" class="text-danger" role="alert">{{ error.message }}</p>
 
   <div v-if="!cards && !error" class="grid gap-3 xl:grid-cols-2"><AppSkeleton v-for="i in 2" :key="i" class="!h-28" /></div>
 
   <template v-else-if="cards">
-    <div v-if="meta && !meta.has_digital" class="flex flex-wrap items-center gap-4 rounded-md border border-line-strong bg-surface-2 px-5 py-4">
-      <Smartphone class="size-6 flex-none text-accent-text" aria-hidden="true" />
+    <div v-if="meta && !meta.has_digital" class="grid gap-3 rounded-md border border-line-strong bg-surface-2 p-4 sm:flex sm:items-center sm:gap-4 sm:px-5 sm:py-4">
+      <Smartphone class="hidden size-6 flex-none text-accent-text sm:block" aria-hidden="true" />
       <div class="grid min-w-0 flex-1 gap-0.5">
         <span class="font-semibold">Belum punya kartu fisik, atau kartunya ketinggalan?</span>
         <span class="text-sm text-muted">Buat kartu digital: bio link sendiri, QR di layar, dan tautan untuk dibagikan. Gratis, tidak memakai kuota kartu.</span>
       </div>
-      <AppButton :loading="busy" @click="createDigital"><Smartphone class="size-5" /> Buat kartu digital</AppButton>
+      <AppButton class="w-full sm:w-auto" :loading="busy" @click="createDigital"><Smartphone class="size-5" /> Buat kartu digital</AppButton>
     </div>
 
     <AppEmpty v-if="!cards.length" text="Belum ada kartu. Tempel kartu baru ke ponsel Anda, atau masukkan kode yang tercetak di kartu.">
@@ -52,7 +52,7 @@ async function createDigital() {
     <div v-else class="grid gap-3 xl:grid-cols-2">
       <article
         v-for="c in cards" :key="c.token"
-        class="relative grid grid-cols-[132px_minmax(0,1fr)] items-center gap-4 rounded-md border bg-surface p-3 hover:bg-surface-2 sm:grid-cols-[168px_minmax(0,1fr)_auto]"
+        class="relative grid grid-cols-[96px_minmax(0,1fr)] items-center gap-3 rounded-md border bg-surface p-3 hover:bg-surface-2 min-[420px]:grid-cols-[132px_minmax(0,1fr)] min-[420px]:gap-4 sm:grid-cols-[168px_minmax(0,1fr)_auto]"
         :class="c.form === 'digital' ? 'border-line-strong' : 'border-line'"
       >
         <CardVisual v-if="c.form === 'digital'" :token="c.token" compact />
@@ -66,7 +66,7 @@ async function createDigital() {
           <span class="truncate text-sm text-muted">{{ c.profile?.display_name ?? '—' }} · tap terakhir {{ relative(c.last_tap_at) }}</span>
         </div>
         <div v-if="c.status === 'active'" class="relative z-10 col-span-2 flex sm:col-span-1">
-          <AppButton :variant="c.form === 'digital' ? 'primary' : 'secondary'" :to="`/cards/${c.token}/share`"><Share2 class="size-5" /> Bagikan</AppButton>
+          <AppButton class="w-full sm:w-auto" :variant="c.form === 'digital' ? 'primary' : 'secondary'" :to="`/cards/${c.token}/share`"><Share2 class="size-5" /> Bagikan</AppButton>
         </div>
       </article>
     </div>

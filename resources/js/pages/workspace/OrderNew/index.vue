@@ -158,7 +158,7 @@ const err = (k) => errors.value[`shipping.${k}`]?.[0]
             <div class="flex flex-wrap items-center gap-3">
               <div class="flex items-center rounded-md border border-line-strong">
                 <AppButton variant="ghost" icon aria-label="Kurangi" :disabled="it.quantity <= minQty(it)" @click="step(it, it.kind === 'card' ? -1 : -10)"><Minus class="size-4" /></AppButton>
-                <input v-model.number="it.quantity" type="number" :min="minQty(it)" max="5000" class="w-20 bg-transparent text-center font-mono outline-none" :aria-label="`Jumlah ${byId(it.design)?.name}`" />
+                <input v-model.number="it.quantity" type="number" inputmode="numeric" :min="minQty(it)" max="5000" class="w-20 bg-transparent text-center font-mono outline-none" :aria-label="`Jumlah ${byId(it.design)?.name}`" />
                 <AppButton variant="ghost" icon aria-label="Tambah" @click="step(it, it.kind === 'card' ? 1 : 10)"><Plus class="size-4" /></AppButton>
               </div>
               <span class="text-sm text-muted">min. {{ minQty(it) }} pcs</span>

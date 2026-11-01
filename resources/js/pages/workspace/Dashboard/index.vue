@@ -51,8 +51,8 @@ const empty = computed(() => data.value && data.value.kpi.taps_30 === 0 && data.
 
 <template>
   <PageHeader eyebrow="Ringkasan" title="Beranda">
-    <AppButton variant="secondary" to="/cards"><CreditCard class="size-5" /> Kartu saya</AppButton>
     <AppButton v-if="data?.share_token" :to="`/cards/${data.share_token}/share`"><Share2 class="size-5" /> Bagikan kartu</AppButton>
+    <AppButton variant="secondary" to="/cards"><CreditCard class="size-5" /> Kartu saya</AppButton>
   </PageHeader>
 
   <div v-if="error" class="flex items-center gap-3 rounded-md border border-line-strong bg-surface-2 px-4 py-3 text-sm" role="alert">
@@ -60,7 +60,7 @@ const empty = computed(() => data.value && data.value.kpi.taps_30 === 0 && data.
     <AppButton variant="ghost" @click="reload">Muat ulang</AppButton>
   </div>
 
-  <div v-if="!data && !error" class="grid grid-cols-[repeat(auto-fit,minmax(170px,1fr))] gap-4" aria-busy="true">
+  <div v-if="!data && !error" class="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4" aria-busy="true">
     <AppSkeleton v-for="i in 4" :key="i" class="!h-28" />
   </div>
 
@@ -68,7 +68,8 @@ const empty = computed(() => data.value && data.value.kpi.taps_30 === 0 && data.
     <OnboardingChecklist v-if="data.onboarding" :data="data.onboarding" @dismissed="data.onboarding = null" />
     <InstallApp variant="banner" />
 
-    <div class="grid grid-cols-[repeat(auto-fit,minmax(170px,1fr))] gap-4">
+    <!-- Ponsel: 2 kartu per baris (bukan satu kolom panjang). minmax(170px) membuat kolom ke-2 turun di layar < 380px. -->
+    <div class="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
       <KpiCard label="Tap 7 hari" :value="num(data.kpi.taps_7)" :delta="tapDelta" hint="Minggu lalu belum ada tap" />
       <KpiCard label="Pengunjung unik 30 hari" :value="num(data.kpi.visitors_30)" />
       <KpiCard label="Simpan kontak" :value="num(data.kpi.saved_30)" :hint="data.kpi.save_rate !== null ? `${data.kpi.save_rate}% dari tap` : 'Belum ada tap'" />

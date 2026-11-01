@@ -44,9 +44,9 @@ export function usePagedList(fetcher, defaults = {}, opts = {}) {
     page.value = p
     sync()
   }
-  /** Klik header: naik → turun → naik. */
-  function toggleSort(key) {
-    sort.value = sort.value === key ? `-${key}` : key
+  /** Klik header: naik → turun → naik. Dengan `dir` ('asc' | 'desc') arah ditetapkan langsung (menu Urutkan di ponsel). */
+  function toggleSort(key, dir) {
+    sort.value = dir === 'desc' ? `-${key}` : dir === 'asc' ? key : sort.value === key ? `-${key}` : key
     search()
   }
   function setPerPage(n) {

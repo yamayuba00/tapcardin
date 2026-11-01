@@ -106,21 +106,23 @@ const link = 'group flex min-h-9 cursor-pointer items-center gap-3 rounded-lg px
       </div>
     </main>
 
+    <!-- Ponsel: 5 tombol sama lebar; label dipotong (truncate) supaya "Koneksi"/"Lead" tidak mendorong tombol lain. -->
     <nav class="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 print:hidden border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] lg:hidden" aria-label="Navigasi">
-      <RouterLink to="/dashboard" :aria-current="active === 'dashboard' ? 'page' : undefined" class="grid justify-items-center gap-1 pt-2.5 pb-2 text-[11px] font-medium text-muted no-underline aria-[current=page]:text-accent-text">
-        <House class="size-[22px]" aria-hidden="true" />Beranda
+      <RouterLink to="/dashboard" :aria-current="active === 'dashboard' ? 'page' : undefined" class="grid min-w-0 justify-items-center gap-1 px-1 pt-2.5 pb-2 text-[11px] font-medium text-muted no-underline aria-[current=page]:text-accent-text">
+        <House class="size-[22px]" aria-hidden="true" /><span class="max-w-full truncate">Beranda</span>
       </RouterLink>
-      <RouterLink to="/connections" :aria-current="active === 'connections' ? 'page' : undefined" class="grid justify-items-center gap-1 pt-2.5 pb-2 text-[11px] font-medium text-muted no-underline aria-[current=page]:text-accent-text">
-        <Users class="size-[22px]" aria-hidden="true" />{{ auth.contactLabel }}
+      <RouterLink to="/connections" :aria-current="active === 'connections' ? 'page' : undefined" class="grid min-w-0 justify-items-center gap-1 px-1 pt-2.5 pb-2 text-[11px] font-medium text-muted no-underline aria-[current=page]:text-accent-text">
+        <Users class="size-[22px]" aria-hidden="true" /><span class="max-w-full truncate">{{ auth.contactLabel }}</span>
       </RouterLink>
-      <RouterLink to="/scan" class="grid justify-items-center no-underline" aria-label="Scan kartu orang lain (Mode Reader)">
+      <RouterLink to="/scan" :aria-current="active === 'scan' ? 'page' : undefined" class="grid min-w-0 justify-items-center gap-0.5 px-1 no-underline" aria-label="Scan kartu orang lain (Mode Reader)">
         <span class="-mt-[22px] grid size-[52px] place-items-center rounded-full border-4 border-bg bg-accent text-accent-ink"><ScanLine class="size-[22px]" aria-hidden="true" /></span>
+        <span class="pb-2 text-[11px] font-medium text-muted">Scan</span>
       </RouterLink>
-      <RouterLink to="/cards" :aria-current="active === 'cards' ? 'page' : undefined" class="grid justify-items-center gap-1 pt-2.5 pb-2 text-[11px] font-medium text-muted no-underline aria-[current=page]:text-accent-text">
-        <CreditCard class="size-[22px]" aria-hidden="true" />Kartu
+      <RouterLink to="/cards" :aria-current="active === 'cards' ? 'page' : undefined" class="grid min-w-0 justify-items-center gap-1 px-1 pt-2.5 pb-2 text-[11px] font-medium text-muted no-underline aria-[current=page]:text-accent-text">
+        <CreditCard class="size-[22px]" aria-hidden="true" /><span class="max-w-full truncate">Kartu</span>
       </RouterLink>
-      <RouterLink to="/settings" :aria-current="active === 'settings' ? 'page' : undefined" class="grid justify-items-center gap-1 pt-2.5 pb-2 text-[11px] font-medium text-muted no-underline aria-[current=page]:text-accent-text">
-        <User class="size-[22px]" aria-hidden="true" />Akun
+      <RouterLink to="/settings" :aria-current="active === 'settings' ? 'page' : undefined" class="grid min-w-0 justify-items-center gap-1 px-1 pt-2.5 pb-2 text-[11px] font-medium text-muted no-underline aria-[current=page]:text-accent-text">
+        <User class="size-[22px]" aria-hidden="true" /><span class="max-w-full truncate">Akun</span>
       </RouterLink>
     </nav>
   </div>

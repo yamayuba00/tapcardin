@@ -53,7 +53,7 @@ const snooze = (r) => act(() => remindersApi.update(r.id, { due_at: new Date(Mat
             <span class="block font-medium">{{ r.overdue ? 'Terlambat · ' : '' }}{{ relative(r.due_at) }} <span class="font-normal text-muted">({{ dateTime(r.due_at) }})</span></span>
             <span v-if="r.note" class="block text-sm text-muted">{{ r.note }}</span>
           </span>
-          <span v-if="editable" class="flex gap-1">
+          <span v-if="editable" class="flex w-full flex-wrap gap-1 sm:w-auto">
             <AppButton variant="secondary" :disabled="busy" @click="act(() => remindersApi.update(r.id, { done: true }), 'Follow-up selesai')"><Check class="size-5" /> Selesai</AppButton>
             <AppButton variant="ghost" :disabled="busy" @click="snooze(r)">Tunda</AppButton>
             <AppButton variant="ghost" icon aria-label="Hapus pengingat" :disabled="busy" @click="act(() => remindersApi.remove(r.id), 'Pengingat dihapus')"><Trash2 class="size-4" /></AppButton>
@@ -66,8 +66,8 @@ const snooze = (r) => act(() => remindersApi.update(r.id, { due_at: new Date(Mat
         <AppInput v-model="note" maxlength="200" placeholder="Catatan pengingat (opsional), mis. kirim penawaran" aria-label="Catatan pengingat" />
         <div class="flex flex-wrap items-center gap-2">
           <AppButton v-for="q in QUICK" :key="q.label" variant="secondary" :disabled="busy" @click="add(q.date)"><BellPlus class="size-5" /> {{ q.label }}</AppButton>
-          <form class="flex gap-2" @submit.prevent="custom && add(new Date(custom))">
-            <AppInput v-model="custom" type="datetime-local" :min="minLocal" aria-label="Waktu pengingat" class="!w-auto" />
+          <form class="flex w-full min-w-0 gap-2 sm:w-auto" @submit.prevent="custom && add(new Date(custom))">
+            <AppInput v-model="custom" type="datetime-local" :min="minLocal" aria-label="Waktu pengingat" class="min-w-0 flex-1 sm:!w-auto sm:flex-none" />
             <AppButton type="submit" variant="ghost" :disabled="busy || !custom">Jadwalkan</AppButton>
           </form>
         </div>

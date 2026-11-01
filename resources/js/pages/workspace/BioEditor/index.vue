@@ -132,19 +132,19 @@ const presetOf = (key) => catalog.value?.presets.find((p) => p.key === key)
       <AppButton :loading="busy" @click="save">Simpan</AppButton>
     </PageHeader>
 
-    <div class="flex flex-wrap items-center gap-2 rounded-md border border-line bg-surface px-4 py-3 text-sm">
-      <span class="text-muted">Alamat bio link kartu ini:</span>
-      <span class="min-w-0 flex-1 truncate font-mono text-fg">{{ card.url }}</span>
+    <div class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 rounded-md border border-line bg-surface px-4 py-3 text-sm sm:flex sm:flex-wrap">
+      <span class="col-span-2 text-muted sm:col-span-1">Alamat bio link kartu ini:</span>
+      <span class="min-w-0 truncate font-mono text-fg sm:flex-1">{{ card.url }}</span>
       <AppButton variant="ghost" @click="copyUrl"><Copy class="size-5" /> Salin</AppButton>
     </div>
 
     <div class="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
-      <form class="grid gap-6" @submit.prevent="save">
+      <form class="grid min-w-0 gap-6" @submit.prevent="save">
         <AppPanel title="Identitas">
           <div class="grid gap-4">
-            <div class="flex items-center gap-4">
-              <img v-if="profile.avatar_url" :src="profile.avatar_url" alt="Foto profil" class="size-24 rounded-full object-cover" />
-              <span v-else class="grid size-24 place-items-center rounded-full bg-surface-2 font-display text-[32px] font-semibold text-muted">{{ initials(form.display_name) }}</span>
+            <div class="flex flex-wrap items-center gap-4">
+              <img v-if="profile.avatar_url" :src="profile.avatar_url" alt="Foto profil" class="size-20 flex-none rounded-full object-cover sm:size-24" />
+              <span v-else class="grid size-20 flex-none place-items-center rounded-full bg-surface-2 font-display text-[28px] font-semibold text-muted sm:size-24 sm:text-[32px]">{{ initials(form.display_name) }}</span>
               <label class="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-md border border-line-strong px-5 font-semibold hover:bg-surface-2">
                 <Pencil class="size-5" /> Ganti foto
                 <input class="sr-only" type="file" accept="image/jpeg,image/png,image/webp" @change="upload" />
@@ -229,8 +229,8 @@ const presetOf = (key) => catalog.value?.presets.find((p) => p.key === key)
 
       <aside class="grid gap-2 xl:sticky xl:top-6">
         <span class="label">Preview langsung</span>
-        <div class="rounded-[28px] border border-line-strong bg-surface p-2.5">
-          <div class="h-[700px] overflow-y-auto overscroll-contain rounded-[20px] scrollbar-none" tabindex="0" aria-label="Preview bio link (bisa di-scroll)">
+        <div class="mx-auto w-full max-w-[380px] rounded-[28px] border border-line-strong bg-surface p-2.5 xl:max-w-none">
+          <div class="h-[560px] overflow-y-auto overscroll-contain rounded-[20px] scrollbar-none sm:h-[700px]" tabindex="0" aria-label="Preview bio link (bisa di-scroll)">
             <PublicProfileView :profile="live" preview />
           </div>
         </div>

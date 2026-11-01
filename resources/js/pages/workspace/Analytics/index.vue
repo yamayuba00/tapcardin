@@ -34,13 +34,13 @@ watch(days, load, { immediate: true })
 
 <template>
   <PageHeader eyebrow="Analitik" title="Analitik kartu">
-    <AppSegmented v-model="days" :options="options" label="Rentang waktu" />
+    <AppSegmented v-model="days" :options="options" label="Rentang waktu" class="max-w-full" />
   </PageHeader>
   <p v-if="retention" class="text-sm text-muted">Paket Anda menyimpan data analitik {{ retention }} hari.</p>
 
   <AppSkeleton v-if="!data" class="!h-56" />
   <template v-else>
-    <div class="grid grid-cols-[repeat(auto-fit,minmax(170px,1fr))] gap-4">
+    <div class="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
       <KpiCard label="Tap" :value="num(data.totals.taps)" />
       <KpiCard label="Pengunjung unik" :value="num(data.totals.visitors)" />
       <KpiCard label="Simpan kontak" :value="num(data.totals.saved)" :hint="`${pct(data.totals.saved, data.totals.taps)}% dari tap`" />

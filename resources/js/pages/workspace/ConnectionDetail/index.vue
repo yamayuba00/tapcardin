@@ -104,7 +104,7 @@ const activityText = (a) => (a.type === 'stage_changed'
     <div class="grid gap-4 md:grid-cols-2">
       <AppPanel title="Detail">
         <div class="grid gap-4">
-          <dl class="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-2 text-sm">
+          <dl class="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 text-sm break-words sm:gap-x-6">
             <dt class="text-muted">Tahap</dt><dd><StageBadge :stage="c.stage" /><span v-if="c.lost_reason" class="text-muted"> · {{ c.lost_reason }}</span></dd>
             <dt class="text-muted">Email</dt><dd>{{ c.email || '—' }}</dd>
             <dt class="text-muted">Telepon</dt><dd class="font-mono">{{ c.phone || '—' }}</dd>
@@ -138,15 +138,15 @@ const activityText = (a) => (a.type === 'stage_changed'
           <div><AppButton type="submit" variant="secondary" :disabled="busy || !note.trim()">Simpan catatan</AppButton></div>
         </form>
         <ul>
-          <li v-for="a in c.activities" :key="a.id" class="flex items-center gap-3 border-b border-line py-3 last:border-b-0">
-            <span class="grid size-10 flex-none place-items-center rounded-full bg-surface-2 text-muted">
+          <li v-for="a in c.activities" :key="a.id" class="grid grid-cols-[40px_minmax(0,1fr)] items-start gap-x-3 gap-y-0.5 border-b border-line py-3 last:border-b-0 sm:grid-cols-[40px_minmax(0,1fr)_auto] sm:items-center">
+            <span class="row-span-2 grid size-10 flex-none place-items-center rounded-full bg-surface-2 text-muted sm:row-span-1">
               <component :is="ICONS[a.type] || Info" class="size-5" aria-hidden="true" />
             </span>
-            <div class="min-w-0 flex-1">
+            <div class="min-w-0">
               <span class="block font-medium">{{ ACTIVITY_LABELS[a.type] }}<span v-if="a.user" class="text-muted"> · {{ a.user }}</span></span>
-              <span v-if="activityText(a)" class="text-sm text-muted">{{ activityText(a) }}</span>
+              <span v-if="activityText(a)" class="text-sm break-words text-muted">{{ activityText(a) }}</span>
             </div>
-            <span class="text-sm text-muted">{{ dateTime(a.occurred_at) }}</span>
+            <span class="text-xs text-muted sm:text-sm">{{ dateTime(a.occurred_at) }}</span>
           </li>
         </ul>
       </AppPanel>

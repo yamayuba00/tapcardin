@@ -177,7 +177,8 @@ const pending = computed(() => inbound.value.filter((i) => !i.saved_back && i.ca
           <p v-if="message" :class="['text-center', state === 'fail' ? 'text-danger' : 'text-muted']" aria-live="polite">{{ message }}</p>
           <video v-show="mode === 'qr'" ref="video" class="mx-auto aspect-square w-full max-w-sm rounded-md bg-surface-2 object-cover" playsinline muted></video>
 
-          <div class="flex flex-wrap justify-center gap-2">
+          <!-- Ponsel: tombol pembaca selebar layar (mudah dijangkau jempol); desktop: berderet di tengah -->
+          <div class="grid gap-2 sm:flex sm:flex-wrap sm:justify-center">
             <AppButton v-if="canNfc" size="lg" :disabled="mode === 'nfc'" @click="startNfc"><Nfc class="size-5" /> Tap kartu</AppButton>
             <AppButton v-if="canQr" size="lg" :variant="canNfc ? 'secondary' : 'primary'" :disabled="mode === 'qr'" @click="startQr"><Camera class="size-5" /> Scan QR</AppButton>
             <AppButton v-if="mode" size="lg" variant="ghost" @click="stop"><X class="size-5" /> Berhenti</AppButton>
@@ -189,8 +190,8 @@ const pending = computed(() => inbound.value.filter((i) => !i.saved_back && i.ca
           <form class="grid gap-2 border-t border-line pt-5" @submit.prevent="submitManual">
             <AppField label="Kode kartu, tautan, atau isi QR" hint="Contoh: TC·7K2M-9QXP, atau https://tap.…/c/…">
               <div class="flex gap-2">
-                <AppInput v-model="manual" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="XXXX-XXXX atau URL" />
-                <AppButton type="submit" variant="secondary" :disabled="!manual.trim()"><Keyboard class="size-5" /> Simpan</AppButton>
+                <AppInput v-model="manual" class="min-w-0 flex-1" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="XXXX-XXXX atau URL" />
+                <AppButton type="submit" variant="secondary" :disabled="!manual.trim()"><Keyboard class="size-5" /> <span class="hidden min-[400px]:inline">Simpan</span><span class="sr-only min-[400px]:hidden">Simpan</span></AppButton>
               </div>
             </AppField>
           </form>
@@ -201,7 +202,7 @@ const pending = computed(() => inbound.value.filter((i) => !i.saved_back && i.ca
     <AppPanel title="Menyimpan Anda">
       <p class="mb-3 text-sm text-muted">Pengguna TapCard yang men-scan kartu Anda. Simpan balik dengan sekali ketuk.</p>
       <ul v-if="inbound.length" class="grid">
-        <li v-for="i in inbound" :key="i.card || i.at" class="flex items-center gap-3 border-b border-line py-3 last:border-b-0">
+        <li v-for="i in inbound" :key="i.card || i.at" class="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line py-3 last:border-b-0">
           <span class="min-w-0 flex-1"><span class="block truncate font-medium">{{ i.name }}</span><span class="text-xs text-muted">{{ relative(i.at) }}</span></span>
           <span v-if="i.saved_back" class="inline-flex items-center gap-1 text-sm text-ok"><CircleCheck class="size-4" /> Tersimpan</span>
           <AppButton v-else-if="i.card" variant="secondary" @click="save(i.card)"><UserPlus class="size-5" /> Simpan balik</AppButton>

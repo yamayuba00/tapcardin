@@ -112,16 +112,18 @@ const COLUMNS = [
   <div v-if="!b" class="grid gap-4"><AppSkeleton class="!h-40" /><AppSkeleton class="!h-96" /></div>
   <template v-else>
     <!-- peringatan -->
-    <div v-if="sub?.status === 'past_due'" class="flex flex-wrap items-center gap-3 rounded-md border border-danger bg-surface px-4 py-3">
-      <TriangleAlert class="size-5 flex-none text-danger" />
+    <div v-if="sub?.status === 'past_due'" class="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-3 rounded-md border border-danger bg-surface p-4 sm:flex sm:flex-wrap sm:items-center sm:px-4 sm:py-3">
+      <TriangleAlert class="mt-0.5 size-5 flex-none text-danger" />
       <span class="min-w-0 flex-1 text-sm">Periode paket sudah berakhir. Fitur {{ sub.plan }} tetap jalan sampai <strong>{{ date(sub.grace_until) }}</strong>; setelah itu workspace kembali ke paket gratis.</span>
-      <AppButton v-if="b.open_invoice && canManage" :loading="busy" @click="payOpen">Bayar sekarang</AppButton>
+      <AppButton v-if="b.open_invoice && canManage" class="col-span-2 w-full sm:w-auto" :loading="busy" @click="payOpen">Bayar sekarang</AppButton>
     </div>
-    <div v-else-if="b.open_invoice" class="flex flex-wrap items-center gap-3 rounded-md border border-accent bg-surface px-4 py-3">
-      <Receipt class="size-5 flex-none text-accent-text" />
+    <div v-else-if="b.open_invoice" class="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-3 rounded-md border border-accent bg-surface p-4 sm:flex sm:flex-wrap sm:items-center sm:px-4 sm:py-3">
+      <Receipt class="mt-0.5 size-5 flex-none text-accent-text" />
       <span class="min-w-0 flex-1 text-sm">Tagihan <strong>{{ b.open_invoice.number }}</strong> ({{ rupiah(b.open_invoice.total) }}) belum dibayar — berlaku sampai {{ dateTime(b.open_invoice.due_at) }}.</span>
-      <AppButton variant="secondary" :to="`/billing/invoices/${b.open_invoice.id}`">Lihat</AppButton>
-      <AppButton v-if="canManage" :loading="busy" @click="payOpen">Lanjutkan pembayaran</AppButton>
+      <div class="col-span-2 grid grid-cols-2 gap-2 sm:col-span-1 sm:flex">
+        <AppButton variant="secondary" :to="`/billing/invoices/${b.open_invoice.id}`">Lihat</AppButton>
+        <AppButton v-if="canManage" :loading="busy" @click="payOpen">Lanjutkan pembayaran</AppButton>
+      </div>
     </div>
 
     <!-- paket aktif -->
@@ -129,7 +131,7 @@ const COLUMNS = [
       <AppPanel title="Paket Anda">
         <div class="grid gap-4">
           <div class="flex flex-wrap items-center gap-3">
-            <span class="font-display text-[28px] font-bold">{{ current?.name }}</span>
+            <span class="font-display text-2xl font-bold sm:text-[28px]">{{ current?.name }}</span>
             <AppBadge v-if="sub" :tone="SUB[sub.status][0]">{{ SUB[sub.status][1] }}</AppBadge>
             <AppBadge v-else tone="outline">Gratis selamanya</AppBadge>
           </div>
@@ -154,14 +156,14 @@ const COLUMNS = [
 
     <!-- perbandingan paket -->
     <section class="grid gap-4">
-      <div class="flex flex-wrap items-center justify-between gap-3">
+      <div class="grid gap-3 sm:flex sm:flex-wrap sm:items-center sm:justify-between">
         <h2 class="text-xl">Pilih paket</h2>
-        <AppSegmented v-model="cycle" label="Siklus tagihan" :options="[{ value: 'monthly', label: 'Bulanan' }, { value: 'yearly', label: 'Tahunan · hemat 2 bulan' }]" />
+        <AppSegmented v-model="cycle" label="Siklus tagihan" :options="[{ value: 'monthly', label: 'Bulanan' }, { value: 'yearly', label: 'Tahunan · hemat 2 bulan' }]" class="w-full sm:w-auto" />
       </div>
       <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <article
           v-for="p in b.plans" :key="p.key"
-          :class="['grid content-start gap-5 rounded-lg border bg-surface p-6', p.key === current?.key ? 'border-accent' : 'border-line']"
+          :class="['grid content-start gap-5 rounded-lg border bg-surface p-5 sm:p-6', p.key === current?.key ? 'border-accent' : 'border-line']"
         >
           <div class="flex items-center justify-between gap-2">
             <h3 class="font-display text-xl font-bold">{{ p.name }}</h3>

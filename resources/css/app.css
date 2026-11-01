@@ -17,6 +17,8 @@
   body { @apply min-h-screen bg-bg font-sans text-base leading-[1.55] text-fg; }
   h1 { @apply font-display text-[32px] leading-[1.1] font-bold; }
   h2 { @apply font-display text-2xl leading-[1.2] font-semibold; }
+  /* jaring pengaman: satu elemen yang melebar tidak membuat seluruh halaman bisa digeser ke samping di ponsel */
+  html, body { overflow-x: clip; }
   h3 { @apply text-lg leading-[1.3] font-semibold; }
   a { @apply text-accent-text; }
   :focus-visible { @apply outline-2 outline-offset-2 outline-accent-text; }

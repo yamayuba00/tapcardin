@@ -66,8 +66,8 @@ const open = (d) => (d.kind === 'lanyard' ? `/lanyards/${d.id}` : `/designs/${d.
         <FlipCard :front="d.front" :back="d.back" :vars="vars(d)" :kit="d.kit" :qr="catalog?.qr" hover-flip />
       </div>
       <div v-else class="overflow-hidden rounded-sm"><LanyardStrip :side="d.front" :kit="d.kit" :vars="vars(d)" :length="260" :scale="2" /></div>
-      <div class="flex items-center justify-between gap-2">
-        <span class="grid min-w-0">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <span class="grid min-w-0 flex-1">
           <RouterLink :to="open(d)" class="truncate font-medium text-fg no-underline after:absolute after:inset-0">{{ d.name }}</RouterLink>
           <span class="text-sm text-muted">
             <template v-if="d.kind === 'card'">{{ d.orientation === 'portrait' ? 'Potret' : 'Lanskap' }}{{ d.lanyard ? ' · lubang lanyard' : '' }}</template>

@@ -29,14 +29,16 @@ async function go() {
       <Download class="size-5" aria-hidden="true" /> Pasang aplikasi
     </button>
 
-    <div v-else-if="!dismissed" class="flex flex-wrap items-center gap-4 rounded-md border border-line-strong bg-surface-2 px-5 py-4">
+    <!-- Ponsel: ikon + teks di atas, tombol Pasang selebar kartu di bawah, × di pojok kanan atas.
+         Desktop (sm+): satu baris — ikon, teks, tombol, ×. -->
+    <div v-else-if="!dismissed" class="relative grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-3 rounded-md border border-line-strong bg-surface-2 p-4 pr-12 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:px-5 sm:py-4 sm:pr-16">
       <img :src="ICON" alt="" width="44" height="44" class="size-11 flex-none rounded-lg" />
-      <div class="grid min-w-0 flex-1 gap-0.5">
+      <div class="grid min-w-0 gap-0.5">
         <span class="font-semibold">Pasang TapCard di layar utama</span>
-        <span class="text-sm text-muted">Buka QR & tautan kartu dalam satu ketukan — tanpa membuka browser dulu.</span>
+        <span class="text-sm text-muted">Buka QR & tautan kartu dalam satu ketukan, tanpa membuka browser dulu.</span>
       </div>
-      <AppButton @click="go"><Download class="size-5" /> Pasang</AppButton>
-      <AppButton variant="ghost" icon aria-label="Tutup ajakan pasang aplikasi" @click="dismiss"><X class="size-5" /></AppButton>
+      <AppButton class="col-span-2 sm:col-span-1" @click="go"><Download class="size-5" /> Pasang</AppButton>
+      <AppButton variant="ghost" icon class="absolute top-1 right-1 sm:top-1/2 sm:right-3 sm:-translate-y-1/2" aria-label="Tutup ajakan pasang aplikasi" @click="dismiss"><X class="size-5" /></AppButton>
     </div>
   </template>
 

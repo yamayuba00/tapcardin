@@ -45,21 +45,23 @@ async function stop() {
     <AppButton @click="creating = true"><CalendarPlus class="size-5" /> Event baru</AppButton>
   </PageHeader>
 
-  <div v-if="active" class="flex flex-wrap items-center gap-3 rounded-md border border-accent bg-surface px-4 py-3">
-    <Radio class="size-5 animate-tap-pulse text-accent-text" aria-hidden="true" />
+  <div v-if="active" class="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-3 rounded-md border border-accent bg-surface p-4 sm:flex sm:flex-wrap sm:items-center sm:py-3">
+    <Radio class="mt-0.5 size-5 animate-tap-pulse text-accent-text" aria-hidden="true" />
     <span class="min-w-0 flex-1">
       <strong>Mode Event aktif: {{ active.name }}</strong>
       <span class="block text-sm text-muted">Setiap tap & koneksi baru diberi label event ini sampai {{ dateTime(active.ends_at) }}.</span>
     </span>
-    <AppButton variant="secondary" :to="`/events/${active.id}`">Lihat ringkasan</AppButton>
-    <AppButton variant="ghost" :loading="busy" @click="stop">Matikan</AppButton>
+    <div class="col-span-2 grid grid-cols-2 gap-2 sm:col-span-1 sm:flex">
+      <AppButton variant="secondary" :to="`/events/${active.id}`">Lihat ringkasan</AppButton>
+      <AppButton variant="ghost" :loading="busy" @click="stop">Matikan</AppButton>
+    </div>
   </div>
   <p v-else class="text-sm text-muted">Sedang di pameran, seminar, atau networking? Aktifkan Mode Event agar semua koneksi dari acara itu terkumpul dan bisa diekspor sekaligus.</p>
 
-  <form class="flex flex-wrap gap-2" @submit.prevent="list.search">
-    <AppInput v-model="list.filters.q" type="search" placeholder="Cari nama atau lokasi event" aria-label="Cari event" class="max-w-xs" />
-    <AppSelect v-model="list.filters.when" placeholder="Semua event" :options="[{ value: 'upcoming', label: 'Berlangsung & akan datang' }, { value: 'past', label: 'Sudah selesai' }]" class="!w-auto" aria-label="Waktu" />
-    <AppButton type="submit" variant="secondary">Cari</AppButton>
+  <form class="grid grid-cols-[minmax(0,1fr)_auto] gap-2 sm:flex sm:flex-wrap" @submit.prevent="list.search">
+    <AppInput v-model="list.filters.q" type="search" placeholder="Cari nama atau lokasi event" aria-label="Cari event" class="sm:max-w-xs" />
+    <AppButton type="submit" variant="secondary" class="sm:order-last">Cari</AppButton>
+    <AppSelect v-model="list.filters.when" placeholder="Semua event" :options="[{ value: 'upcoming', label: 'Berlangsung & akan datang' }, { value: 'past', label: 'Sudah selesai' }]" class="col-span-2 sm:col-span-1 sm:!w-auto" aria-label="Waktu" />
   </form>
 
   <DataTable

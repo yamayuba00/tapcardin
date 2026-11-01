@@ -75,22 +75,34 @@ async function destroy() {
     <AppPanel title="Notifikasi">
       <AppSkeleton v-if="!settings" class="!h-40" />
       <div v-else class="grid gap-4">
-        <AppTable>
-          <thead><tr><th>Kejadian</th><th>Di aplikasi</th><th>Email</th></tr></thead>
-          <tbody>
-            <tr v-for="(label, k) in settings.notification_types" :key="k">
-              <td>{{ label }}</td>
-              <td><AppToggle v-model="prefs[k].inapp" :aria-label="`${label} di aplikasi`" /></td>
-              <td><AppToggle v-model="prefs[k].email" :aria-label="`${label} via email`" /></td>
-            </tr>
-          </tbody>
-        </AppTable>
+        <!-- Ponsel: tiap kejadian jadi satu blok dengan dua saklar bersebelahan (tabel 3 kolom terlalu sempit) -->
+        <ul class="grid gap-3 sm:hidden">
+          <li v-for="(label, k) in settings.notification_types" :key="k" class="grid gap-1 rounded-md border border-line p-3">
+            <span class="text-sm font-medium">{{ label }}</span>
+            <div class="flex flex-wrap gap-x-6">
+              <AppToggle v-model="prefs[k].inapp" label="Di aplikasi" />
+              <AppToggle v-model="prefs[k].email" label="Email" />
+            </div>
+          </li>
+        </ul>
+        <div class="hidden sm:block">
+          <AppTable>
+            <thead><tr><th>Kejadian</th><th>Di aplikasi</th><th>Email</th></tr></thead>
+            <tbody>
+              <tr v-for="(label, k) in settings.notification_types" :key="k">
+                <td>{{ label }}</td>
+                <td><AppToggle v-model="prefs[k].inapp" :aria-label="`${label} di aplikasi`" /></td>
+                <td><AppToggle v-model="prefs[k].email" :aria-label="`${label} via email`" /></td>
+              </tr>
+            </tbody>
+          </AppTable>
+        </div>
         <div><AppButton variant="secondary" :loading="busy" @click="save({ notification_prefs: prefs }, 'Preferensi notifikasi disimpan')">Simpan preferensi</AppButton></div>
       </div>
     </AppPanel>
 
     <AppPanel v-if="settings" title="Paket">
-      <template #actions><AppBadge tone="outline">{{ settings.plan.name }}</AppBadge><AppButton variant="secondary" to="/billing">Kelola paket & tagihan</AppButton></template>
+      <template #actions><AppBadge tone="outline">{{ settings.plan.name }}</AppBadge><AppButton variant="secondary" to="/billing">Kelola paket</AppButton></template>
       <div class="grid gap-4">
         <AppMeter v-for="(label, k) in USAGE" :key="k" :label="label" :value="settings.plan.usage[k]" :max="settings.plan.limits[k]" />
         <div><AppButton variant="ghost" @click="showPerms = !showPerms"><ShieldCheck class="size-5" /> Apa yang bisa saya lakukan?</AppButton></div>
