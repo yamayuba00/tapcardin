@@ -2,7 +2,7 @@
 // PL-07 detail — riwayat status, tap terbaru, ubah status (alasan wajib), terbitkan ulang kode aktivasi.
 import { ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { CopyPlus, Eye, RefreshCw } from 'lucide-vue-next'
+import { CopyPlus, Eye, RefreshCw, UserCheck } from 'lucide-vue-next'
 import AppBadge from '@/components/ui/AppBadge/index.vue'
 import AppButton from '@/components/ui/AppButton/index.vue'
 import AppField from '@/components/ui/AppField/index.vue'
@@ -27,7 +27,19 @@ const reason = ref('')
 const errors = ref({})
 const newCode = ref(null)
 
-watch(card, (c) => (status.value = c?.targets[0]?.value ?? ''))
+const owner = ref('')
+
+watch(card, (c) => {
+  status.value = c?.targets[0]?.value ?? ''
+  owner.value = c?.assigned?.email ?? ''
+})
+
+async function assign() {
+  errors.value = {}
+  try {
+    card.value = (await run(() => adminApi.assignCard(token, owner.value || null), owner.value ? 'Pemilik kartu ditandai.' : 'Penandaan pemilik dilepas.')).data
+  } catch (e) { errors.value = e.fields || {} }
+}
 
 async function changeStatus() {
   errors.value = {}
@@ -83,6 +95,8 @@ async function reissue() {
       <AppPanel title="Detail">
         <dl class="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-2 text-sm">
           <dt class="text-muted">Pemegang</dt><dd><RouterLink v-if="card.holder" :to="`/users/${card.holder.id}`">{{ card.holder.email }}</RouterLink><span v-else>—</span></dd>
+          <dt class="text-muted">Pemilik ditandai</dt><dd><RouterLink v-if="card.assigned" :to="`/users/${card.assigned.id}`">{{ card.assigned.email }}</RouterLink><span v-else>—</span></dd>
+          <dt class="text-muted">Chip terikat</dt><dd>{{ card.uid_bound ? 'Ya, UID chip tercatat' : 'Belum di-encode' }}</dd>
           <dt class="text-muted">Batch</dt><dd><RouterLink v-if="card.batch" :to="`/batches/${card.batch.id}`">{{ card.batch.code }}</RouterLink> #{{ card.sequence }}</dd>
           <dt class="text-muted">Di-encode</dt><dd>{{ dateTime(card.encoded_at) }}</dd>
           <dt class="text-muted">Lolos QC</dt><dd>{{ dateTime(card.qc_passed_at) }}</dd>
@@ -90,6 +104,14 @@ async function reissue() {
           <dt class="text-muted">Diaktifkan</dt><dd>{{ dateTime(card.activated_at) }}</dd>
           <dt class="text-muted">Percobaan kode</dt><dd>{{ card.activation_attempts }}<span v-if="card.activation_locked_until"> · terkunci s/d {{ dateTime(card.activation_locked_until) }}</span></dd>
         </dl>
+      </AppPanel>
+
+      <AppPanel v-if="auth.can('cards.manage') && card.can_assign" title="Pemilik kartu">
+        <form class="grid gap-4" @submit.prevent="assign">
+          <p class="text-sm text-muted">Tandai siapa pemilik kartu ini sebelum diaktifkan. Pemilik yang ditandai mengaktifkan tanpa kode, cukup masuk dengan emailnya. Pengguna lain tetap butuh kode aktivasi.</p>
+          <AppField label="Email pemilik (kosongkan untuk melepas)" :error="errors.email?.[0]"><AppInput v-model="owner" type="email" maxlength="190" placeholder="pemilik@example.com" /></AppField>
+          <div><AppButton type="submit" variant="secondary" :loading="busy"><UserCheck class="size-5" /> Simpan pemilik</AppButton></div>
+        </form>
       </AppPanel>
 
       <AppPanel v-if="auth.can('cards.manage')" title="Ubah status">

@@ -55,6 +55,7 @@ Route::middleware(['auth', 'platform'])->prefix('api')->name('api.')->group(func
     Route::post('/cards/{token}/status', [CardController::class, 'status'])->name('cards.status');
     Route::post('/cards/{token}/replacement-batch', [CardController::class, 'replacementBatch'])->name('cards.replacement-batch');
     Route::post('/cards/{token}/reissue-code', [CardController::class, 'reissueCode'])->name('cards.reissue');
+    Route::post('/cards/{token}/assign', [CardController::class, 'assign'])->name('cards.assign');
     Route::post('/cards/{token}/encoded', [StationController::class, 'encoded'])->name('cards.encoded');
     Route::post('/cards/{token}/qc', [StationController::class, 'qcResult'])->name('cards.qc');
 

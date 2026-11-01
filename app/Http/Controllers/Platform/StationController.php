@@ -64,9 +64,12 @@ class StationController extends PlatformController
             'nfc_url' => ['nullable', 'string', 'max:300'],
             'qr_url' => ['nullable', 'string', 'max:300'],
             'revoke_on_fail' => ['boolean'],
+            'without_qr' => ['boolean'],
         ]);
         $card = Card::acrossTenants()->where('card_token', $token)->firstOrFail();
 
-        return response()->json(['data' => $qc->handle($card, $data['nfc_url'] ?? null, $data['qr_url'] ?? null, $data['revoke_on_fail'] ?? false)]);
+        return response()->json(['data' => $qc->handle(
+            $card, $data['nfc_url'] ?? null, $data['qr_url'] ?? null, $data['revoke_on_fail'] ?? false, $data['without_qr'] ?? false,
+        )]);
     }
 }

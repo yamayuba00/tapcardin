@@ -5,11 +5,14 @@ namespace App\Http\Controllers\Platform;
 use App\Actions\Cards\ChangeCardStatus;
 use App\Actions\Production\CreateBatch;
 use App\Enums\CardStatus;
+use App\Enums\TenantType;
 use App\Exceptions\ApiError;
 use App\Models\Batch;
 use App\Models\Card;
 use App\Models\CardStatusHistory;
 use App\Models\Tap;
+use App\Models\Tenant;
+use App\Models\User;
 use App\Support\Audit;
 use App\Support\Crockford;
 use App\Support\Http\Table;
@@ -17,6 +20,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 /** PL-07 — cari kartu via token/kode pendek/email; riwayat status; ubah status; terbitkan ulang kode aktivasi. */
 class CardController extends PlatformController
@@ -26,10 +30,11 @@ class CardController extends PlatformController
         $this->can('cards.view');
         $q = trim((string) $request->query('q'));
         $code = Crockford::normalize($q);
-        $cards = Card::acrossTenants()->with(['holder', 'batch'])
+        $cards = Card::acrossTenants()->with(['holder', 'assignee', 'batch'])
             ->when($q, fn ($w) => $w->where(fn ($x) => $x->where('card_token', $q)
                 ->orWhere('short_code', $code)
-                ->orWhereHas('holder', fn ($h) => $h->where('email', 'ilike', "%$q%"))))
+                ->orWhereHas('holder', fn ($h) => $h->where('email', 'ilike', "%$q%"))
+                ->orWhereHas('assignee', fn ($h) => $h->where('email', 'ilike', "%$q%"))))
             ->when($request->query('status'), fn ($w, $s) => $w->where('status', $s))
             ->when($request->boolean('replacement'), fn ($w) => $w->whereNotNull('replacement_requested_at')
                 ->where('status', CardStatus::Lost->value)
@@ -41,10 +46,14 @@ class CardController extends PlatformController
     public function show(string $token): JsonResponse
     {
         $this->can('cards.view');
-        $card = $this->find($token)->load(['holder', 'batch']);
+        $card = $this->find($token)->load(['holder', 'batch', 'assignee']);
 
         return $this->ok(self::summary($card) + [
             'url' => $card->resolverUrl(),
+            'assigned' => $card->assignee ? ['id' => $card->assignee->public_id, 'email' => $card->assignee->email] : null,
+            'can_assign' => in_array($card->status, [CardStatus::Manufactured, CardStatus::Unclaimed], true)
+                && (! $card->tenant_id || Tenant::find($card->tenant_id)?->type === TenantType::Personal),
+            'uid_bound' => $card->chip_uid_hash !== null,
             'encoded_at' => self::dt($card->encoded_at),
             'qc_passed_at' => self::dt($card->qc_passed_at),
             'shipped_at' => self::dt($card->shipped_at),
@@ -74,6 +83,33 @@ class CardController extends PlatformController
             'reason' => ['required', 'string', 'max:200'],
         ], ['reason.required' => 'Alasan wajib diisi.', 'status.in' => 'Status tujuan tidak diizinkan untuk kartu ini.']);
         $status->handle($card, CardStatus::from($data['status']), $data['reason'], platform: true);
+
+        return $this->show($token);
+    }
+
+    /**
+     * Tandai (atau lepas) pemilik kartu sebelum diaktifkan. Pemilik yang ditandai mengaktifkan tanpa kode, cukup masuk dengan emailnya;
+     * pengguna lain tetap butuh kode aktivasi. Berguna untuk kartu NFC polos yang dibagikan ke orang tertentu.
+     */
+    public function assign(Request $request, string $token): JsonResponse
+    {
+        $this->can('cards.manage');
+        $card = $this->find($token)->load('assignee');
+        if (! in_array($card->status, [CardStatus::Manufactured, CardStatus::Unclaimed], true)) {
+            throw new ApiError('card_active', 'Pemilik hanya bisa ditandai sebelum kartu diaktifkan.');
+        }
+        if ($card->tenant_id && Tenant::find($card->tenant_id)?->type !== TenantType::Personal) {
+            throw new ApiError('company_card', 'Kartu perusahaan ditugaskan oleh admin workspace-nya.');
+        }
+        $data = $request->validate(['email' => ['nullable', 'email', 'max:190']]);
+        $user = null;
+        if (! empty($data['email'])) {
+            $user = User::whereRaw('lower(email) = ?', [strtolower($data['email'])])->first()
+                ?? throw ValidationException::withMessages(['email' => 'Pengguna dengan email ini belum terdaftar. Minta mereka masuk sekali ke TapCard.']);
+        }
+        $before = $card->assignee?->email;
+        $card->forceFill(['assigned_user_id' => $user?->id, 'activation_attempts' => 0, 'activation_locked_until' => null])->save();
+        Audit::platform('card.assigned', $card, ['assigned' => $before], ['assigned' => $user?->email]);
 
         return $this->show($token);
     }
@@ -127,6 +163,8 @@ class CardController extends PlatformController
             'form' => $c->form,
             'chip_type' => $c->chip_type?->value,
             'holder' => $c->relationLoaded('holder') && $c->holder ? ['id' => $c->holder->public_id, 'email' => $c->holder->email] : null,
+            // pemilik yang ditandai sebelum kartu diaktifkan (setelah aktif, pemegang yang berlaku)
+            'assigned' => $c->relationLoaded('assignee') && $c->assignee ? ['id' => $c->assignee->public_id, 'email' => $c->assignee->email] : null,
             'batch' => $c->relationLoaded('batch') && $c->batch ? ['id' => $c->batch->public_id, 'code' => $c->batch->code] : null,
             'sequence' => $c->sequence,
             'replacement_requested' => $c->replacement_requested_at !== null,

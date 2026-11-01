@@ -36,7 +36,11 @@ const columns = computed(() => [
     <template #cell-token="{ row }"><RouterLink :to="`/cards/${row.token}`" class="font-mono">{{ row.token }}</RouterLink></template>
     <template #cell-short_code="{ row }"><span class="font-mono">{{ row.short_code }}</span></template>
     <template #cell-status="{ row }"><AppBadge :tone="row.tone">{{ row.status_label }}</AppBadge></template>
-    <template #cell-holder="{ row }">{{ row.holder?.email ?? '—' }}</template>
+    <template #cell-holder="{ row }">
+      <template v-if="row.holder">{{ row.holder.email }}</template>
+      <span v-else-if="row.assigned" class="text-muted" title="Pemilik ditandai, kartu belum diaktifkan">{{ row.assigned.email }} · menunggu aktivasi</span>
+      <template v-else>—</template>
+    </template>
     <template #cell-batch="{ row }"><span class="font-mono">{{ row.batch?.code }} #{{ row.sequence }}</span></template>
     <template #cell-encoded="{ row }"><component :is="row.encoded ? Check : Minus" :class="['size-4', row.encoded ? 'text-ok' : 'text-muted']" :aria-label="row.encoded ? 'Sudah' : 'Belum'" /></template>
     <template #cell-qc="{ row }"><component :is="row.qc ? Check : Minus" :class="['size-4', row.qc ? 'text-ok' : 'text-muted']" :aria-label="row.qc ? 'Lolos' : 'Belum'" /></template>

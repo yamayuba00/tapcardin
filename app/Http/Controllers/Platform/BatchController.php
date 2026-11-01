@@ -43,7 +43,7 @@ class BatchController extends PlatformController
     public function cards(Request $request, Batch $batch): JsonResponse
     {
         $this->can('production.manage');
-        $q = $batch->cards()->getQuery()->with(['holder', 'batch'])
+        $q = $batch->cards()->getQuery()->with(['holder', 'assignee', 'batch'])
             ->when($request->query('progress') === 'pending_encode', fn ($w) => $w->whereNull('encoded_at'))
             ->when($request->query('progress') === 'pending_qc', fn ($w) => $w->whereNotNull('encoded_at')->whereNull('qc_passed_at'))
             ->when($request->query('progress') === 'done', fn ($w) => $w->whereNotNull('qc_passed_at'));

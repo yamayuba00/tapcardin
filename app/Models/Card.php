@@ -62,6 +62,12 @@ class Card extends Model
         return $this->belongsTo(User::class, 'holder_user_id');
     }
 
+    /** Pembeli / pemilik yang ditandai sebelum aktivasi (boleh mengaktifkan tanpa kode). */
+    public function assignee(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assigned_user_id');
+    }
+
     public function batch(): BelongsTo
     {
         return $this->belongsTo(Batch::class);

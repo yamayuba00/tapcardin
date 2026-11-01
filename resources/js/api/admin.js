@@ -25,6 +25,7 @@ export const adminApi = {
   card: (token) => http.get(`/api/cards/${token}`),
   cardStatus: (token, status, reason) => http.post(`/api/cards/${token}/status`, { status, reason }),
   reissueCode: (token) => http.post(`/api/cards/${token}/reissue-code`),
+  assignCard: (token, email) => http.post(`/api/cards/${token}/assign`, { email }),
   encoded: (token, uid) => http.post(`/api/cards/${token}/encoded`, { uid }),
   qc: (token, body) => http.post(`/api/cards/${token}/qc`, body),
   replacementBatch: (token) => http.post(`/api/cards/${token}/replacement-batch`),

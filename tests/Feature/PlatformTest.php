@@ -116,6 +116,41 @@ class PlatformTest extends TestCase
         $this->assertDatabaseHas('audit_logs', ['action' => 'card.encoded']);
     }
 
+    public function test_blank_nfc_card_qc_without_qr_and_owner_assignment(): void
+    {
+        $owner = $this->makeUser('pemilik@example.com', 'Pemilik');
+        $other = $this->makeUser('lain@example.com', 'Orang Lain');
+        $this->actingAs($this->staff('production'));
+        $card = $this->makeCard(CardStatus::Manufactured);
+        $card->update(['encoded_at' => null, 'qc_passed_at' => null]);
+
+        // kartu polos tanpa QR: QC biasa gagal, mode tanpa QR cukup memeriksa URL di chip
+        $this->api('POST', "/cards/{$card->card_token}/encoded", ['uid' => '04A1B2C3D4E5F6'])->assertOk();
+        $this->api('POST', "/cards/{$card->card_token}/qc", ['nfc_url' => $card->resolverUrl()])->assertJsonPath('data.reason', 'URL QR tidak terbaca.');
+        $this->api('POST', "/cards/{$card->card_token}/qc", ['nfc_url' => 'https://x.test/c/ABCDEFGHIJ', 'without_qr' => true])
+            ->assertJsonPath('data.passed', false)->assertJsonPath('data.reason', 'Kartu tidak sesuai urutan yang diperiksa.');
+        $this->api('POST', "/cards/{$card->card_token}/qc", ['nfc_url' => $card->resolverUrl(), 'without_qr' => true])->assertJsonPath('data.passed', true);
+        $card->update(['status' => CardStatus::Unclaimed]);
+
+        // tandai pemilik: terlihat di detail & daftar, email tak dikenal ditolak
+        $this->api('POST', "/cards/{$card->card_token}/assign", ['email' => 'tidakada@example.com'])->assertStatus(422);
+        $this->api('POST', "/cards/{$card->card_token}/assign", ['email' => 'pemilik@example.com'])
+            ->assertOk()->assertJsonPath('data.assigned.email', 'pemilik@example.com')->assertJsonPath('data.uid_bound', true);
+        $this->api('GET', '/cards?q=pemilik@example.com')->assertJsonPath('data.0.assigned.email', 'pemilik@example.com');
+
+        // pemilik yang ditandai aktif tanpa kode; pengguna lain tanpa kode ditolak
+        $this->actingAs($other)->postJson($this->host('app', '/api/cards/activate'), ['token' => $card->card_token])->assertStatus(422);
+        $this->actingAs($owner)->postJson($this->host('app', '/api/cards/activate'), ['token' => $card->card_token])->assertOk();
+
+        $card->refresh();
+        $this->assertSame($owner->id, $card->holder_user_id);
+        $this->assertNotNull($card->activated_at);
+
+        // setelah aktif, penandaan tidak bisa diubah lagi
+        $this->actingAs($this->staff('production', 'staf2@tapcard.test'));
+        $this->api('POST', "/cards/{$card->card_token}/assign", ['email' => 'lain@example.com'])->assertStatus(422)->assertJsonPath('error.code', 'card_active');
+    }
+
     public function test_duplicate_chip_uid_is_rejected(): void
     {
         $this->actingAs($this->staff('production'));

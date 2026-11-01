@@ -30,6 +30,7 @@ const qrUrl = ref('')
 const state = ref('idle') // idle | ok | fail | done
 const message = ref('')
 const revoke = ref(false)
+const plain = ref(false) // kartu polos tanpa QR tercetak: cukup periksa URL di chip NFC
 const video = ref(null)
 const scanning = ref(false)
 let abort
@@ -65,6 +66,10 @@ async function readNfc() {
   try {
     nfcUrl.value = (await readOnce({ signal: abort.signal })).url || ''
     abort.abort()
+    if (plain.value) {
+      submit()
+      return
+    }
     message.value = 'Chip terbaca. Lanjut scan QR di kartu.'
     if (canQr.value) startQr()
   } catch (e) { message.value = e.message }
@@ -79,7 +84,9 @@ async function startQr() {
 }
 
 async function submit() {
-  const { data } = await adminApi.qc(card.value.token, { nfc_url: nfcUrl.value, qr_url: qrUrl.value, revoke_on_fail: revoke.value })
+  const { data } = await adminApi.qc(card.value.token, {
+    nfc_url: nfcUrl.value, qr_url: plain.value ? null : qrUrl.value, revoke_on_fail: revoke.value, without_qr: plain.value,
+  })
   if (data.passed) {
     state.value = 'ok'
     message.value = `Kartu #${card.value.sequence} lolos QC`
@@ -147,7 +154,7 @@ async function submit() {
               <AppInput v-model="nfcUrl" :placeholder="`${config.resolverUrl}/c/…`" aria-label="URL dari chip NFC" />
             </div>
           </li>
-          <li class="grid gap-2 rounded-md border border-line bg-bg/40 p-3">
+          <li v-if="!plain" class="grid gap-2 rounded-md border border-line bg-bg/40 p-3">
             <span class="flex items-center gap-2 text-sm font-semibold">
               <span class="grid size-6 place-items-center rounded-full text-xs" :class="qrUrl ? 'bg-solid-ok text-on-solid' : 'border border-line-strong'"><Check v-if="qrUrl" class="size-3.5" /><template v-else>2</template></span>
               Scan QR di kartu
@@ -160,9 +167,10 @@ async function submit() {
           </li>
         </ol>
 
+        <AppCheckbox v-model="plain">Kartu polos (tanpa QR tercetak): periksa chip NFC saja</AppCheckbox>
         <AppCheckbox v-model="revoke">Jika gagal, cabut kartu ini (untuk dicetak ulang)</AppCheckbox>
         <div class="flex flex-wrap justify-center gap-2">
-          <AppButton size="lg" :disabled="!nfcUrl || !qrUrl" @click="submit"><ScanLine class="size-5" /> 3 · Periksa kartu</AppButton>
+          <AppButton size="lg" :disabled="!nfcUrl || (!plain && !qrUrl)" @click="submit"><ScanLine class="size-5" /> 3 · Periksa kartu</AppButton>
           <AppButton variant="secondary" size="lg" @click="next(card.sequence)">Lewati kartu ini</AppButton>
         </div>
       </div>
