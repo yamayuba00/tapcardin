@@ -11,7 +11,7 @@ import StationScreen from '@/components/common/StationScreen/index.vue'
 import { adminApi } from '@/api/admin'
 import { useAsync } from '@/composables/useAsync'
 import { beep } from '@/lib/feedback'
-import { lock, nfcSupported, readOnce, writeUrl } from '@/lib/nfc'
+import { lock, nfcErrorMessage, nfcSupported, readOnce, writeUrl } from '@/lib/nfc'
 
 const route = useRoute()
 const supported = nfcSupported()
@@ -47,15 +47,47 @@ async function report(uid) {
   setTimeout(() => next(), 1200)
 }
 
+const MAX_TRIES = 3
+const TAP_TIMEOUT_MS = 20000
+
+/** Batalkan proses NFC yang menggantung bila kartu tidak ditempel dalam waktu wajar. */
+function withTimeout(ctrl, ms = TAP_TIMEOUT_MS) {
+  const t = setTimeout(() => ctrl.abort(), ms)
+  return () => clearTimeout(t)
+}
+
+/**
+ * Tulis URL. "IO error" berarti kartu bergeser di tengah penulisan, jadi diulang otomatis (sampai 3 kali)
+ * selama pengguna menempelkan kartu lagi; galat lain (izin, chip terkunci, tidak didukung) langsung dilaporkan.
+ */
+async function writeWithRetry() {
+  for (let attempt = 1; attempt <= MAX_TRIES; attempt++) {
+    const ctrl = new AbortController()
+    const done = withTimeout(ctrl)
+    abort = ctrl
+    try {
+      message.value = attempt === 1 ? 'Tempel kartu dan tahan…' : `Tempel ulang dan tahan (percobaan ${attempt}/${MAX_TRIES})…`
+      await writeUrl(card.value.url, { signal: ctrl.signal })
+      return
+    } catch (e) {
+      if (e?.name !== 'NetworkError' || attempt === MAX_TRIES) throw e
+      beep(false)
+    } finally {
+      done()
+    }
+  }
+}
+
 async function encode() {
   state.value = 'waiting'
-  message.value = 'Tempel kartu…'
   abort?.abort()
-  abort = new AbortController()
   try {
-    await writeUrl(card.value.url)
+    await writeWithRetry()
     message.value = 'Memverifikasi… tahan kartu'
-    const read = await readOnce({ signal: abort.signal })
+    abort = new AbortController()
+    const done = withTimeout(abort)
+    let read
+    try { read = await readOnce({ signal: abort.signal }) } finally { done() }
     if (read.url !== card.value.url) throw new Error('URL di chip tidak cocok. Ulangi tulis sebelum dikunci.')
     if (lockAfter.value) await lock()
     abort.abort()
@@ -63,7 +95,7 @@ async function encode() {
   } catch (e) {
     abort?.abort()
     state.value = 'fail'
-    message.value = e.message || 'Gagal menulis kartu'
+    message.value = nfcErrorMessage(e)
     beep(false)
   }
 }
@@ -75,7 +107,7 @@ async function manual() {
 
 <template>
   <PageHeader eyebrow="Produksi" title="Stasiun encode">
-    <AppSelect v-if="batches?.length" v-model="batch" :options="batches.map((b) => ({ value: b.id, label: `${b.code} · ${b.quantity} kartu · ${b.chip.toUpperCase()}` }))" class="!w-auto" aria-label="Batch" />
+    <AppSelect v-if="batches?.length" v-model="batch" :options="batches.map((b) => ({ value: b.id, label: `${b.code} · ${b.quantity} kartu · ${b.chip.toUpperCase()}` }))" class="!w-full sm:!w-auto" aria-label="Batch" />
   </PageHeader>
 
   <p v-if="!supported" class="rounded-md border border-line-strong bg-surface-2 px-4 py-3 text-sm">
@@ -85,18 +117,18 @@ async function manual() {
 
   <StationScreen :state="state === 'ok' ? 'ok' : state === 'fail' ? 'fail' : 'idle'">
     <p v-if="state === 'done'" class="font-display text-2xl">Semua kartu sudah di-encode</p>
-    <div v-else-if="card" class="grid justify-items-center gap-4">
+    <div v-else-if="card" class="grid w-full min-w-0 max-w-xl justify-items-center gap-4">
       <span class="label !text-current opacity-80">Urutan · sisa {{ card.remaining }} dari {{ card.total }}</span>
-      <span class="num text-[64px] leading-none">#{{ card.sequence }}</span>
-      <p class="font-display text-2xl">{{ message || card.holder || 'Stok' }}</p>
-      <p class="font-mono text-sm opacity-80">{{ card.short_code }} · {{ card.url }}</p>
+      <span class="num text-[56px] leading-none sm:text-[64px]">#{{ card.sequence }}</span>
+      <p class="font-display text-xl break-words sm:text-2xl" role="status">{{ message || card.holder || 'Stok' }}</p>
+      <p class="max-w-full font-mono text-xs break-all opacity-80 sm:text-sm">{{ card.short_code }} · {{ card.url }}</p>
       <div class="flex flex-wrap justify-center gap-2">
         <AppButton v-if="supported" size="lg" :disabled="state === 'waiting'" @click="encode">{{ state === 'fail' ? 'Ulangi' : 'Tulis' }}</AppButton>
         <AppButton variant="secondary" size="lg" @click="next(card.sequence)">Lewati</AppButton>
       </div>
       <AppCheckbox v-if="supported" v-model="lockAfter">Kunci chip permanen setelah verifikasi</AppCheckbox>
-      <form v-else class="flex flex-wrap justify-center gap-2" @submit.prevent="manual">
-        <AppInput v-model="manualUid" placeholder="UID chip, mis. 04A1B2C3D4E5F6" class="max-w-xs" />
+      <form v-else class="flex w-full flex-wrap justify-center gap-2" @submit.prevent="manual">
+        <AppInput v-model="manualUid" placeholder="UID chip, mis. 04A1B2C3D4E5F6" class="max-w-xs min-w-0" />
         <AppButton type="submit" variant="secondary" :disabled="manualUid.length < 8">Catat</AppButton>
       </form>
     </div>

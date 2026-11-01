@@ -71,7 +71,7 @@ const limitText = (v) => (v === null || v === undefined ? '∞' : num(v))
     <table class="w-full min-w-[640px] border-collapse text-sm">
       <thead>
         <tr class="border-b border-line align-top">
-          <th scope="col" class="sticky left-0 z-10 w-56 bg-surface px-4 py-4 text-left font-medium text-muted">Paket</th>
+          <th scope="col" class="sticky left-0 z-10 w-36 min-w-36 bg-surface px-4 py-4 text-left font-medium text-muted sm:w-56">Paket</th>
           <th v-for="p in shown" :key="p.key" scope="col" class="px-4 py-4 text-left font-normal">
             <div class="grid gap-2">
               <div class="flex items-center gap-2">

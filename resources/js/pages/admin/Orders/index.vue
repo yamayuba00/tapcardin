@@ -27,8 +27,8 @@ const setStatus = (v) => { list.filters.status = v; list.search() }
   <PageHeader eyebrow="Produksi" title="Pesanan" />
   <div class="flex flex-wrap items-center gap-3">
     <AppSegmented :model-value="list.filters.status" label="Status pesanan" :options="TABS" @update:model-value="setStatus" />
-    <form class="ml-auto flex gap-2" @submit.prevent="list.search">
-      <AppInput v-model="list.filters.q" placeholder="No. pesanan, penerima, workspace" aria-label="Cari pesanan" class="max-w-[260px]" />
+    <form class="flex w-full gap-2 sm:ml-auto sm:w-auto" @submit.prevent="list.search">
+      <AppInput v-model="list.filters.q" placeholder="No. pesanan, penerima, workspace" aria-label="Cari pesanan" class="min-w-0 flex-1 sm:max-w-[260px]" />
       <AppButton type="submit" variant="secondary">Cari</AppButton>
     </form>
   </div>

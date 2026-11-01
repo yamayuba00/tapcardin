@@ -15,10 +15,27 @@ export async function readOnce({ signal } = {}) {
   })
 }
 
-export async function writeUrl(url) {
+export async function writeUrl(url, { signal } = {}) {
   // eslint-disable-next-line no-undef
   const w = new NDEFReader()
-  await w.write({ records: [{ recordType: 'url', data: url }] }, { overwrite: true })
+  await w.write({ records: [{ recordType: 'url', data: url }] }, { overwrite: true, signal })
+}
+
+/**
+ * Pesan galat Web NFC dalam bahasa Indonesia. "Failed to write due to an IO error" (NetworkError) berarti
+ * koneksi ke chip putus di tengah penulisan: kartu bergeser / terlalu jauh dari antena, atau chip sudah dikunci permanen.
+ */
+export function nfcErrorMessage(e) {
+  const name = e?.name
+  const text = String(e?.message ?? '')
+  if (name === 'NetworkError' || /IO error/i.test(text)) {
+    return 'Kartu terlepas saat ditulis. Tempelkan kartu tepat di area NFC ponsel (biasanya dekat kamera belakang), jangan digeser sampai selesai. Kartu yang sudah dikunci permanen tidak bisa ditulis ulang.'
+  }
+  if (name === 'NotAllowedError') return 'Izin NFC ditolak. Aktifkan NFC di ponsel dan izinkan situs ini memakai NFC (Chrome → Setelan situs).'
+  if (name === 'NotSupportedError') return 'NFC tidak tersedia atau kartu tidak didukung. Pastikan NFC menyala dan kartu bertipe NTAG.'
+  if (name === 'NotReadableError') return 'Kartu tidak terbaca. Coba tempel lagi dengan posisi lebih diam.'
+  if (name === 'AbortError') return 'Tidak ada kartu terdeteksi. Tekan Tulis lalu tempelkan kartu.'
+  return text || 'Gagal memproses kartu.'
 }
 
 export async function lock() {

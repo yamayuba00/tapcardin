@@ -76,7 +76,7 @@ async function submit() {
     <template #cell-status="{ row: s }"><AppBadge :tone="s.status === 'active' ? 'ok' : 'muted'">{{ s.status === 'active' ? 'aktif' : 'dicabut' }}</AppBadge></template>
     <template #cell-last_reverified_at="{ row: s }"><span class="font-mono">{{ dateTime(s.last_reverified_at) }}</span></template>
     <template #cell-actions="{ row: s }">
-      <span class="whitespace-nowrap">
+      <span class="flex flex-wrap gap-1">
         <AppButton variant="ghost" :disabled="busy" @click="act(() => adminApi.resetStaffPassword(s.id), 'Password sementara dibuat.')">
           <KeyRound class="size-5" /> {{ s.has_password ? 'Reset password' : 'Buat password' }}
         </AppButton>

@@ -103,7 +103,7 @@ async function submit() {
 <template>
   <PageHeader eyebrow="Produksi" title="Stasiun QC (quality control)">
     <AppSelect
-      v-if="batches?.length" v-model="batch" class="!w-auto min-w-64" aria-label="Pilih batch"
+      v-if="batches?.length" v-model="batch" class="!w-full sm:!w-auto sm:min-w-64" aria-label="Pilih batch"
       :options="batches.map((b) => ({ value: b.id, label: `${b.code} · ${b.quantity} kartu`, description: b.status }))"
     />
   </PageHeader>
@@ -149,9 +149,9 @@ async function submit() {
               <span class="grid size-6 place-items-center rounded-full text-xs" :class="nfcUrl ? 'bg-solid-ok text-on-solid' : 'border border-line-strong'"><Check v-if="nfcUrl" class="size-3.5" /><template v-else>1</template></span>
               Baca chip NFC
             </span>
-            <div class="flex gap-2">
-              <AppButton v-if="canNfc" variant="secondary" @click="readNfc"><Nfc class="size-5" /> Tap kartu</AppButton>
-              <AppInput v-model="nfcUrl" :placeholder="`${config.resolverUrl}/c/…`" aria-label="URL dari chip NFC" />
+            <div class="grid gap-2 sm:flex">
+              <AppButton v-if="canNfc" variant="secondary" class="sm:flex-none" @click="readNfc"><Nfc class="size-5" /> Tap kartu</AppButton>
+              <AppInput v-model="nfcUrl" class="min-w-0 sm:flex-1" :placeholder="`${config.resolverUrl}/c/…`" aria-label="URL dari chip NFC" />
             </div>
           </li>
           <li v-if="!plain" class="grid gap-2 rounded-md border border-line bg-bg/40 p-3">
@@ -159,9 +159,9 @@ async function submit() {
               <span class="grid size-6 place-items-center rounded-full text-xs" :class="qrUrl ? 'bg-solid-ok text-on-solid' : 'border border-line-strong'"><Check v-if="qrUrl" class="size-3.5" /><template v-else>2</template></span>
               Scan QR di kartu
             </span>
-            <div class="flex gap-2">
-              <AppButton v-if="canQr" variant="secondary" :disabled="scanning" @click="startQr"><QrCode class="size-5" /> {{ scanning ? 'Memindai…' : 'Scan' }}</AppButton>
-              <AppInput v-model="qrUrl" :placeholder="`${config.resolverUrl}/c/…?src=qr`" aria-label="URL dari QR" />
+            <div class="grid gap-2 sm:flex">
+              <AppButton v-if="canQr" variant="secondary" class="sm:flex-none" :disabled="scanning" @click="startQr"><QrCode class="size-5" /> {{ scanning ? 'Memindai…' : 'Scan' }}</AppButton>
+              <AppInput v-model="qrUrl" class="min-w-0 sm:flex-1" :placeholder="`${config.resolverUrl}/c/…?src=qr`" aria-label="URL dari QR" />
             </div>
             <video v-show="scanning" ref="video" class="w-full max-w-[360px] justify-self-center rounded-md bg-surface-2" muted playsinline></video>
           </li>

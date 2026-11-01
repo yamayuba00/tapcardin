@@ -35,11 +35,11 @@ const setStatus = (v) => { list.filters.status = v; list.search() }
   <AppPanel v-if="auth.can('tenants.manage')" title="Tambah domain"><DomainAdd @added="list.reload()" /></AppPanel>
 
   <div class="flex flex-wrap items-center gap-2">
-    <form class="flex gap-2" @submit.prevent="list.search">
-      <AppInput v-model="list.filters.q" placeholder="Cari domain" aria-label="Cari domain" class="max-w-[240px]" />
+    <form class="flex w-full gap-2 sm:w-auto" @submit.prevent="list.search">
+      <AppInput v-model="list.filters.q" placeholder="Cari domain" aria-label="Cari domain" class="min-w-0 flex-1 sm:max-w-[240px]" />
       <AppButton type="submit" variant="secondary">Cari</AppButton>
     </form>
-    <AppSegmented :model-value="list.filters.status" label="Status" class="ml-auto"
+    <AppSegmented :model-value="list.filters.status" label="Status" class="sm:ml-auto"
       :options="[{ value: '', label: 'Semua' }, { value: 'pending', label: 'Menunggu' }, { value: 'active', label: 'Aktif' }, { value: 'disabled', label: 'Nonaktif' }]"
       @update:model-value="setStatus" />
   </div>
