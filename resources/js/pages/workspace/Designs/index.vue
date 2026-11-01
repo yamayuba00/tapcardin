@@ -3,7 +3,7 @@
 // lanyard baru berdiri sendiri atau berpasangan dengan kartu (brand kit bersama, pratinjau gabungan).
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Link2, Pencil, Plus, ShoppingCart } from 'lucide-vue-next'
+import { Link2, Pencil, Plus, ShoppingCart, Trash2 } from 'lucide-vue-next'
 import AppBadge from '@/components/ui/AppBadge/index.vue'
 import AppButton from '@/components/ui/AppButton/index.vue'
 import AppEmpty from '@/components/ui/AppEmpty/index.vue'
@@ -21,7 +21,8 @@ import { relative } from '@/lib/format'
 
 const route = useRoute()
 const router = useRouter()
-const { data: designs } = useAsync(() => studioApi.list())
+const { data: designs, reload } = useAsync(() => studioApi.list())
+const removing = ref(null)
 const { data: catalog } = useAsync(() => studioApi.catalog())
 const { busy, run } = useAction()
 const picking = ref(false)
@@ -39,6 +40,12 @@ async function create(choice = picker.value?.choice) {
 async function createLanyard() {
   const res = await run(() => studioApi.create({ kind: 'lanyard' })).catch(() => null)
   if (res) router.push(`/lanyards/${res.data.id}`)
+}
+async function destroy() {
+  const d = removing.value
+  await run(() => studioApi.remove(d.id), 'Desain dihapus').catch(() => null) // run() sudah menampilkan toast galat
+  removing.value = null
+  reload()
 }
 const open = (d) => (d.kind === 'lanyard' ? `/lanyards/${d.id}` : `/designs/${d.id}`)
 </script>
@@ -81,9 +88,18 @@ const open = (d) => (d.kind === 'lanyard' ? `/lanyards/${d.id}` : `/designs/${d.
       <div class="relative z-10 flex flex-wrap gap-2">
         <AppButton variant="secondary" :to="open(d)"><Pencil class="size-4" /> Edit</AppButton>
         <AppButton v-if="d.validated" :to="{ path: '/orders/new', query: { design: d.id } }"><ShoppingCart class="size-4" /> Pesan cetak</AppButton>
+        <AppBadge v-if="d.ordered" tone="outline" class="self-center">Sudah dipesan</AppBadge>
+        <AppButton v-else variant="ghost" :aria-label="`Hapus ${d.name}`" @click="removing = d"><Trash2 class="size-4" /> Hapus</AppButton>
       </div>
     </article>
   </div>
+
+  <AppModal v-if="removing" size="sm" title="Hapus desain?" :description="`“${removing.name}” akan dihapus permanen.${removing.paired ? ' Desain pasangannya tetap ada.' : ''}`" @close="removing = null">
+    <template #footer>
+      <AppButton variant="secondary" @click="removing = null">Batal</AppButton>
+      <AppButton variant="danger" :loading="busy" @click="destroy">Hapus desain</AppButton>
+    </template>
+  </AppModal>
 
   <AppModal v-if="picking && catalog" size="lg" title="Kartu baru" description="Mulai dari kartu kosong, template TapCard, atau template milik Anda. Semua bisa diubah penuh di editor." @close="picking = false">
     <TemplatePicker ref="picker" :catalog="catalog" @pick="create" />

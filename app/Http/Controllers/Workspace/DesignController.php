@@ -209,6 +209,9 @@ class DesignController extends WorkspaceController
     public function destroy(Design $design): JsonResponse
     {
         $this->own($design);
+        if ($design->isOrdered()) {
+            throw new ApiError('design_ordered', 'Desain ini sudah dipesan sehingga tidak dapat dihapus. Batalkan pesanannya terlebih dahulu, atau gandakan desain untuk membuat versi baru.', 422);
+        }
         $design->delete();
 
         return response()->json(null, 204);
@@ -332,6 +335,7 @@ class DesignController extends WorkspaceController
             'orientation' => $d->orientation,
             'lanyard' => $d->lanyard,
             'validated' => $d->validated_at !== null,
+            'ordered' => $d->isOrdered(),
             'updated_at' => $d->updated_at?->toIso8601String(),
             'front' => $d->front_json,
             'back' => $d->back_json,

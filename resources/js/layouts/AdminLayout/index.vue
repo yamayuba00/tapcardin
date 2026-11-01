@@ -79,9 +79,15 @@ const link = 'group flex min-h-10 items-center gap-3 rounded-lg px-3 text-[15px]
       <main ref="mainEl" class="min-h-0 min-w-0 overflow-y-auto overscroll-contain px-4 py-6 print:overflow-visible print:p-0 lg:px-8 lg:py-8">
         <div class="grid w-full gap-6">
           <div class="lg:hidden no-print">
-            <button type="button" class="cursor-pointer inline-flex min-h-11 items-center gap-2 rounded-md border border-line-strong px-4 font-semibold" @click="menuOpen = !menuOpen">
-              <Menu class="size-5" aria-hidden="true" /> Menu
-            </button>
+            <!-- Keluar selalu terlihat di ponsel (tidak tersembunyi di dalam menu) -->
+            <div class="flex items-center justify-between gap-2">
+              <button type="button" class="cursor-pointer inline-flex min-h-11 items-center gap-2 rounded-md border border-line-strong px-4 font-semibold" :aria-expanded="menuOpen" @click="menuOpen = !menuOpen">
+                <Menu class="size-5" aria-hidden="true" /> Menu
+              </button>
+              <button type="button" class="cursor-pointer inline-flex min-h-11 items-center gap-2 rounded-md border border-line-strong px-4 font-semibold text-danger" @click="auth.logout()">
+                <LogOut class="size-5" aria-hidden="true" /> Keluar
+              </button>
+            </div>
             <nav v-if="menuOpen" class="mt-3 grid gap-3">
               <div v-for="g in nav" :key="g.label" class="grid gap-0.5">
                 <span class="label px-3">{{ g.label }}</span>

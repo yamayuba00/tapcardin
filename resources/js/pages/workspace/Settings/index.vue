@@ -1,7 +1,9 @@
 <script setup>
 // U-15 — akun, tautan @handle, preferensi notifikasi (NT-02), paket & pemakaian, izin (RL-09), ekspor & hapus akun (PV-02).
 import { reactive, ref, watch } from 'vue'
-import { Download, ShieldCheck } from 'lucide-vue-next'
+import { Download, LogOut, Moon, ShieldCheck } from 'lucide-vue-next'
+import InstallApp from '@/components/common/InstallApp/index.vue'
+import { useTheme } from '@/composables/useTheme'
 import AppButton from '@/components/ui/AppButton/index.vue'
 import AppField from '@/components/ui/AppField/index.vue'
 import AppInput from '@/components/ui/AppInput/index.vue'
@@ -20,6 +22,7 @@ import { useAction, useAsync } from '@/composables/useAsync'
 import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
+const { toggle: toggleTheme } = useTheme()
 const { data: settings } = useAsync(() => meApi.settings())
 const { busy, run } = useAction()
 
@@ -122,6 +125,15 @@ async function destroy() {
       </div>
     </AppPanel>
   </div>
+
+  <!-- Ponsel: sidebar (tempat menu akun) tersembunyi, jadi tema, pasang aplikasi, dan Keluar ada di sini -->
+  <AppPanel title="Sesi" class="lg:hidden">
+    <div class="grid gap-3 sm:flex sm:flex-wrap">
+      <AppButton variant="secondary" @click="toggleTheme"><Moon class="size-5" /> Ganti tema</AppButton>
+      <InstallApp link-class="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-line-strong px-4 font-semibold hover:bg-surface-2" />
+      <AppButton variant="danger" @click="auth.logout()"><LogOut class="size-5" /> Keluar</AppButton>
+    </div>
+  </AppPanel>
 
   <AppModal v-if="deleting" title="Hapus akun?" @close="deleting = false">
     <p>Semua kartu Anda akan berhenti berfungsi. Ketik email <strong>{{ user.email }}</strong> untuk konfirmasi.</p>

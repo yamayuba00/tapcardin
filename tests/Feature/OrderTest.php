@@ -125,6 +125,26 @@ class OrderTest extends TestCase
         $this->app_('GET', "/orders/{$o['order']['id']}")->assertJsonPath('data.shipping.tracking_number', 'JNE123');
     }
 
+    public function test_ordered_designs_cannot_be_deleted_but_unordered_or_cancelled_ones_can(): void
+    {
+        $rina = $this->makeUser();
+        $d = $this->designs($rina);
+        $free = $this->app_('POST', '/designs', ['template' => 'onyx'])->assertCreated()->json('data.id');
+
+        $this->app_('GET', "/designs/{$d['card']}")->assertJsonPath('data.ordered', false);
+        $o = $this->order($d)->assertCreated()->json('data.order');
+
+        $this->app_('GET', "/designs/{$d['card']}")->assertJsonPath('data.ordered', true);
+        $this->app_('DELETE', "/designs/{$d['card']}")->assertStatus(422)->assertJsonPath('error.code', 'design_ordered');
+        $this->app_('DELETE', "/designs/{$d['lanyard']}")->assertStatus(422)->assertJsonPath('error.code', 'design_ordered');
+        $this->app_('DELETE', "/designs/$free")->assertNoContent();
+
+        // pesanan dibatalkan → desain bebas dihapus lagi
+        $this->app_('POST', "/orders/{$o['id']}/cancel")->assertOk();
+        $this->app_('DELETE', "/designs/{$d['card']}")->assertNoContent();
+        $this->app_('DELETE', "/designs/{$d['lanyard']}")->assertNoContent();
+    }
+
     public function test_validation_prices_from_server_and_ownership(): void
     {
         $rina = $this->makeUser();

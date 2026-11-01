@@ -54,6 +54,14 @@ class Design extends Model
         return $this->hasOne(self::class, 'paired_design_id');
     }
 
+    /** Sudah dipesan cetak (pesanan yang belum dibatalkan) → tidak boleh dihapus; isi cetak mengacu desain ini. */
+    public function isOrdered(): bool
+    {
+        return OrderItem::where('design_id', $this->id)
+            ->whereIn('order_id', Order::withoutGlobalScopes()->where('status', '!=', 'cancelled')->select('id'))
+            ->exists();
+    }
+
     public function lanyardWidth(): BelongsTo
     {
         return $this->belongsTo(LanyardWidth::class);

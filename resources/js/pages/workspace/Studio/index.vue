@@ -44,6 +44,7 @@ const tab = ref('props')
 const zoom = ref('fit')
 const zoomer = ref(null)
 const previewing = ref(false)
+const ORDERED_MSG = 'Desain ini sudah dipesan sehingga tidak dapat dihapus. Gandakan desain bila ingin membuat versi baru.'
 const confirmDelete = ref(false)
 const savingTemplate = ref(false)
 const templateName = ref('')
@@ -67,7 +68,7 @@ const menu = computed(() => [
   { label: 'Pesan cetak kartu ini', icon: ShoppingCart, onSelect: orderPrint },
   { label: 'Pratinjau cetak & unduh PNG', icon: Printer, onSelect: () => (previewing.value = true) },
   { label: 'Simpan sebagai template', icon: LayoutTemplate, onSelect: () => (savingTemplate.value = true) },
-  { label: 'Hapus desain', icon: Trash2, danger: true, onSelect: () => (confirmDelete.value = true) },
+  { label: 'Hapus desain', icon: Trash2, danger: true, onSelect: () => (design.value?.ordered ? toast.error(ORDERED_MSG) : (confirmDelete.value = true)) },
 ])
 
 // ── latar ─────────────────────────────────────────────────
@@ -118,7 +119,13 @@ async function toggleLanyardSlot(v) {
   await ed.save({ lanyard: v })
 }
 async function destroy() {
-  await studioApi.remove(id)
+  try {
+    await studioApi.remove(id)
+  } catch (e) {
+    confirmDelete.value = false
+    toast.error(e.message)
+    return
+  }
   dirty.value = false
   router.push('/designs')
 }

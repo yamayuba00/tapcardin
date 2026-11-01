@@ -47,6 +47,7 @@ const tab = ref('spec')
 const zoom = ref('fit')
 const zoomer = ref(null)
 const previewing = ref(false)
+const ORDERED_MSG = 'Desain ini sudah dipesan sehingga tidak dapat dihapus. Buat desain lanyard baru bila perlu versi lain.'
 const confirmDelete = ref(false)
 const cards = ref([])
 onMounted(async () => { cards.value = (await studioApi.list('card').catch(() => ({ data: [] }))).data })
@@ -71,7 +72,7 @@ const menu = computed(() => [
   { label: 'Pesan cetak lanyard ini', icon: ShoppingCart, onSelect: orderPrint },
   { label: 'Pratinjau cetak & unduh PNG', icon: Printer, onSelect: () => (previewing.value = true) },
   ...(paired.value ? [{ label: 'Buka kartu pasangan', icon: CreditCard, onSelect: openCard }] : []),
-  { label: 'Hapus desain lanyard', icon: Trash2, danger: true, onSelect: () => (confirmDelete.value = true) },
+  { label: 'Hapus desain lanyard', icon: Trash2, danger: true, onSelect: () => (design.value?.ordered ? toast.error(ORDERED_MSG) : (confirmDelete.value = true)) },
 ])
 
 async function setSpec(patch) {
@@ -101,7 +102,13 @@ async function copyToCard() {
   } catch (e) { toast.error(e.message) }
 }
 async function destroy() {
-  await studioApi.remove(id)
+  try {
+    await studioApi.remove(id)
+  } catch (e) {
+    confirmDelete.value = false
+    toast.error(e.message)
+    return
+  }
   dirty.value = false
   router.push('/designs?tab=lanyard')
 }
