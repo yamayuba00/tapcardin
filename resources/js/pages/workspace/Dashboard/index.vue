@@ -16,6 +16,7 @@ import { dashboardApi } from '@/api/workspace'
 import { useAsync } from '@/composables/useAsync'
 import { delta, num, relative } from '@/lib/format'
 import { useAuthStore } from '@/stores/auth'
+import { config } from '@/config'
 import { useNotificationStore } from '@/stores/notifications'
 
 const auth = useAuthStore()
@@ -54,6 +55,12 @@ const empty = computed(() => data.value && data.value.kpi.taps_30 === 0 && data.
     <AppButton v-if="data?.share_token" :to="`/cards/${data.share_token}/share`"><Share2 class="size-5" /> Bagikan kartu</AppButton>
     <AppButton variant="secondary" to="/cards"><CreditCard class="size-5" /> Kartu saya</AppButton>
   </PageHeader>
+
+  <!-- masuk pertama kali lewat kartu + kode akun → ajak hubungkan Google supaya bisa masuk tanpa kartu -->
+  <div v-if="config.googleEnabled && auth.me && !auth.me.google_linked" class="flex flex-wrap items-center gap-3 rounded-md border border-line-strong bg-surface-2 px-4 py-3 text-sm">
+    <span class="min-w-0 flex-1"><b>Hubungkan akun Google Anda.</b> <span class="text-muted">Setelah terhubung, Anda bisa masuk dengan Google kapan saja — tanpa perlu kartu.</span></span>
+    <AppButton variant="secondary" :href="`/auth/google/redirect?link=1&redirect=${encodeURIComponent('/settings')}`">Hubungkan Google</AppButton>
+  </div>
 
   <div v-if="error" class="flex items-center gap-3 rounded-md border border-line-strong bg-surface-2 px-4 py-3 text-sm" role="alert">
     <CircleAlert class="size-5 text-danger" /><span class="flex-1">{{ error.message }}</span>

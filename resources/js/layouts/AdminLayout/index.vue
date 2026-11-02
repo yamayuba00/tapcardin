@@ -23,7 +23,7 @@ const groups = [
     { key: 'domains', label: 'Domain kustom', icon: Globe, to: '/domains', perm: 'tenants.view' },
     { key: 'users', label: 'Pengguna', icon: Users, to: '/users', perm: 'users.view' },
     { key: 'cards', label: 'Kartu', icon: CreditCard, to: '/cards', perm: 'cards.view' },
-    { key: 'field', label: 'Aktivasi di tempat', icon: BadgeCheck, to: '/field-activation', perm: 'cards.manage' },
+    { key: 'field', label: 'Aktivasi kartu', icon: BadgeCheck, to: '/aktivasi-kartu', perm: 'cards.manage' },
   ] },
   { label: 'Produksi', items: [
     { key: 'orders', label: 'Pesanan', icon: ShoppingCart, to: '/orders', perm: 'orders.view' },

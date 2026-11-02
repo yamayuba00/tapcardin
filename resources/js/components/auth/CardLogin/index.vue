@@ -1,5 +1,5 @@
 <script setup>
-// "Masuk dengan kartu NFC" — dua faktor: bukti kartu fisik + kode akun 6 angka.
+// Isi halaman /login/kartu — dua faktor: bukti kartu fisik + kode akun 6 angka.
 // Bukti kartu: (a) Chrome Android → Web NFC membaca token + UID chip di halaman ini; atau
 // (b) HP mana pun (termasuk iPhone) → tap kartu membuka profil, lalu tautan "Masuk" membawa token + kunci chip
 //     (prop `preset`) ke sini. Kode akun dibuat saat aktivasi di tempat atau diatur di detail kartu.
@@ -98,16 +98,22 @@ onBeforeUnmount(() => ctrl?.abort())
       <AppButton variant="ghost" @click="cancel">Batal</AppButton>
     </div>
 
-    <template v-else-if="supported">
-      <AppButton variant="secondary" block @click="scan"><Nfc class="size-5" /> Masuk dengan kartu NFC</AppButton>
-      <p v-if="error" class="rounded-md border border-line-strong bg-surface-2 px-3 py-2 text-sm text-danger" role="alert">{{ error }}</p>
-    </template>
+    <!-- Chrome Android: pemindaian dimulai dengan ketukan (syarat izin NFC browser) -->
+    <div v-else-if="supported" class="grid justify-items-center gap-4 rounded-md border border-line-strong p-6 text-center">
+      <Nfc class="size-12 text-info" aria-hidden="true" />
+      <p class="text-sm text-muted">Pastikan NFC di ponsel menyala, tekan tombol di bawah, lalu tempelkan kartu ke bagian belakang ponsel.</p>
+      <AppButton size="lg" block @click="scan"><Nfc class="size-5" /> Pindai kartu</AppButton>
+      <p v-if="error" class="w-full rounded-md border border-line-strong bg-surface-2 px-3 py-2 text-left text-sm text-danger" role="alert">{{ error }}</p>
+    </div>
 
-    <!-- iPhone / komputer: tidak bisa membaca NFC dari halaman web, tapi tap kartu membuka profilnya -->
-    <div v-else class="grid gap-2 rounded-md border border-line-strong p-4 text-sm">
-      <p class="flex items-center gap-2 font-medium"><Nfc class="size-5 text-info" aria-hidden="true" /> Masuk dengan kartu NFC</p>
-      <p class="text-muted">Tempelkan kartu TapCard Anda ke ponsel (iPhone: bagian atas belakang). Halaman kartu terbuka — ketuk
-        <b class="text-fg">"Masuk sebagai pemilik"</b> di bagian bawah, lalu ketik kode akun.</p>
+    <!-- iPhone / komputer: halaman web tidak bisa membaca NFC, tapi tap kartu membuka halamannya -->
+    <div v-else class="grid gap-3 rounded-md border border-line-strong p-5 text-sm">
+      <p class="flex items-center gap-2 font-medium"><Nfc class="size-5 text-info" aria-hidden="true" /> Cara masuk di iPhone / perangkat ini</p>
+      <ol class="grid list-decimal gap-1 pl-5 text-muted">
+        <li>Tempelkan kartu TapCard ke ponsel (iPhone: bagian atas belakang).</li>
+        <li>Halaman kartu Anda terbuka — ketuk <b class="text-fg">Masuk sebagai pemilik</b> di bagian bawah.</li>
+        <li>Ketik kode akun 6 angka.</li>
+      </ol>
     </div>
   </div>
 </template>

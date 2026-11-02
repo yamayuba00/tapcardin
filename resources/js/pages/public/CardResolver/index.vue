@@ -22,7 +22,7 @@ const failed = ref(false)
 const activationCode = ref('')
 const chipKey = /^[0-9a-f]{12}$/.test(String(route.query.k || '')) ? String(route.query.k) : null
 const ownerLogin = computed(() => chipKey && ['profile', 'inactive'].includes(state.value?.state)
-  ? `${config.appUrl}/login?card=${route.params.token}&k=${chipKey}` : null)
+  ? `${config.appUrl}/login/kartu?card=${route.params.token}&k=${chipKey}` : null)
 
 /** A2 — kode dibawa lewat fragment (#code=…): tidak dikirim ke server/log, bertahan melewati login. */
 function goActivate() {

@@ -5,6 +5,7 @@ const page = (name) => () => import(`@/pages/workspace/${name}/index.vue`)
 
 export default [
   { path: '/login', name: 'login', component: () => import('@/pages/auth/Login/index.vue'), meta: { guest: true, title: 'Masuk' } },
+  { path: '/login/kartu', name: 'login-card', component: () => import('@/pages/auth/LoginCard/index.vue'), meta: { guest: true, title: 'Masuk dengan kartu' } },
   // tautan lama: daftar = masuk dengan Google (akun dibuat otomatis); tidak ada password untuk direset
   { path: '/register', redirect: (to) => ({ name: 'login', query: to.query }) },
   { path: '/forgot-password', redirect: { name: 'login' } },

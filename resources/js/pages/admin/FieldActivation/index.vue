@@ -115,7 +115,8 @@ const waUrl = computed(() => {
 </script>
 
 <template>
-  <PageHeader eyebrow="Penjualan langsung" title="Aktivasi di tempat" />
+  <PageHeader eyebrow="Penjualan langsung" title="Aktivasi kartu" />
+  <p class="-mt-2 text-sm text-muted">Untuk kartu dari batch produksi yang sudah di-encode & lolos QC. Tempelkan kartunya, atau ketik nomor kartu (kode pendek) yang tercetak di kartu & lembar batch.</p>
 
   <!-- 3. Selesai: kode akun ditampilkan sekali -->
   <AppPanel v-if="result" title="Kartu aktif">
@@ -154,10 +155,11 @@ const waUrl = computed(() => {
           <AppButton variant="ghost" @click="ctrl?.abort()">Batal</AppButton>
         </div>
         <form class="flex gap-2" @submit.prevent="find()">
-          <AppInput v-model="lookup" :placeholder="canNfc ? 'atau ketik kode pendek, mis. 7K2M-9QXP' : 'Kode pendek di kartu, mis. 7K2M-9QXP'" autocapitalize="characters" aria-label="Kode pendek kartu" />
+          <AppInput v-model="lookup" :placeholder="canNfc ? 'atau ketik nomor kartu, mis. 7K2M-9QXP' : 'Nomor kartu, mis. 7K2M-9QXP'" autocapitalize="characters" aria-label="Nomor kartu (kode pendek)" />
           <AppButton type="submit" variant="secondary" :loading="busy && !card"><Search class="size-5" /> Cari</AppButton>
         </form>
         <p v-if="error && !card" class="flex gap-2 text-sm text-danger" role="alert"><CircleAlert class="size-5 flex-none" /> {{ error }}</p>
+        <p v-if="!canNfc && !card" class="text-sm text-muted">Membaca kartu langsung hanya bisa di Chrome Android dengan NFC menyala; di perangkat ini ketik nomor kartunya.</p>
         <div v-if="card" class="flex flex-wrap items-center gap-3 rounded-md border border-line bg-surface-2 px-4 py-3">
           <CreditCard class="size-5 text-muted" aria-hidden="true" />
           <span class="font-mono">{{ card.short_code }}</span>

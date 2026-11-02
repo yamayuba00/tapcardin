@@ -4,9 +4,10 @@
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AdminLoginForm from '@/components/auth/AdminLoginForm/index.vue'
+import { Nfc } from 'lucide-vue-next'
 import AuthShell from '@/components/auth/AuthShell/index.vue'
-import CardLogin from '@/components/auth/CardLogin/index.vue'
 import GoogleButton from '@/components/auth/GoogleButton/index.vue'
+import AppButton from '@/components/ui/AppButton/index.vue'
 import { authApi } from '@/api/auth'
 import { config, context } from '@/config'
 import { useAuthStore } from '@/stores/auth'
@@ -21,10 +22,8 @@ const error = ref(GOOGLE_ERRORS[route.query.error] ?? '')
 const busy = ref(false)
 const adminForm = ref(null)
 
-// tap kartu → profil → "Masuk sebagai pemilik" membawa token + kunci chip ke sini
-const cardPreset = /^[0-9A-Za-z]{10}$/.test(String(route.query.card || '')) && /^[0-9a-f]{12}$/.test(String(route.query.k || ''))
-  ? { token: String(route.query.card), key: String(route.query.k) } : null
-if (cardPreset) router.replace({ query: { redirect: route.query.redirect || undefined } }) // kunci tidak tertinggal di riwayat
+// tautan lama dari tap kartu (/login?card=&k=) → halaman login kartu
+if (!admin && route.query.card && route.query.k) router.replace({ path: '/login/kartu', query: route.query })
 
 const redirect = computed(() => {
   const r = String(route.query.redirect || '')
@@ -64,12 +63,10 @@ async function quickLogin(account) {
 
     <div v-else class="grid gap-4">
       <p v-if="error" class="rounded-md border border-line-strong bg-surface-2 px-3 py-2 text-sm text-danger" role="alert">{{ error }}</p>
-      <CardLogin v-if="cardPreset" :preset="cardPreset" @success="done" />
-      <template v-else>
-        <GoogleButton :redirect="redirect" />
-        <div class="flex items-center gap-3"><hr class="flex-1 border-line" /><span class="text-sm text-muted">atau</span><hr class="flex-1 border-line" /></div>
-        <CardLogin @success="done" />
-      </template>
+      <GoogleButton :redirect="redirect" label="Masuk dengan Google" />
+      <AppButton variant="secondary" block :to="{ path: '/login/kartu', query: { redirect: route.query.redirect || undefined } }">
+        <Nfc class="size-5" /> Masuk dengan kartu NFC
+      </AppButton>
     </div>
 
     <!-- Mode lokal: akun dummy satu klik -->
@@ -87,8 +84,8 @@ async function quickLogin(account) {
     </section>
 
     <template v-if="!admin" #footer>
-      Belum punya akun? Masuk dengan Google — akun dibuat otomatis.<br />
-      Kode akun kartu didapat saat kartu diaktifkan, dan bisa diganti di detail kartu.
+      Punya kartu TapCard? Masuk pertama kali dengan kartu + kode akun dari petugas,
+      lalu hubungkan Google di Pengaturan agar bisa masuk dengan Google juga.
     </template>
   </AuthShell>
 </template>

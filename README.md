@@ -56,7 +56,7 @@ Operasional (workspace, domain kustom, pengguna, kartu), **produksi** (pesanan, 
 ### Keamanan & privasi
 Pengguna masuk dengan **Google** (akun dibuat otomatis) atau **kartu NFC + kode akun** 6 angka — bukti kartu dari Web NFC
 (UID chip, Chrome Android) atau kunci chip di URL NFC (tap di HP mana pun, termasuk iPhone; tidak ada di QR); kode salah 5×
-mengunci 15 menit. **Aktivasi di tempat** (panel): staf mengaktifkan kartu untuk pelanggan, kode akun dibuat acak, dan
+mengunci 15 menit. **Aktivasi kartu** (`panel.…/aktivasi-kartu`): staf mengaktifkan kartu untuk pelanggan, kode akun dibuat acak, dan
 pembayaran ditandai QRIS / manual.
 Anti-bot **ALTCHA** (tanpa layanan pihak ketiga), "ingat saya" 7 hari; panel staf terpisah dengan email + password; isolasi data antar-workspace di level query; IP pengunjung hanya disimpan
 sebagai hash; CSP ber-nonce; bio tidak diindeks mesin pencari kecuali diizinkan; ekspor & hapus akun mandiri.
