@@ -15,6 +15,12 @@ export async function readOnce({ signal } = {}) {
   })
 }
 
+/** Token kartu TapCard dari URL chip (`…/c/{token}`, boleh ber-query), atau null bila bukan kartu TapCard. */
+export function cardTokenFromUrl(url) {
+  const m = /\/c\/([0-9A-Za-z]{10})(?:[/?#]|$)/.exec(String(url ?? ''))
+  return m ? m[1] : null
+}
+
 export async function writeUrl(url, { signal } = {}) {
   // eslint-disable-next-line no-undef
   const w = new NDEFReader()

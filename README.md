@@ -54,8 +54,9 @@ Operasional (workspace, domain kustom, pengguna, kartu), **produksi** (pesanan, 
 (staf & peran, audit log, kesehatan sistem). Menu mengikuti izin setiap staf.
 
 ### Keamanan & privasi
-Login email + password atau Google, verifikasi email saat daftar, anti-bot **ALTCHA** (tanpa layanan pihak ketiga),
-"ingat saya" 7 hari, batas percobaan login; isolasi data antar-workspace di level query; IP pengunjung hanya disimpan
+Pengguna masuk dengan **Google** (akun dibuat otomatis) atau **kartu NFC + PIN** — kartu fisik dibaca lewat Web NFC
+(token + UID chip yang diikat saat produksi) lalu PIN 6 digit; token di QR saja tidak cukup, PIN salah 5× mengunci 15 menit.
+Anti-bot **ALTCHA** (tanpa layanan pihak ketiga), "ingat saya" 7 hari; panel staf terpisah dengan email + password; isolasi data antar-workspace di level query; IP pengunjung hanya disimpan
 sebagai hash; CSP ber-nonce; bio tidak diindeks mesin pencari kecuali diizinkan; ekspor & hapus akun mandiri.
 
 ---
@@ -123,15 +124,14 @@ php artisan schedule:work                                          # pengingat, 
 Host lokal memakai `*.localhost` (otomatis ke 127.0.0.1, tanpa edit file hosts): `localhost:8000` (landing),
 `app.localhost:8000`, `tap.localhost:8000`, `panel.localhost:8000`.
 
-**Akun demo** (semua password `password123`; di halaman login lokal ada tombol masuk satu klik):
+**Akun demo** (di halaman login lokal ada tombol masuk satu klik; staf panel memakai password `password123`):
 
 | Akun | Masuk di |
 |---|---|
 | `demo@tapcard.test`, `budi@tapcard.test` | `app.localhost:8000` |
 | `admin@` (Pemilik Platform), `produksi@`, `support@`, `keuangan@tapcard.test` | `panel.localhost:8000` |
 
-Mode lokal (`APP_ENV=local`, `DEV_LOGIN_CODE=123456`): kode verifikasi daftar & lupa password selalu `123456`,
-pembayaran memakai halaman bayar simulasi, dan email ditulis ke `storage/logs` bila `MAIL_MAILER=log`.
+Mode lokal (`APP_ENV=local`, `DEV_LOGIN_CODE` diisi 6 digit): tombol akun dummy aktif di halaman login, pembayaran memakai halaman bayar simulasi, dan email ditulis ke `storage/logs` bila `MAIL_MAILER=log`.
 
 ## Pengujian
 

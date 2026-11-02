@@ -21,7 +21,7 @@ import { config } from '@/config'
 import { useAsync } from '@/composables/useAsync'
 
 const { data: show } = useAsync(() => marketingApi.showcase())
-const signup = `${config.appUrl}/register`
+const signup = `${config.appUrl}/login`
 
 // Kartu hero membalik sendiri, kecuali pengguna memilih gerak dikurangi.
 const heroFlipped = ref(false)

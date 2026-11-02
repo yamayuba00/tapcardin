@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { nfcErrorMessage } from '../nfc.js'
+import { cardTokenFromUrl, nfcErrorMessage } from '../nfc.js'
 
 test('IO error (kartu terlepas) dijelaskan dalam bahasa Indonesia', () => {
   const byName = nfcErrorMessage({ name: 'NetworkError', message: 'Failed to write due to an IO error: null' })
@@ -21,4 +21,12 @@ test('galat izin, dukungan, dan tak ada kartu punya pesan sendiri', () => {
 test('galat lain memakai pesan aslinya, atau teks bawaan bila kosong', () => {
   assert.equal(nfcErrorMessage(new Error('URL di chip tidak cocok.')), 'URL di chip tidak cocok.')
   assert.equal(nfcErrorMessage(undefined), 'Gagal memproses kartu.')
+})
+
+test('token kartu diambil dari URL chip, termasuk dengan query', () => {
+  assert.equal(cardTokenFromUrl('https://tap.tapcard.id/c/Ab3dE5gH9k'), 'Ab3dE5gH9k')
+  assert.equal(cardTokenFromUrl('https://tap.tapcard.id/c/Ab3dE5gH9k?src=nfc'), 'Ab3dE5gH9k')
+  assert.equal(cardTokenFromUrl('https://contoh.com/c/terlalupanjang123'), null)
+  assert.equal(cardTokenFromUrl('https://contoh.com/halaman'), null)
+  assert.equal(cardTokenFromUrl(null), null)
 })

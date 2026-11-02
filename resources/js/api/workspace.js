@@ -34,6 +34,9 @@ export const cardsApi = {
   claim: (shortCode, code) => http.post('/api/cards/claim', { short_code: shortCode, code }),
   requestReplacement: (token, note) => http.post(`/api/cards/${token}/replacement`, { note }),
   dynamicQr: (token) => http.post(`/api/cards/${token}/dynamic-qr`),
+  /** PIN untuk "Masuk dengan kartu NFC" (hanya pemegang kartu fisik) */
+  setLoginKey: (token, pin, pinConfirmation) => http.put(`/api/cards/${token}/login-key`, { pin, pin_confirmation: pinConfirmation }),
+  removeLoginKey: (token) => http.del(`/api/cards/${token}/login-key`),
 }
 
 export const profilesApi = {

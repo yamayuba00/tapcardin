@@ -1,13 +1,14 @@
 <?php
 
+use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\GoogleController;
-use App\Http\Controllers\Auth\PasswordAuthController;
 use App\Http\Controllers\Workspace\ActivationController;
 use App\Http\Controllers\Workspace\AddonController;
 use App\Http\Controllers\Workspace\AnalyticsController;
 use App\Http\Controllers\Workspace\BillingController;
 use App\Http\Controllers\Workspace\BrandKitController;
 use App\Http\Controllers\Workspace\CardController;
+use App\Http\Controllers\Workspace\CardLoginKeyController;
 use App\Http\Controllers\Workspace\ConnectionController;
 use App\Http\Controllers\Workspace\DashboardController;
 use App\Http\Controllers\Workspace\DesignController;
@@ -28,14 +29,11 @@ use Illuminate\Support\Facades\Route;
 */
 
 // ── Autentikasi ────────────────────────────────────────────
-// Login email + password (atau Google). Kode email hanya untuk verifikasi daftar & lupa password.
-Route::controller(PasswordAuthController::class)->prefix('api/auth')->group(function () {
+// Pengguna masuk dengan Google atau kartu NFC + PIN — tanpa email + password (panel staf punya login sendiri).
+Route::controller(AuthController::class)->prefix('api/auth')->group(function () {
     Route::get('/altcha', 'altcha')->middleware('throttle:60,1')->name('auth.altcha');
-    Route::post('/login', 'login')->middleware('throttle:30,1')->name('auth.login');
-    Route::post('/register', 'register')->middleware('throttle:10,1')->name('auth.register');
-    Route::post('/register/verify', 'verifyRegistration')->middleware('throttle:20,1')->name('auth.register.verify');
-    Route::post('/password/forgot', 'forgot')->middleware('throttle:10,1')->name('auth.password.forgot');
-    Route::post('/password/reset', 'reset')->middleware('throttle:20,1')->name('auth.password.reset');
+    Route::post('/card', 'card')->middleware('throttle:10,1')->name('auth.card');
+    Route::post('/dev', 'dev')->middleware('throttle:30,1')->name('auth.dev');
     Route::post('/logout', 'logout')->name('logout');
 });
 Route::get('/auth/google/redirect', [GoogleController::class, 'redirect'])->name('google.redirect');
@@ -60,6 +58,8 @@ Route::middleware('auth')->prefix('api')->name('api.')->group(function () {
     Route::get('/cards/{token}/activation', [ActivationController::class, 'info'])->name('cards.activation');
     Route::get('/cards', [CardController::class, 'list'])->name('cards.list');
     Route::post('/cards/{token}/shared', [CardController::class, 'shared'])->middleware('throttle:60,1')->name('cards.shared');
+    Route::put('/cards/{token}/login-key', [CardLoginKeyController::class, 'update'])->middleware('throttle:10,1')->name('cards.login-key');
+    Route::delete('/cards/{token}/login-key', [CardLoginKeyController::class, 'destroy'])->name('cards.login-key.destroy');
     Route::get('/cards/{token}/visual', [CardController::class, 'visual'])->name('cards.visual');
     Route::put('/cards/{token}/design', [CardController::class, 'design'])->name('cards.design');
     Route::get('/cards/{token}', [CardController::class, 'detail'])->name('cards.detail');

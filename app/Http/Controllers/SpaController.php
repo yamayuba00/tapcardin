@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Actions\Auth\RequestOtp;
+use App\Http\Controllers\Auth\AuthController;
 use Database\Seeders\DummyAccountSeeder;
 use Illuminate\Http\Response;
 
@@ -43,9 +43,8 @@ class SpaController extends Controller
                 'adminUrl' => "$scheme://".config('tapcard.panel_subdomain').".$base$suffix",
                 'marketingUrl' => "$scheme://$base$suffix",
                 'googleEnabled' => (bool) config('services.google.client_id'),
-                // Hanya terisi di APP_ENV=local: petunjuk login untuk akun dummy.
-                'devLogin' => RequestOtp::devCode() ? [
-                    'code' => RequestOtp::devCode(),
+                // Hanya terisi di APP_ENV=local: akun dummy satu klik (app. tanpa Google; panel pakai password ini).
+                'devLogin' => AuthController::devLogin() ? [
                     'password' => DummyAccountSeeder::DEV_PASSWORD,
                     'accounts' => collect(DummyAccountSeeder::ACCOUNTS)
                         ->map(fn ($v, $email) => ['email' => $email, 'name' => $v[0], 'staff' => $v[1] !== null])->values(),

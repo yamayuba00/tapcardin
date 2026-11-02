@@ -21,7 +21,7 @@ const year = new Date().getFullYear()
       <nav class="grid content-start gap-2 text-sm" aria-label="Akun">
         <span class="label">Akun</span>
         <a :href="`${config.appUrl}/login`" class="text-muted no-underline hover:text-fg">Masuk</a>
-        <a :href="`${config.appUrl}/register`" class="text-muted no-underline hover:text-fg">Daftar gratis</a>
+        <a :href="`${config.appUrl}/login`" class="text-muted no-underline hover:text-fg">Daftar gratis</a>
         <a :href="`${config.resolverUrl}/k`" class="text-muted no-underline hover:text-fg">Masukkan kode kartu</a>
         <a href="#faq" class="text-muted no-underline hover:text-fg">Bantuan</a>
       </nav>
