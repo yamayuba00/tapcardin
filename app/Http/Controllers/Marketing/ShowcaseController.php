@@ -29,7 +29,7 @@ class ShowcaseController extends Controller
 
     public function __invoke(): JsonResponse
     {
-        $data = Cache::remember('showcase:v5', now()->addHour(), function () {
+        $data = Cache::remember('showcase:v6', now()->addHour(), function () {
             $qr = QrEncoder::encode(config('tapcard.resolver_url').'/c/XXXXXXXXXX?src=qr');
 
             return [
@@ -74,8 +74,9 @@ class ShowcaseController extends Controller
         return [
             'paired_card' => TemplateLibrary::make('onyx', new CardGeometry('portrait', true)),
             'lanyards' => $tiles,
-            'widths' => $catalog['widths'],
-            'hardware' => $catalog['hardware'],
+            // selalu array JSON (bukan objek) — klien memakai .find/.map
+            'widths' => collect($catalog['widths'])->values()->all(),
+            'hardware' => collect($catalog['hardware'])->values()->all(),
         ];
     }
 

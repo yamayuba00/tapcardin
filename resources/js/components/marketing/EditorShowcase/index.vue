@@ -56,12 +56,16 @@ onMounted(() => (fine.value = window.matchMedia('(pointer: fine)').matches))
 const TOOLS = [Type, Square, Circle, Hexagon, Star, Minus, Radio, ImagePlus]
 
 // ---- editor lanyard ----
-const widthMm = ref(props.editor.widths.find((w) => w.width_mm === 20)?.width_mm ?? props.editor.widths[0]?.width_mm)
+// tahan terhadap data lama / ter-cache yang berbentuk objek alih-alih array
+const asList = (v) => (Array.isArray(v) ? v : Object.values(v ?? {}))
+const widths = computed(() => asList(props.editor.widths))
+const hardwareList = computed(() => asList(props.editor.hardware))
+const widthMm = ref(widths.value.find((w) => w.width_mm === 20)?.width_mm ?? widths.value[0]?.width_mm)
 const sides = ref(2)
-const hardware = ref(props.editor.hardware[0]?.key)
+const hardware = ref(hardwareList.value[0]?.key)
 const tile = computed(() => props.editor.lanyards[widthMm.value])
-const width = computed(() => props.editor.widths.find((w) => w.width_mm === widthMm.value))
-const hw = computed(() => props.editor.hardware.find((h) => h.key === hardware.value))
+const width = computed(() => widths.value.find((w) => w.width_mm === widthMm.value))
+const hw = computed(() => hardwareList.value.find((h) => h.key === hardware.value))
 const unit = computed(() => (sides.value === 2 ? width.value.price_double : width.value.price_single) + (hw.value?.price ?? 0))
 
 const tab = 'flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-md border px-3 py-2 text-left text-sm'
@@ -144,14 +148,14 @@ const tabOn = (on) => (on ? 'border-accent bg-surface-2 text-fg' : 'border-line 
         <div class="grid content-start gap-5 border-t border-line p-4 lg:border-t-0 lg:border-l">
           <fieldset class="grid gap-2">
             <legend class="label mb-2">Lebar tali</legend>
-            <button v-for="w in editor.widths" :key="w.width_mm" type="button" :aria-pressed="widthMm === w.width_mm" :class="[tab, tabOn(widthMm === w.width_mm)]" @click="widthMm = w.width_mm">
+            <button v-for="w in widths" :key="w.width_mm" type="button" :aria-pressed="widthMm === w.width_mm" :class="[tab, tabOn(widthMm === w.width_mm)]" @click="widthMm = w.width_mm">
               <span class="font-medium">{{ w.label }}</span>
               <span class="font-mono text-xs">{{ rupiah(sides === 2 ? w.price_double : w.price_single) }}</span>
             </button>
           </fieldset>
           <fieldset class="grid gap-2">
             <legend class="label mb-2">Pengait</legend>
-            <button v-for="h in editor.hardware" :key="h.key" type="button" :aria-pressed="hardware === h.key" :class="[tab, tabOn(hardware === h.key)]" @click="hardware = h.key">
+            <button v-for="h in hardwareList" :key="h.key" type="button" :aria-pressed="hardware === h.key" :class="[tab, tabOn(hardware === h.key)]" @click="hardware = h.key">
               <span class="font-medium">{{ h.name }}</span>
               <span class="font-mono text-xs">{{ h.price ? `+${rupiah(h.price)}` : 'Termasuk' }}</span>
             </button>
