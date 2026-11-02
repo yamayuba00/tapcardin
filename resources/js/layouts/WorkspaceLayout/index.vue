@@ -5,7 +5,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import {
-  BellRing, CalendarDays, ChartColumn, ChevronsUpDown, CreditCard, Gem, House, LayoutDashboard, LogOut, Moon, Package, Palette, ScanLine, Settings, ShieldCheck, User, Users,
+  BellRing, CalendarDays, ChartColumn, ChevronsUpDown, CreditCard, Gem, House, LayoutDashboard, LogOut, Moon, Package, Palette, Settings, ShieldCheck, User, Users,
 } from 'lucide-vue-next'
 import BrandLogo from '@/components/common/BrandLogo/index.vue'
 import InstallApp from '@/components/common/InstallApp/index.vue'
@@ -30,7 +30,6 @@ const groups = computed(() => [
     { key: 'connections', label: `Daftar ${auth.contactLabel.toLowerCase()}`, icon: Users, to: '/connections' },
     { key: 'lead-dashboard', label: 'Dashboard', icon: LayoutDashboard, to: '/connections/dashboard' },
     { key: 'follow-up', label: 'Follow-up', icon: BellRing, to: '/follow-up' },
-    { key: 'scan', label: 'Scan kartu', icon: ScanLine, to: '/scan' },
     { key: 'events', label: 'Event', icon: CalendarDays, to: '/events' },
   ] },
   { label: 'Lainnya', items: [
@@ -106,17 +105,14 @@ const link = 'group flex min-h-9 cursor-pointer items-center gap-3 rounded-lg px
       </div>
     </main>
 
-    <!-- Ponsel: 5 tombol sama lebar; label dipotong (truncate) supaya "Koneksi"/"Lead" tidak mendorong tombol lain. -->
-    <nav class="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 print:hidden border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] lg:hidden" aria-label="Navigasi">
+    <!-- Ponsel: 4 tombol sama lebar; label dipotong (truncate) supaya "Koneksi"/"Lead" tidak mendorong tombol lain.
+         Scan kartu (Mode Reader) tidak di navigasi — dibuka dari tombol "Scan kartu" di halaman Koneksi. -->
+    <nav class="fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 print:hidden border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] lg:hidden" aria-label="Navigasi">
       <RouterLink to="/dashboard" :aria-current="active === 'dashboard' ? 'page' : undefined" class="grid min-w-0 justify-items-center gap-1 px-1 pt-2.5 pb-2 text-[11px] font-medium text-muted no-underline aria-[current=page]:text-accent-text">
         <House class="size-[22px]" aria-hidden="true" /><span class="max-w-full truncate">Beranda</span>
       </RouterLink>
       <RouterLink to="/connections" :aria-current="active === 'connections' ? 'page' : undefined" class="grid min-w-0 justify-items-center gap-1 px-1 pt-2.5 pb-2 text-[11px] font-medium text-muted no-underline aria-[current=page]:text-accent-text">
         <Users class="size-[22px]" aria-hidden="true" /><span class="max-w-full truncate">{{ auth.contactLabel }}</span>
-      </RouterLink>
-      <RouterLink to="/scan" :aria-current="active === 'scan' ? 'page' : undefined" class="grid min-w-0 justify-items-center gap-0.5 px-1 no-underline" aria-label="Scan kartu orang lain (Mode Reader)">
-        <span class="-mt-[22px] grid size-[52px] place-items-center rounded-full border-4 border-bg bg-accent text-accent-ink"><ScanLine class="size-[22px]" aria-hidden="true" /></span>
-        <span class="pb-2 text-[11px] font-medium text-muted">Scan</span>
       </RouterLink>
       <RouterLink to="/cards" :aria-current="active === 'cards' ? 'page' : undefined" class="grid min-w-0 justify-items-center gap-1 px-1 pt-2.5 pb-2 text-[11px] font-medium text-muted no-underline aria-[current=page]:text-accent-text">
         <CreditCard class="size-[22px]" aria-hidden="true" /><span class="max-w-full truncate">Kartu</span>

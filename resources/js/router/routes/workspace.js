@@ -29,7 +29,7 @@ export default [
       { path: 'connections/dashboard', name: 'lead-dashboard', component: page('LeadDashboard'), meta: { title: 'Dashboard lead', nav: 'lead-dashboard' } },
       { path: 'connections/import', name: 'lead-import', component: page('LeadImport'), meta: { title: 'Impor CSV', nav: 'connections' } },
       { path: 'follow-up', name: 'follow-ups', component: page('FollowUps'), meta: { title: 'Follow-up', nav: 'follow-up' } },
-      { path: 'scan', name: 'scan', component: page('Scan'), meta: { title: 'Scan kartu', nav: 'scan' } },
+      { path: 'scan', name: 'scan', component: page('Scan'), meta: { title: 'Scan kartu', nav: 'connections' } },
       { path: 'events', name: 'events', component: page('Events'), meta: { title: 'Event', nav: 'events' } },
       { path: 'events/:id', name: 'event-detail', component: page('EventDetail'), meta: { title: 'Event', nav: 'events' } },
       { path: 'connections/:id', name: 'connection-detail', component: page('ConnectionDetail'), meta: { title: 'Koneksi', nav: 'connections' } },
