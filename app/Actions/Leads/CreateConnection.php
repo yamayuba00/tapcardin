@@ -2,14 +2,11 @@
 
 namespace App\Actions\Leads;
 
-use App\Authz\PlanFeatures;
 use App\Enums\ActivityType;
 use App\Enums\LeadSource;
-use App\Exceptions\ApiError;
 use App\Models\Connection;
 use App\Models\LeadActivity;
 use App\Models\LeadStage;
-use App\Models\Tenant;
 use App\Support\Notify;
 use App\Support\Phone;
 use App\Tenancy\CurrentTenant;
@@ -60,8 +57,6 @@ final class CreateConnection
 
                 return ['connection' => $existing, 'duplicate' => true];
             }
-
-            $this->ensureWithinLimit($tenant);
 
             $connection = Connection::create([
                 'source' => $source,
@@ -117,14 +112,5 @@ final class CreateConnection
             'meta' => $meta,
             'occurred_at' => now(),
         ]);
-    }
-
-    /** Paket Personal Free dibatasi 200 koneksi (PRD §11). */
-    private function ensureWithinLimit(Tenant $tenant): void
-    {
-        $limit = PlanFeatures::limit($tenant, 'connections');
-        if ($limit !== null && Connection::count() >= $limit) {
-            throw ApiError::planLimit("Batas $limit koneksi tercapai. Upgrade ke Pro untuk tanpa batas.", 'connections');
-        }
     }
 }

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Authz\PlanFeatures;
 use App\Enums\CardStatus;
 use App\Models\Connection;
 use App\Tenancy\TenantScope;
@@ -92,12 +93,32 @@ class ExchangeContactTest extends TestCase
         $this->postJson($this->host('tap', "/api/c/{$card->card_token}/connect"), $this->payload())->assertNotFound();
     }
 
-    public function test_free_plan_limit_does_not_break_visitor(): void
+    public function test_contacts_above_the_plan_limit_are_stored_but_hidden_until_upgrade(): void
     {
         $rina = $this->makeUser();
-        $rina->personalTenant->update(['limit_overrides' => ['connections' => 0]]);
+        $rina->personalTenant->update(['limit_overrides' => ['connections' => 1]]);
         $card = $this->makeCard(CardStatus::Active, $rina);
+        $other = $this->makeCard(CardStatus::Active, $rina);
+        $other->forceFill(['sequence' => 2, 'label' => 'Kartu kedua'])->save();
+
         $this->postJson($this->host('tap', "/api/c/{$card->card_token}/connect"), $this->payload())->assertCreated();
-        $this->assertSame(0, $this->connections()->count());
+        $this->postJson($this->host('tap', "/api/c/{$other->card_token}/connect"), $this->payload(['name' => 'Siti Aminah', 'whatsapp' => '0813 1111 2222']))->assertCreated();
+        $this->assertSame(2, $this->connections()->count(), 'tidak ada yang ditolak');
+
+        $list = fn (array $q = []) => $this->actingAs($rina)->getJson($this->host('app', '/api/leads?'.http_build_query($q)));
+        $list()->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('meta.hidden', 1)->assertJsonPath('meta.plan_limit', 1)
+            ->assertJsonPath('data.0.card.token', $card->card_token);
+        $hidden = $this->connections()->orderByDesc('id')->first();
+        $this->getJson($this->host('app', "/api/leads/{$hidden->public_id}"))->assertNotFound();
+
+        // filter per kartu
+        $list(['card' => $other->card_token])->assertJsonCount(0, 'data');
+        $list(['card' => $card->card_token])->assertJsonCount(1, 'data');
+
+        // upgrade (batas dihapus) → semua terlihat, tanpa ada yang hilang
+        $rina->personalTenant->update(['limit_overrides' => []]);
+        PlanFeatures::forget($rina->personalTenant);
+        $list()->assertJsonCount(2, 'data')->assertJsonPath('meta.hidden', 0);
+        $list(['card' => $other->card_token])->assertJsonCount(1, 'data')->assertJsonPath('data.0.card.label', 'Kartu kedua');
     }
 }

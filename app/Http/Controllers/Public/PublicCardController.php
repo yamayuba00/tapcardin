@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Public;
 
 use App\Actions\Cards\CardView;
+use App\Actions\Cards\ShareQr;
 use App\Actions\Leads\CreateConnection;
 use App\Enums\LeadSource;
 use App\Exceptions\ApiError;
@@ -144,12 +145,15 @@ class PublicCardController extends Controller
         return redirect()->away($target);
     }
 
-    /** SVG QR kartu (dipakai layar QC & preview). */
+    /** SVG QR kartu (dipakai layar QC & preview). Kartu digital Free: QR periode berjalan, jadi cache singkat. */
     public function qr(string $token): Response
     {
         $card = Card::acrossTenants()->where('card_token', $token)->firstOrFail();
+        $rotating = ShareQr::rotationDays($card) !== null;
 
-        return response(SvgRenderer::forUrl($card->qrUrl()), 200, ['Content-Type' => 'image/svg+xml', 'Cache-Control' => 'public, max-age=86400']);
+        return response(SvgRenderer::forUrl(ShareQr::url($card)), 200, [
+            'Content-Type' => 'image/svg+xml', 'Cache-Control' => $rotating ? 'private, max-age=300' : 'public, max-age=86400',
+        ]);
     }
 
     /** POST /api/shortcode — kode pendek 8 karakter → token kartu (P-06). */

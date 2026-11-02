@@ -1,5 +1,6 @@
 <script setup>
 // U-08 / AN-01 — tap per hari (total vs unik), sumber, perangkat, kota, per kartu, klik tautan.
+// Dimuat ulang otomatis tiap 1 menit tanpa mengosongkan tampilan (angka diganti di tempat).
 import { computed, ref, watch } from 'vue'
 import AppMeter from '@/components/ui/AppMeter/index.vue'
 import AppPanel from '@/components/ui/AppPanel/index.vue'
@@ -8,7 +9,9 @@ import AppSkeleton from '@/components/ui/AppSkeleton/index.vue'
 import KpiCard from '@/components/common/KpiCard/index.vue'
 import MiniChart from '@/components/common/MiniChart/index.vue'
 import PageHeader from '@/components/common/PageHeader/index.vue'
+import RefreshStatus from '@/components/common/RefreshStatus/index.vue'
 import { analyticsApi } from '@/api/workspace'
+import { useAutoRefresh } from '@/composables/useAutoRefresh'
 import { num, sourceLabel } from '@/lib/format'
 
 const DEVICES = { ios: 'iPhone / iPad', android: 'Android', desktop: 'Desktop', other: 'Lainnya' }
@@ -24,19 +27,25 @@ const groups = computed(() => [
   { title: 'Kota', key: 'cities', fmt: (k) => k },
 ])
 
-async function load() {
-  data.value = null
-  data.value = (await analyticsApi.cards(days.value)).data
-  retention.value = data.value.retention_days
+async function load({ silent = false } = {}) {
+  if (!silent) data.value = null
+  const res = (await analyticsApi.cards(days.value)).data
+  data.value = res
+  retention.value = res.retention_days
+  auto.touch()
 }
-watch(days, load, { immediate: true })
+const auto = useAutoRefresh(load)
+watch(days, () => load(), { immediate: true })
 </script>
 
 <template>
   <PageHeader eyebrow="Analitik" title="Analitik kartu">
     <AppSegmented v-model="days" :options="options" label="Rentang waktu" class="max-w-full" />
   </PageHeader>
-  <p v-if="retention" class="text-sm text-muted">Paket Anda menyimpan data analitik {{ retention }} hari.</p>
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <p class="text-sm text-muted">{{ retention ? `Paket Anda menyimpan data analitik ${retention} hari.` : '' }}</p>
+    <RefreshStatus :last-at="auto.lastAt.value" :refreshing="auto.refreshing.value" :every="auto.every" @refresh="auto.refresh" />
+  </div>
 
   <AppSkeleton v-if="!data" class="!h-56" />
   <template v-else>

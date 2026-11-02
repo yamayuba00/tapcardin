@@ -95,6 +95,16 @@ class Connection extends Model
     }
 
     /**
+     * Paket dengan batas koneksi (Personal Free: 100) tetap menyimpan semuanya — tidak ada yang ditolak
+     * atau dihapus. Yang bisa dilihat hanya N koneksi pertama (terlama); sisanya terbuka saat upgrade.
+     */
+    public function scopeWithinPlan(Builder $q, ?int $limit): Builder
+    {
+        return $limit === null ? $q : $q->whereIn('connections.id', self::query()->whereNull('merged_into_id')
+            ->orderBy('created_at')->orderBy('id')->limit($limit)->select('id'));
+    }
+
+    /**
      * TRD §5.3 — cakupan izin pada query daftar.
      *
      * @param  array{perms: array<string,true>, managed_team_ids: int[]}  $ctx

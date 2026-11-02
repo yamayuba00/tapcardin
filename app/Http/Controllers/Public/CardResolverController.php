@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Public;
 
 use App\Actions\Cards\DynamicQr;
 use App\Actions\Cards\ResolveCard;
+use App\Actions\Cards\ShareQr;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\SpaController;
 use Illuminate\Http\JsonResponse;
@@ -31,6 +32,14 @@ class CardResolverController extends Controller
         return $this->headers($spa->render(['initial' => ['card' => ['token' => $token] + $r['data']]], $r['meta'], $r['status']), $r['indexable']);
     }
 
+    /** GET /s/{code} — QR kartu digital berjangka (ShareQr): redirect ke profil, atau "QR sudah kedaluwarsa". */
+    public function shared(string $code, SpaController $spa): Response
+    {
+        $url = ShareQr::redeem($code);
+
+        return $url ? $this->headers(redirect()->away($url), false) : $this->expired($spa);
+    }
+
     /** GET /q/{token} — QR dinamis (AFD F-11): redirect sekali pakai, atau P-07 "QR sudah kedaluwarsa". */
     public function dynamic(string $token, SpaController $spa): Response
     {
@@ -39,6 +48,11 @@ class CardResolverController extends Controller
             return $this->headers(redirect()->away($url), false);
         }
 
+        return $this->expired($spa);
+    }
+
+    private function expired(SpaController $spa): Response
+    {
         return $this->headers($spa->render(['initial' => ['qr' => ['state' => 'expired']]], ['title' => 'QR sudah kedaluwarsa · TapCard', 'description' => 'Minta pemilik kartu menampilkan QR baru.', 'image' => null, 'theme' => 'dark', 'lang' => 'id'], 410), false);
     }
 

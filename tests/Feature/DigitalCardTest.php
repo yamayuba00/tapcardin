@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Actions\Cards\CreateDigitalCard;
+use App\Authz\PlanFeatures;
 use App\Enums\CardStatus;
 use App\Models\Card;
 use App\Models\Profile;
@@ -154,5 +155,31 @@ class DigitalCardTest extends TestCase
 
         $physical = $this->makeCard(CardStatus::Active, $rina);
         $this->api('PUT', "/cards/{$physical->card_token}/design", ['template' => 'onyx'])->assertJsonPath('error.code', 'card_printed');
+    }
+
+    public function test_free_digital_card_qr_rotates_weekly_and_old_qr_stops_working(): void
+    {
+        $rina = $this->makeUser(); // Personal Free: qr_rotation_days = 7
+        $card = $this->digitalOf($rina);
+
+        $detail = $this->actingAs($rina)->api('GET', "/cards/{$card->card_token}")->assertOk()->assertJsonPath('data.qr_rotation.days', 7);
+        $first = $detail->json('data.qr_url');
+        $this->assertMatchesRegularExpression('~/s/[0-9A-Za-z]{12}$~', $first);
+        $this->assertSame($first, $this->api('GET', "/cards/{$card->card_token}")->json('data.qr_url'), 'stabil dalam satu periode');
+
+        $path = parse_url($first, PHP_URL_PATH);
+        $this->get($this->host('tap', $path))->assertRedirect($card->qrUrl());
+
+        $this->travel(8)->days();
+        $second = $this->api('GET', "/cards/{$card->card_token}")->json('data.qr_url');
+        $this->assertNotSame($first, $second, 'QR baru setelah 7 hari');
+        $this->get($this->host('tap', $path))->assertStatus(410); // QR lama kedaluwarsa
+        $this->get($this->host('tap', parse_url($second, PHP_URL_PATH)))->assertRedirect($card->qrUrl());
+        $this->getJson($this->host('tap', "/api/c/{$card->card_token}"))->assertOk(); // tautan profil tetap
+
+        // paket tanpa rotasi → QR permanen
+        $rina->personalTenant->update(['limit_overrides' => ['qr_rotation_days' => null]]);
+        PlanFeatures::forget($rina->personalTenant);
+        $this->api('GET', "/cards/{$card->card_token}")->assertJsonPath('data.qr_url', $card->qrUrl())->assertJsonPath('data.qr_rotation', null);
     }
 }

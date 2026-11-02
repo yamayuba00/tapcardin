@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Workspace;
 
 use App\Actions\Leads\CreateConnection;
 use App\Actions\Leads\Followups;
+use App\Authz\PlanFeatures;
 use App\Enums\ActivityType;
 use App\Enums\LeadSource;
 use App\Enums\StageKind;
@@ -31,9 +32,13 @@ class ConnectionController extends WorkspaceController
     public function list(Request $request): JsonResponse
     {
         $this->access()->authorize('leads.view.*');
-        $q = $this->query($request)->with(['stage', 'assignee', 'event']);
+        $q = $this->query($request)->with(['stage', 'assignee', 'event', 'card']);
+        $limit = $this->planLimit();
+        // koneksi di atas batas paket tetap tersimpan, hanya disembunyikan sampai upgrade
+        $hidden = $limit === null ? 0 : max(0, Connection::whereNull('merged_into_id')->count() - $limit);
 
-        return Table::json(Table::paginate($q, $request, self::SORTS, '-created_at'), fn ($c) => Present::connection($c), $request);
+        return Table::json(Table::paginate($q, $request, self::SORTS, '-created_at'), fn ($c) => Present::connection($c), $request,
+            ['plan_limit' => $limit, 'hidden' => $hidden]);
     }
 
     public function detail(Connection $connection): JsonResponse
@@ -181,7 +186,10 @@ class ConnectionController extends WorkspaceController
     private function query(Request $request)
     {
         $user = $this->user();
-        $q = Connection::query()->whereNull('merged_into_id')->visibleTo($user, $this->access()->context());
+        $q = Connection::query()->whereNull('merged_into_id')->visibleTo($user, $this->access()->context())->withinPlan($this->planLimit());
+        if ($card = $request->query('card')) {
+            $q->whereHas('card', fn ($w) => $w->where('card_token', (string) $card));
+        }
         if ($s = trim((string) $request->query('q'))) {
             $like = '%'.str_replace(['%', '_'], ['\%', '\_'], $s).'%';
             $q->where(fn ($w) => $w->where('name', 'ilike', $like)->orWhere('company', 'ilike', $like)
@@ -223,16 +231,22 @@ class ConnectionController extends WorkspaceController
     public function tags(): JsonResponse
     {
         $this->access()->authorize('leads.view.*');
-        $q = Connection::query()->whereNull('merged_into_id')->visibleTo($this->user(), $this->access()->context());
+        $q = Connection::query()->whereNull('merged_into_id')->visibleTo($this->user(), $this->access()->context())->withinPlan($this->planLimit());
         $rows = DB::query()->fromSub($q->selectRaw('unnest(tags) as tag'), 't')
             ->selectRaw('tag, count(*) as n')->groupBy('tag')->orderByDesc('n')->limit(200)->get();
 
         return response()->json(['data' => $rows->map(fn ($r) => ['value' => $r->tag, 'count' => (int) $r->n])]);
     }
 
+    /** Batas koneksi yang bisa dilihat (null = tanpa batas). */
+    private function planLimit(): ?int
+    {
+        return PlanFeatures::limit($this->tenant(), 'connections');
+    }
+
     private function visible(Connection $c): void
     {
-        $exists = Connection::whereKey($c->id)->visibleTo($this->user(), $this->access()->context())->exists();
+        $exists = Connection::whereKey($c->id)->visibleTo($this->user(), $this->access()->context())->withinPlan($this->planLimit())->exists();
         abort_unless($exists, 404);
     }
 

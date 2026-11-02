@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Actions\Cards\ShareQr;
 use App\Models\Card;
 use App\Models\Connection;
 use App\Models\LeadActivity;
@@ -30,7 +31,7 @@ final class Present
             'chip_type' => $c->chip_type?->value,
             'profile' => $profile ? ['id' => $profile->public_id, 'label' => $profile->label, 'display_name' => $profile->display_name] : null,
             'url' => $c->resolverUrl(),
-            'qr_url' => $c->qrUrl(),
+            'qr_url' => ShareQr::url($c),
             'activated_at' => $c->activated_at?->toIso8601String(),
             'last_tap_at' => $c->last_tap_at?->toIso8601String(),
             'lost_at' => $c->lost_at?->toIso8601String(),
@@ -119,6 +120,7 @@ final class Present
             'next_followup_at' => $c->next_followup_at?->toIso8601String(),
             'value_amount' => $c->value_amount,
             'event' => $c->relationLoaded('event') && $c->event ? ['id' => $c->event->public_id, 'name' => $c->event->name] : null,
+            'card' => $c->relationLoaded('card') && $c->card ? ['token' => $c->card->card_token, 'label' => $c->card->label ?: $c->card->formattedShortCode()] : null,
         ];
         if ($full) {
             $out += [
@@ -126,7 +128,6 @@ final class Present
                 'reminders' => $c->reminders()->whereNull('done_at')->get()->map(fn ($r) => self::reminder($r))->all(),
                 'lost_reason' => $c->lost_reason,
                 'consent_at' => $c->consent_at?->toIso8601String(),
-                'card' => $c->card ? ['token' => $c->card->card_token, 'label' => $c->card->label] : null,
                 'activities' => $c->activities->map(fn (LeadActivity $a) => [
                     'id' => $a->id,
                     'type' => $a->type->value,

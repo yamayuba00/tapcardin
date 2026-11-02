@@ -21,7 +21,7 @@ class PlanSeeder extends Seeder
 
         $plans = [
             ['personal_free', 'personal', 'Personal Free', 0, false,
-                ['members' => 1, 'cards_active' => 2, 'profiles_per_user' => 1, 'connections' => 200, 'analytics_days' => 30, 'audit_days' => 0],
+                ['members' => 1, 'cards_active' => 2, 'profiles_per_user' => 1, 'connections' => 100, 'analytics_days' => 30, 'audit_days' => 0, 'qr_rotation_days' => 7],
                 [...$none, 'reminders' => false]],
             ['personal_pro', 'personal', 'Personal Pro', 49000, false,
                 ['members' => 1, 'cards_active' => 10, 'profiles_per_user' => 5, 'connections' => null, 'analytics_days' => 365, 'audit_days' => 0],

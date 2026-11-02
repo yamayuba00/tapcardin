@@ -98,6 +98,12 @@ async function copy() {
           <span>Desainnya sama seperti kartu fisik, diisi dari bio kartu ini. Karena tanpa chip, QR di sisi belakang jadi pintu masuknya —
             unduh sebagai gambar untuk dikirim, dijadikan wallpaper, atau ditaruh di email signature.</span>
         </p>
+        <p v-if="card.qr_rotation" class="flex gap-3 rounded-md border border-line-strong bg-surface-2 px-4 py-3 text-sm">
+          <RefreshCw class="size-5 flex-none text-warn" aria-hidden="true" />
+          <span>Paket Free: QR kartu digital ini berganti otomatis setiap {{ card.qr_rotation.days }} hari, dan QR lama tidak bisa dipakai lagi.
+            QR sekarang berlaku sampai <b class="text-fg">{{ dateTime(card.qr_rotation.expires_at) }}</b> — unduh ulang setelah itu.
+            Tautan profil &amp; @nama tetap sama. <RouterLink to="/billing">Upgrade ke Pro</RouterLink> untuk QR permanen.</span>
+        </p>
         <CardVisual :token="card.token" :name="card.profile?.display_name || 'kartu'" editable />
       </div>
     </AppPanel>

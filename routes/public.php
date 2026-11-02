@@ -14,6 +14,8 @@ Route::middleware('throttle:tap')->where(['token' => '[0-9A-Za-z]{10}'])->group(
     // navigasi di dalam SPA (mis. dari /k)
     Route::get('/api/c/{token}', CardResolverController::class)->name('card.resolve');
     Route::get('/q/{qr}', [CardResolverController::class, 'dynamic'])->where('qr', '[0-9A-Za-z]{24}')->name('card.dynamic');
+    // QR kartu digital yang berganti berkala (paket Free)
+    Route::get('/s/{code}', [CardResolverController::class, 'shared'])->where('code', '[0-9A-Za-z]{12}')->name('card.shared');
 });
 
 Route::controller(PublicCardController::class)->where(['token' => '[0-9A-Za-z]{10}'])->group(function () {

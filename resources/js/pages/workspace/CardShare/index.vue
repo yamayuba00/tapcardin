@@ -65,6 +65,7 @@ onBeforeUnmount(() => wake?.release?.())
       <div class="w-full rounded-lg bg-bone-0 p-5" data-theme="light">
         <img :src="card.qr_svg_url" :alt="`QR bio link ${name}`" class="block aspect-square w-full" width="360" height="360" />
       </div>
+      <p v-if="card.qr_rotation" class="text-sm text-muted">QR ini berganti tiap {{ card.qr_rotation.days }} hari (paket Free) — yang tampil di sini selalu yang terbaru.</p>
 
       <div class="grid w-full gap-2 text-left">
         <div v-if="card.share.handle_url" class="flex items-center gap-2 rounded-md border border-line bg-surface px-3 py-2">

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Workspace;
 use App\Actions\Cards\ChangeCardStatus;
 use App\Actions\Cards\CreateDigitalCard;
 use App\Actions\Cards\DynamicQr;
+use App\Actions\Cards\ShareQr;
 use App\Authz\PlanFeatures;
 use App\Enums\CardStatus;
 use App\Exceptions\ApiError;
@@ -69,6 +70,10 @@ class CardController extends WorkspaceController
             'lost_taps' => $lastLostTaps,
             'login_key' => CardLoginKeyController::present($card, $this->user()->id),
             'qr_svg_url' => config('tapcard.resolver_url').'/c/'.$card->card_token.'/qr.svg',
+            // kartu digital paket Free: QR berganti otomatis, QR lama berhenti berlaku
+            'qr_rotation' => ($share = ShareQr::current($card)) ? [
+                'days' => ShareQr::rotationDays($card), 'expires_at' => $share->expires_at->toIso8601String(),
+            ] : null,
             'share' => [
                 'link' => $card->resolverUrl().'?src=link',
                 // @nama hanya mengarah ke kartu ini bila memang kartu yang dipilih untuk nama pengguna

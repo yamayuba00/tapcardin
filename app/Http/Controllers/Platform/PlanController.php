@@ -20,7 +20,7 @@ class PlanController extends PlatformController
 {
     public const LIMITS = [
         'members' => 'Anggota', 'cards_active' => 'Kartu aktif', 'cards_per_member' => 'Kartu per anggota', 'profiles_per_user' => 'Profil per pengguna',
-        'connections' => 'Koneksi', 'analytics_days' => 'Riwayat analitik (hari)', 'audit_days' => 'Audit log (hari)',
+        'connections' => 'Koneksi terlihat', 'qr_rotation_days' => 'QR kartu digital berganti (hari)', 'analytics_days' => 'Riwayat analitik (hari)', 'audit_days' => 'Audit log (hari)',
     ];
 
     public const FEATURES = [

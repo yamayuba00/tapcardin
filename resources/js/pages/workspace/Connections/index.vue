@@ -1,21 +1,26 @@
 <script setup>
 // U-06 — daftar koneksi/lead server-side: cari, filter (tahap, sumber, follow-up, event), urut kolom,
 // halaman & jumlah per halaman tersimpan di URL. Input manual, ekspor CSV sesuai cakupan izin.
+// Filter per kartu; daftar dimuat ulang otomatis tiap 1 menit (koneksi dari Tukar Kontak langsung muncul).
+// Paket dengan batas koneksi: sisanya tetap tersimpan tapi disembunyikan sampai upgrade.
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Blocks, ChartColumn, Download, FileUp, Plus, ScanLine } from 'lucide-vue-next'
+import { Blocks, ChartColumn, Download, FileUp, Lock, Plus, ScanLine } from 'lucide-vue-next'
 import AppButton from '@/components/ui/AppButton/index.vue'
 import AppEmpty from '@/components/ui/AppEmpty/index.vue'
 import AppField from '@/components/ui/AppField/index.vue'
 import AppInput from '@/components/ui/AppInput/index.vue'
+import AppMenu from '@/components/ui/AppMenu/index.vue'
 import AppModal from '@/components/ui/AppModal/index.vue'
 import AppSelect from '@/components/ui/AppSelect/index.vue'
 import AppTextarea from '@/components/ui/AppTextarea/index.vue'
 import DataTable from '@/components/ui/DataTable/index.vue'
 import PageHeader from '@/components/common/PageHeader/index.vue'
+import RefreshStatus from '@/components/common/RefreshStatus/index.vue'
 import StageBadge from '@/components/common/StageBadge/index.vue'
-import { eventsApi, leadsApi } from '@/api/workspace'
+import { cardsApi, eventsApi, leadsApi } from '@/api/workspace'
 import { toQuery } from '@/api/client'
+import { useAutoRefresh } from '@/composables/useAutoRefresh'
 import { usePagedList } from '@/composables/usePagedList'
 import { dateTime, relative, sourceLabel, SOURCE_LABELS } from '@/lib/format'
 import { useAuthStore } from '@/stores/auth'
@@ -41,7 +46,7 @@ const COLUMNS = [
   { key: 'created_at', label: 'Ditambahkan', sortable: true },
 ]
 
-const list = usePagedList(leadsApi.list, { q: '', stage: '', source: '', tag: '', due: '', event: '' }, { sort: '-created_at' })
+const list = usePagedList(leadsApi.list, { q: '', stage: '', source: '', tag: '', due: '', event: '', card: '' }, { sort: '-created_at' })
 /** Filter multi-pilih disimpan sebagai "a,b" (sama dengan query URL & API). */
 const multi = (key) => computed({ get: () => (list.filters[key] ? list.filters[key].split(',') : []), set: (v) => (list.filters[key] = v.join(',')) })
 const stageSel = multi('stage')
@@ -51,15 +56,26 @@ const tags = ref([])
 const { filters } = list
 const stages = ref([])
 const events = ref([])
+const cards = ref([])
+const auto = useAutoRefresh(() => list.reload())
+watch(list.rows, auto.touch)
+const hidden = computed(() => list.meta.value?.hidden ?? 0)
+const menu = computed(() => [
+  auth.can('leads.edit.*') && { label: 'Impor CSV', icon: FileUp, onSelect: () => router.push('/connections/import') },
+  auth.can('leads.export.*') && { label: 'Ekspor CSV (sesuai filter)', icon: Download, onSelect: () => (window.location.href = exportHref.value) },
+  auth.can('billing.view') && { label: 'Kirim ke CRM — segera hadir', icon: Blocks, onSelect: () => router.push('/billing#addons') },
+].filter(Boolean))
 const filtered = computed(() => Object.values(filters).some(Boolean))
 const exportHref = computed(() => `${leadsApi.exportUrl}?${toQuery(filters)}`)
 
 let t
 watch(() => filters.q, () => { clearTimeout(t); t = setTimeout(() => list.search(), 300) })
 onMounted(async () => {
-  const [s, e, t] = await Promise.all([
+  const [s, e, t, c] = await Promise.all([
     leadsApi.stages(), eventsApi.list({ per_page: 50, sort: '-starts_at' }).catch(() => ({ data: [] })), leadsApi.tags().catch(() => ({ data: [] })),
+    cardsApi.list().catch(() => ({ data: [] })),
   ])
+  cards.value = c.data
   stages.value = s.data
   events.value = e.data
   tags.value = t.data
@@ -84,14 +100,23 @@ const overdue = (iso) => iso && new Date(iso) < new Date()
 
 <template>
   <PageHeader :eyebrow="list.meta.value ? `${list.meta.value.total} ${label.toLowerCase()}` : label" :title="label">
-    <!-- tindakan utama dulu; tautan sekunder jadi ikon + teks ringkas di ponsel agar tidak memenuhi layar -->
-    <AppButton v-if="auth.can('leads.edit.*')" @click="adding = true"><Plus class="size-5" /> Tambah</AppButton>
-    <AppButton v-if="auth.can('leads.export.*')" variant="secondary" :href="exportHref"><Download class="size-5" /> Ekspor</AppButton>
-    <AppButton variant="ghost" to="/connections/dashboard"><ChartColumn class="size-5" /> Dashboard</AppButton>
-    <AppButton v-if="auth.can('leads.edit.*')" variant="ghost" to="/scan"><ScanLine class="size-5" /> Scan</AppButton>
-    <AppButton v-if="auth.can('leads.edit.*')" variant="ghost" to="/connections/import"><FileUp class="size-5" /> Impor CSV</AppButton>
-    <AppButton v-if="auth.can('billing.view')" class="hidden sm:inline-flex" variant="ghost" to="/billing#addons" title="Add-on Integrasi CRM — segera hadir"><Blocks class="size-5" /> Kirim ke CRM <span class="text-xs text-muted">segera</span></AppButton>
+    <!-- satu tindakan utama, dua sekunder bergaya sama, sisanya di menu "Lainnya" -->
+    <div class="flex flex-wrap items-center gap-2">
+      <AppButton v-if="auth.can('leads.edit.*')" @click="adding = true"><Plus class="size-5" /> Tambah</AppButton>
+      <AppButton v-if="auth.can('leads.edit.*')" variant="secondary" to="/scan"><ScanLine class="size-5" /> Scan kartu</AppButton>
+      <AppButton variant="secondary" to="/connections/dashboard"><ChartColumn class="size-5" /> Dashboard</AppButton>
+      <AppMenu v-if="menu.length" :items="menu" label="Tindakan lain" />
+    </div>
   </PageHeader>
+
+  <div v-if="hidden" class="flex flex-wrap items-center gap-3 rounded-md border border-line-strong bg-surface-2 px-4 py-3 text-sm" role="status">
+    <Lock class="size-5 flex-none text-warn" aria-hidden="true" />
+    <span class="min-w-0 flex-1">
+      {{ hidden }} {{ label.toLowerCase() }} terbaru tersimpan aman tapi disembunyikan — paket Anda menampilkan {{ list.meta.value.plan_limit }} {{ label.toLowerCase() }} pertama.
+      Tidak ada yang dihapus; semuanya langsung terlihat setelah upgrade.
+    </span>
+    <AppButton v-if="auth.can('billing.view')" variant="secondary" to="/billing">Upgrade ke Pro</AppButton>
+  </div>
 
   <!-- Ponsel: pencarian selebar layar, filter 2 kolom. Desktop: berderet membungkus. -->
   <div class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
@@ -101,7 +126,12 @@ const overdue = (iso) => iso && new Date(iso) < new Date()
     <AppSelect v-if="tags.length" v-model="tagSel" multiple searchable placeholder="Semua tag" :options="tags.map((t) => ({ value: t.value, label: t.value, description: `${t.count} ${label.toLowerCase()}` }))" aria-label="Tag" class="sm:!w-auto sm:min-w-44" />
     <AppSelect v-model="filters.due" clearable placeholder="Semua follow-up" :options="DUE" aria-label="Follow-up" class="sm:!w-auto sm:min-w-44" />
     <AppSelect v-if="events.length" v-model="filters.event" clearable placeholder="Semua event" :options="events.map((e) => ({ value: e.id, label: e.name, description: e.location }))" aria-label="Event" class="sm:!w-auto sm:min-w-44" />
+    <AppSelect
+      v-if="cards.length > 1" v-model="filters.card" clearable placeholder="Semua kartu" aria-label="Kartu" class="sm:!w-auto sm:min-w-44"
+      :options="cards.map((c) => ({ value: c.token, label: c.label || `Kartu ${c.short_code}`, description: c.form === 'digital' ? 'Digital' : c.short_code }))"
+    />
   </div>
+  <RefreshStatus :last-at="auto.lastAt.value" :refreshing="auto.refreshing.value" :every="auto.every" class="justify-end" @refresh="auto.refresh" />
 
   <AppEmpty
     v-if="list.rows.value && !list.rows.value.length && !filtered"
@@ -117,7 +147,11 @@ const overdue = (iso) => iso && new Date(iso) < new Date()
       <span class="block text-sm text-muted">{{ [c.job_title, c.company].filter(Boolean).join(' · ') || c.email || c.phone }}</span>
     </template>
     <template #cell-stage="{ row: c }"><StageBadge :stage="c.stage" /></template>
-    <template #cell-source="{ row: c }">{{ sourceLabel(c.source) }}<span v-if="c.event" class="block text-xs text-muted">{{ c.event.name }}</span></template>
+    <template #cell-source="{ row: c }">
+      {{ sourceLabel(c.source) }}
+      <RouterLink v-if="c.card" :to="`/cards/${c.card.token}`" class="block text-xs text-muted">via {{ c.card.label }}</RouterLink>
+      <span v-if="c.event" class="block text-xs text-muted">{{ c.event.name }}</span>
+    </template>
     <template #cell-next_followup_at="{ row: c }">
       <span v-if="c.next_followup_at" :class="overdue(c.next_followup_at) ? 'font-medium text-danger' : ''" :title="dateTime(c.next_followup_at)">
         {{ overdue(c.next_followup_at) ? 'Terlambat · ' : '' }}{{ relative(c.next_followup_at) }}
