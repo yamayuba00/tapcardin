@@ -124,6 +124,22 @@ class Card extends Model
         return $this->resolverUrl().'?src=qr';
     }
 
+    /**
+     * Kunci chip: ikut di URL yang ditulis ke NFC, tidak pernah di QR cetak. Tap kartu di HP mana pun
+     * (termasuk iPhone) membawa kunci ini, jadi bisa dipakai sebagai bukti memegang kartu saat masuk
+     * dengan kode akun. Diturunkan dari APP_KEY — tidak disimpan.
+     */
+    public function chipKey(): string
+    {
+        return substr(hash_hmac('sha256', 'chip|'.$this->card_token, (string) config('app.key')), 0, 12);
+    }
+
+    /** URL yang ditulis ke chip NFC saat encode. */
+    public function chipUrl(): string
+    {
+        return $this->resolverUrl().'?k='.$this->chipKey();
+    }
+
     /** Kode pendek tercetak `XXXX-XXXX`. */
     public function formattedShortCode(): string
     {

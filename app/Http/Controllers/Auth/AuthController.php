@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Login pengguna workspace (app. & {slug}.): Google (lihat GoogleController) atau kartu NFC + PIN.
+ * Login pengguna workspace (app. & {slug}.): Google (lihat GoogleController) atau kartu NFC + kode akun.
  * Tidak ada email + password untuk pengguna; akun baru dibuat otomatis saat pertama masuk dengan Google.
  */
 class AuthController extends Controller
@@ -25,18 +25,25 @@ class AuthController extends Controller
         return response()->json(Altcha::challenge())->header('Cache-Control', 'no-store');
     }
 
-    /** POST /api/auth/card — token & UID dari chip (Web NFC) + PIN, dilindungi ALTCHA. */
+    /**
+     * POST /api/auth/card — token kartu + bukti kartu (UID dari Web NFC atau kunci chip `key` dari URL tap)
+     * + kode akun 6 angka, dilindungi ALTCHA.
+     */
     public function card(Request $request, CardLogin $card, LoginUser $login): JsonResponse
     {
         $data = $request->validate([
             'token' => ['required', 'string', 'regex:/^[0-9A-Za-z]{10}$/'],
-            'uid' => ['required', 'string', 'max:40'],
-            'pin' => ['required', 'string', 'regex:/^\d{6}$/'],
+            'uid' => ['nullable', 'required_without:key', 'string', 'max:40'],
+            'key' => ['nullable', 'required_without:uid', 'string', 'regex:/^[0-9a-f]{12}$/'],
+            'code' => ['required', 'string', 'regex:/^\d{6}$/'],
             'remember' => ['boolean'],
-        ], ['token.regex' => 'Kartu ini bukan kartu TapCard.', 'pin.regex' => 'PIN terdiri dari 6 angka.']);
+        ], [
+            'token.regex' => 'Kartu ini bukan kartu TapCard.', 'key.regex' => 'Kartu ini bukan kartu TapCard.',
+            'uid.required_without' => 'Tempelkan kartu Anda dulu.', 'code.regex' => 'Kode akun terdiri dari 6 angka.',
+        ]);
         Altcha::require($request);
 
-        $user = $card->handle($data['token'], $data['uid'], $data['pin']);
+        $user = $card->handle($data['token'], $data['uid'] ?? null, $data['key'] ?? null, $data['code']);
         $login->login($user, (bool) ($data['remember'] ?? false));
 
         return $this->userResponse($user);

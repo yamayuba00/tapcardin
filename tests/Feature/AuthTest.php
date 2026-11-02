@@ -8,6 +8,9 @@ use App\Support\Altcha;
 use Database\Seeders\DummyAccountSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Laravel\Socialite\Facades\Socialite;
+use Laravel\Socialite\Two\User as SocialiteUser;
+use Mockery;
 use Tests\TestCase;
 
 /** Pengguna app. masuk dengan Google atau kartu NFC + PIN (lihat CardLoginTest); panel staf dengan email + password. */
@@ -47,6 +50,26 @@ class AuthTest extends TestCase
         $dev($dummy)->assertOk()->assertJsonPath('data.user.email', $dummy);
         $this->assertAuthenticated();
         $this->app['env'] = 'testing';
+    }
+
+    public function test_logged_in_user_links_google_without_changing_account(): void
+    {
+        $google = fn (string $id) => Socialite::shouldReceive('driver')->with('google')->andReturn(Mockery::mock(['user' => (new SocialiteUser)
+            ->setRaw(['email_verified' => true])->map(['id' => $id, 'email' => 'lain@gmail.com', 'name' => 'Nama Google'])]));
+        $user = $this->makeUser('sari@example.com', 'Sari'); // akun dari aktivasi di tempat, email bukan Gmail
+
+        $google('g-123');
+        $this->actingAs($user)->withSession(['auth.link' => $user->id])->get($this->host('app', '/auth/google/callback'))
+            ->assertRedirect('/settings?google=linked');
+        $this->assertSame('g-123', $user->fresh()->google_id);
+        $this->assertAuthenticatedAs($user);
+        $this->assertDatabaseMissing('users', ['email' => 'lain@gmail.com']); // tidak membuat akun baru dari email Google
+
+        $other = $this->makeUser('budi@example.com', 'Budi');
+        $google('g-123');
+        $this->actingAs($other)->withSession(['auth.link' => $other->id])->get($this->host('app', '/auth/google/callback'))
+            ->assertRedirect('/settings?google=taken');
+        $this->assertNull($other->fresh()->google_id);
     }
 
     public function test_altcha_endpoint_serves_fresh_v3_challenge(): void

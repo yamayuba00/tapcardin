@@ -4,7 +4,7 @@
 import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import {
-  Activity, BadgePercent, Boxes, Building2, CircleCheck, CircleUser, ClipboardList, Cpu, CreditCard, Gem, Globe, House, LogOut, Megaphone, Menu, Moon, Package, ShieldCheck, ShoppingCart, Stamp, Users, Wallet,
+  Activity, BadgeCheck, BadgePercent, Boxes, Building2, CircleCheck, CircleUser, ClipboardList, Cpu, CreditCard, Gem, Globe, House, LogOut, Megaphone, Menu, Moon, Package, ShieldCheck, ShoppingCart, Stamp, Users, Wallet,
 } from 'lucide-vue-next'
 import BrandLogo from '@/components/common/BrandLogo/index.vue'
 import { useAuthStore } from '@/stores/auth'
@@ -23,6 +23,7 @@ const groups = [
     { key: 'domains', label: 'Domain kustom', icon: Globe, to: '/domains', perm: 'tenants.view' },
     { key: 'users', label: 'Pengguna', icon: Users, to: '/users', perm: 'users.view' },
     { key: 'cards', label: 'Kartu', icon: CreditCard, to: '/cards', perm: 'cards.view' },
+    { key: 'field', label: 'Aktivasi di tempat', icon: BadgeCheck, to: '/field-activation', perm: 'cards.manage' },
   ] },
   { label: 'Produksi', items: [
     { key: 'orders', label: 'Pesanan', icon: ShoppingCart, to: '/orders', perm: 'orders.view' },

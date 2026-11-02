@@ -26,6 +26,11 @@ export const adminApi = {
   cardStatus: (token, status, reason) => http.post(`/api/cards/${token}/status`, { status, reason }),
   reissueCode: (token) => http.post(`/api/cards/${token}/reissue-code`),
   assignCard: (token, email) => http.post(`/api/cards/${token}/assign`, { email }),
+  /** penjualan langsung: tandai lunas (QRIS / manual) atau belum dibayar */
+  cardSale: (token, body) => http.put(`/api/cards/${token}/sale`, body),
+  /** aktivasi di tempat */
+  fieldLookup: (q) => http.get('/api/field/card', { q }),
+  fieldActivate: (body) => http.post('/api/field/activate', body),
   encoded: (token, uid) => http.post(`/api/cards/${token}/encoded`, { uid }),
   qc: (token, body) => http.post(`/api/cards/${token}/qc`, body),
   replacementBatch: (token) => http.post(`/api/cards/${token}/replacement-batch`),

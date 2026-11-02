@@ -40,7 +40,7 @@ class StationController extends PlatformController
             'token' => $card->card_token,
             'sequence' => $card->sequence,
             'short_code' => $card->formattedShortCode(),
-            'url' => $card->resolverUrl(),
+            'url' => $card->chipUrl(), // dengan kunci chip (?k=) untuk masuk dengan kartu
             'qr_url' => $card->qrUrl(),
             'holder' => $batch->holder?->name,
             'remaining' => $remaining,

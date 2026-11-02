@@ -9,6 +9,7 @@ use App\Http\Controllers\Platform\CardController;
 use App\Http\Controllers\Platform\CatalogController;
 use App\Http\Controllers\Platform\DashboardController;
 use App\Http\Controllers\Platform\DomainController;
+use App\Http\Controllers\Platform\FieldActivationController;
 use App\Http\Controllers\Platform\FinanceController;
 use App\Http\Controllers\Platform\MeController;
 use App\Http\Controllers\Platform\OrderController;
@@ -58,6 +59,11 @@ Route::middleware(['auth', 'platform'])->prefix('api')->name('api.')->group(func
     Route::post('/cards/{token}/assign', [CardController::class, 'assign'])->name('cards.assign');
     Route::post('/cards/{token}/encoded', [StationController::class, 'encoded'])->name('cards.encoded');
     Route::post('/cards/{token}/qc', [StationController::class, 'qcResult'])->name('cards.qc');
+    Route::put('/cards/{token}/sale', [FieldActivationController::class, 'sale'])->name('cards.sale');
+
+    // Aktivasi di tempat (penjualan langsung)
+    Route::get('/field/card', [FieldActivationController::class, 'lookup'])->middleware('throttle:60,1')->name('field.lookup');
+    Route::post('/field/activate', [FieldActivationController::class, 'activate'])->middleware('throttle:20,1')->name('field.activate');
 
     Route::get('/batches', [BatchController::class, 'index'])->name('batches');
     Route::post('/batches', [BatchController::class, 'store'])->name('batches.store');

@@ -1,7 +1,7 @@
 <script setup>
 // U-03 — ganti profil aktif (F-12), jeda/lanjutkan, lapor hilang & ditemukan (F-13), minta kartu pengganti, bagikan.
 // Kartu digital: tanpa kode cetak & lapor hilang — dibagikan lewat QR layar & tautan.
-// Kartu fisik: pemegang bisa mengatur PIN agar kartu bisa dipakai masuk (kartu NFC + PIN).
+// Kartu fisik: pemegang mengatur kode akun 6 angka agar kartu bisa dipakai masuk (kartu NFC + kode akun).
 import { ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { Check, CircleAlert, Copy, Eye, KeyRound, Nfc, Pause, Pencil, Play, QrCode, RefreshCw, Share2, Smartphone } from 'lucide-vue-next'
@@ -43,11 +43,11 @@ async function requestReplacement() {
 }
 async function saveLoginKey() {
   pin.value.error = ''
-  if (!/^\d{6}$/.test(pin.value.value)) return (pin.value.error = 'PIN terdiri dari 6 angka.')
-  if (pin.value.value !== pin.value.confirm) return (pin.value.error = 'Konfirmasi PIN tidak sama.')
+  if (!/^\d{6}$/.test(pin.value.value)) return (pin.value.error = 'Kode akun terdiri dari 6 angka.')
+  if (pin.value.value !== pin.value.confirm) return (pin.value.error = 'Konfirmasi kode tidak sama.')
   const enabled = card.value.login_key.enabled
-  const res = await run(() => cardsApi.setLoginKey(route.params.token, pin.value.value, pin.value.confirm), enabled ? 'PIN kartu diganti' : 'Login dengan kartu aktif')
-    .catch((e) => { pin.value.error = e.fields?.pin?.[0] ?? e.message; return null })
+  const res = await run(() => cardsApi.setLoginKey(route.params.token, pin.value.value, pin.value.confirm), enabled ? 'Kode akun diganti' : 'Login dengan kartu aktif')
+    .catch((e) => { pin.value.error = e.fields?.code?.[0] ?? e.message; return null })
   if (res) {
     card.value = { ...card.value, login_key: res.data }
     pin.value = { value: '', confirm: '', error: '' }
@@ -155,19 +155,20 @@ async function copy() {
       <div class="grid gap-4">
         <p class="flex gap-3 text-sm text-muted">
           <Nfc class="size-5 flex-none text-info" aria-hidden="true" />
-          <span>Di halaman masuk, pilih <b class="text-fg">Masuk dengan kartu NFC</b>, tempelkan kartu ini ke ponsel Android (Chrome), lalu ketik PIN.
-            Kartu saja tidak cukup — siapa pun yang men-tap kartu Anda tetap butuh PIN.</span>
+          <span>Tempelkan kartu ini ke ponsel (Android atau iPhone), ketuk <b class="text-fg">Masuk sebagai pemilik</b>, lalu ketik kode akun.
+            Di Chrome Android bisa juga dari halaman masuk → <b class="text-fg">Masuk dengan kartu NFC</b>.
+            Kartu saja tidak cukup — siapa pun yang men-tap kartu Anda tetap butuh kode akun.</span>
         </p>
-        <p v-if="!card.login_key.available" class="text-sm text-muted">Belum tersedia: hanya untuk kartu fisik yang aktif dan chip-nya sudah terdaftar saat produksi.</p>
+        <p v-if="!card.login_key.available" class="text-sm text-muted">Belum tersedia: kartu harus dalam keadaan aktif.</p>
         <template v-else>
           <div class="flex flex-wrap items-center gap-2 text-sm">
             <AppBadge :tone="card.login_key.enabled ? 'ok' : 'outline'">{{ card.login_key.enabled ? 'Aktif' : 'Belum aktif' }}</AppBadge>
             <span v-if="card.login_key.last_used_at" class="text-muted">Terakhir dipakai {{ relative(card.login_key.last_used_at) }}</span>
-            <span v-if="card.login_key.locked_until" class="text-danger">Terkunci sampai {{ dateTime(card.login_key.locked_until) }} karena PIN salah berulang kali</span>
+            <span v-if="card.login_key.locked_until" class="text-danger">Terkunci sampai {{ dateTime(card.login_key.locked_until) }} karena kode salah berulang kali</span>
           </div>
           <div class="flex flex-wrap gap-2">
             <AppButton :variant="card.login_key.enabled ? 'secondary' : 'primary'" :disabled="busy" @click="confirm = 'pin'">
-              <KeyRound class="size-5" /> {{ card.login_key.enabled ? 'Ganti PIN' : 'Aktifkan & atur PIN' }}
+              <KeyRound class="size-5" /> {{ card.login_key.enabled ? 'Ganti kode akun' : 'Aktifkan & atur kode akun' }}
             </AppButton>
             <AppButton v-if="card.login_key.enabled" variant="ghost" :disabled="busy" @click="confirm = 'unpin'">Matikan</AppButton>
           </div>
@@ -175,23 +176,23 @@ async function copy() {
       </div>
     </AppPanel>
 
-    <AppModal v-if="confirm === 'pin'" :title="card.login_key.enabled ? 'Ganti PIN kartu' : 'Atur PIN kartu'" @close="confirm = null">
+    <AppModal v-if="confirm === 'pin'" :title="card.login_key.enabled ? 'Ganti kode akun' : 'Atur kode akun'" @close="confirm = null">
       <form id="pin-form" class="grid gap-4" novalidate @submit.prevent="saveLoginKey">
         <p class="text-sm text-muted">6 angka, hindari angka kembar atau berurutan (mis. 111111, 123456). Salah 5 kali, login kartu terkunci 15 menit.</p>
-        <AppField label="PIN baru" :error="pin.error">
+        <AppField label="Kode akun baru" :error="pin.error">
           <AppInput v-model.trim="pin.value" code type="password" inputmode="numeric" maxlength="6" autocomplete="new-password" autofocus :invalid="!!pin.error" />
         </AppField>
-        <AppField label="Ulangi PIN">
+        <AppField label="Ulangi kode">
           <AppInput v-model.trim="pin.confirm" code type="password" inputmode="numeric" maxlength="6" autocomplete="new-password" />
         </AppField>
       </form>
       <template #footer>
         <AppButton variant="secondary" @click="confirm = null">Batal</AppButton>
-        <AppButton type="submit" form="pin-form" :loading="busy">Simpan PIN</AppButton>
+        <AppButton type="submit" form="pin-form" :loading="busy">Simpan kode</AppButton>
       </template>
     </AppModal>
     <AppModal v-if="confirm === 'unpin'" title="Matikan login dengan kartu?" @close="confirm = null">
-      <p>Kartu ini tidak bisa dipakai masuk lagi sampai Anda mengatur PIN baru. Fungsi tap & bio link tetap berjalan.</p>
+      <p>Kartu ini tidak bisa dipakai masuk lagi sampai Anda mengatur kode akun baru. Fungsi tap & bio link tetap berjalan.</p>
       <template #footer>
         <AppButton variant="secondary" @click="confirm = null">Batal</AppButton>
         <AppButton variant="danger" :loading="busy" @click="removeLoginKey">Matikan</AppButton>

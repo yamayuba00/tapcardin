@@ -54,8 +54,10 @@ Operasional (workspace, domain kustom, pengguna, kartu), **produksi** (pesanan, 
 (staf & peran, audit log, kesehatan sistem). Menu mengikuti izin setiap staf.
 
 ### Keamanan & privasi
-Pengguna masuk dengan **Google** (akun dibuat otomatis) atau **kartu NFC + PIN** — kartu fisik dibaca lewat Web NFC
-(token + UID chip yang diikat saat produksi) lalu PIN 6 digit; token di QR saja tidak cukup, PIN salah 5× mengunci 15 menit.
+Pengguna masuk dengan **Google** (akun dibuat otomatis) atau **kartu NFC + kode akun** 6 angka — bukti kartu dari Web NFC
+(UID chip, Chrome Android) atau kunci chip di URL NFC (tap di HP mana pun, termasuk iPhone; tidak ada di QR); kode salah 5×
+mengunci 15 menit. **Aktivasi di tempat** (panel): staf mengaktifkan kartu untuk pelanggan, kode akun dibuat acak, dan
+pembayaran ditandai QRIS / manual.
 Anti-bot **ALTCHA** (tanpa layanan pihak ketiga), "ingat saya" 7 hari; panel staf terpisah dengan email + password; isolasi data antar-workspace di level query; IP pengunjung hanya disimpan
 sebagai hash; CSP ber-nonce; bio tidak diindeks mesin pencari kecuali diizinkan; ekspor & hapus akun mandiri.
 

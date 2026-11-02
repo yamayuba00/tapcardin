@@ -1,9 +1,11 @@
 <script setup>
 // `/c/{token}` — URL permanen di chip & QR. Memanggil resolver API (tap dicatat di sana) lalu menampilkan
 // profil (P-01), aktivasi (P-02), atau halaman netral (P-03) sesuai PRD §8.
+// Tap dari chip membawa kunci chip (?k=, tidak ada di QR): tampilkan "Masuk sebagai pemilik" → login kartu + kode akun.
+// Kunci langsung dihapus dari alamat agar tidak ikut tersalin saat tautan dibagikan.
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { Ban, Building2, CirclePause, Lock, MapPin, PackageOpen, SearchX, Sparkles, WifiOff } from 'lucide-vue-next'
+import { Ban, Building2, CirclePause, KeyRound, Lock, MapPin, PackageOpen, SearchX, Sparkles, WifiOff } from 'lucide-vue-next'
 import AppButton from '@/components/ui/AppButton/index.vue'
 import AppField from '@/components/ui/AppField/index.vue'
 import AppInput from '@/components/ui/AppInput/index.vue'
@@ -18,6 +20,9 @@ const route = useRoute()
 const state = ref(null)
 const failed = ref(false)
 const activationCode = ref('')
+const chipKey = /^[0-9a-f]{12}$/.test(String(route.query.k || '')) ? String(route.query.k) : null
+const ownerLogin = computed(() => chipKey && ['profile', 'inactive'].includes(state.value?.state)
+  ? `${config.appUrl}/login?card=${route.params.token}&k=${chipKey}` : null)
 
 /** A2 — kode dibawa lewat fragment (#code=…): tidak dikirim ke server/log, bertahan melewati login. */
 function goActivate() {
@@ -45,6 +50,11 @@ const inactiveCopy = computed(() => {
 })
 
 onMounted(async () => {
+  if (chipKey) {
+    const url = new URL(window.location.href)
+    url.searchParams.delete('k')
+    window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash)
+  }
   try {
     // Kunjungan dari chip/QR: server sudah menyisipkan data & mencatat tap → tidak perlu panggilan API kedua.
     const initial = takeInitial('card')
@@ -83,7 +93,7 @@ onMounted(async () => {
       </AppField>
       <AppButton type="submit" size="lg" block>Aktifkan kartu</AppButton>
     </form>
-    <p class="text-sm text-muted">Berikutnya Anda masuk dengan email atau Google, lalu kartu langsung aktif.</p>
+    <p class="text-sm text-muted">Berikutnya Anda masuk dengan Google, lalu kartu langsung aktif.</p>
   </CenterMessage>
 
   <CenterMessage
@@ -102,4 +112,11 @@ onMounted(async () => {
     <AppButton v-if="failed" variant="secondary" @click="$router.go(0)">Coba lagi</AppButton>
     <AppButton v-else variant="secondary" to="/k">Masukkan kode kartu</AppButton>
   </CenterMessage>
+
+  <!-- hanya muncul bila halaman dibuka dengan menempelkan kartu fisik (bukan dari QR / tautan) -->
+  <div v-if="ownerLogin" class="mx-auto grid max-w-[480px] justify-items-center px-4 pt-2 pb-10">
+    <a :href="ownerLogin" class="inline-flex min-h-11 items-center gap-2 rounded-md px-3 text-sm text-muted no-underline hover:bg-surface-2 hover:text-fg">
+      <KeyRound class="size-4" aria-hidden="true" /> Pemilik kartu ini? Masuk sebagai pemilik
+    </a>
+  </div>
 </template>

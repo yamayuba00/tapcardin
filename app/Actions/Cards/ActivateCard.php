@@ -94,7 +94,8 @@ final class ActivateCard
         return $card;
     }
 
-    private function checkCode(Card $card, ?string $code): void
+    /** Cek kode aktivasi (percobaan salah dihitung & dikunci) — juga dipakai aktivasi di tempat oleh staf. */
+    public function checkCode(Card $card, ?string $code): void
     {
         $normalized = Crockford::normalize((string) $code);
         if ($code === null || $normalized === '') {

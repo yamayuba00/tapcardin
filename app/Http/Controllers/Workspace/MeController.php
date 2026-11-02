@@ -183,6 +183,7 @@ class MeController extends WorkspaceController
             'phone' => $u->phone,
             'handle' => $u->handle,
             'locale' => $u->locale,
+            'google_linked' => $u->google_id !== null,
         ];
     }
 

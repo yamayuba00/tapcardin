@@ -9,6 +9,7 @@ use App\Enums\TenantType;
 use App\Exceptions\ApiError;
 use App\Models\Batch;
 use App\Models\Card;
+use App\Models\CardSale;
 use App\Models\CardStatusHistory;
 use App\Models\Tap;
 use App\Models\Tenant;
@@ -54,6 +55,8 @@ class CardController extends PlatformController
             'can_assign' => in_array($card->status, [CardStatus::Manufactured, CardStatus::Unclaimed], true)
                 && (! $card->tenant_id || Tenant::find($card->tenant_id)?->type === TenantType::Personal),
             'uid_bound' => $card->chip_uid_hash !== null,
+            'sale' => CardSale::with(['buyer', 'seller'])->where('card_id', $card->id)->first()?->present(),
+            'sale_methods' => CardSale::METHODS,
             'encoded_at' => self::dt($card->encoded_at),
             'qc_passed_at' => self::dt($card->qc_passed_at),
             'shipped_at' => self::dt($card->shipped_at),

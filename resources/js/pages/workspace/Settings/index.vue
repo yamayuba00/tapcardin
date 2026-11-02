@@ -1,7 +1,7 @@
 <script setup>
 // U-15 — akun, tautan @handle, preferensi notifikasi (NT-02), paket & pemakaian, izin (RL-09), ekspor & hapus akun (PV-02).
 import { reactive, ref, watch } from 'vue'
-import { Download, LogOut, Moon, ShieldCheck } from 'lucide-vue-next'
+import { CreditCard, Download, LogOut, Moon, ShieldCheck } from 'lucide-vue-next'
 import InstallApp from '@/components/common/InstallApp/index.vue'
 import { useTheme } from '@/composables/useTheme'
 import AppButton from '@/components/ui/AppButton/index.vue'
@@ -20,6 +20,8 @@ import { meApi } from '@/api/workspace'
 import { config } from '@/config'
 import { useAction, useAsync } from '@/composables/useAsync'
 import { useAuthStore } from '@/stores/auth'
+import { useToastStore } from '@/stores/toast'
+import { useRoute, useRouter } from 'vue-router'
 
 const auth = useAuthStore()
 const { toggle: toggleTheme } = useTheme()
@@ -27,6 +29,22 @@ const { data: settings } = useAsync(() => meApi.settings())
 const { busy, run } = useAction()
 
 const user = auth.me
+const route = useRoute()
+const router = useRouter()
+const toast = useToastStore()
+// hasil "Hubungkan Google" (GoogleController?link=1) kembali ke sini dengan ?google=
+const GOOGLE_RESULT = {
+  linked: 'Akun Google terhubung. Sekarang Anda juga bisa masuk dengan Google.',
+  taken: 'Akun Google itu sudah terhubung ke akun TapCard lain.',
+  failed: 'Gagal menghubungkan Google. Coba lagi.',
+  unverified: 'Email Google Anda belum terverifikasi.',
+}
+if (route.query.google) {
+  const msg = GOOGLE_RESULT[route.query.google]
+  if (msg) (route.query.google === 'linked' ? toast.ok(msg) : toast.push(msg))
+  router.replace({ query: {} })
+}
+const googleLinkUrl = `/auth/google/redirect?link=1&redirect=${encodeURIComponent('/settings')}`
 const form = reactive({ name: user.name, phone: user.phone || '', handle: user.handle || '', locale: user.locale })
 const prefs = reactive({})
 const errors = ref({})
@@ -73,6 +91,27 @@ async function destroy() {
         <AppField label="Bahasa"><AppSelect v-model="form.locale" :options="[{ value: 'id', label: 'Indonesia' }, { value: 'en', label: 'English' }]" /></AppField>
         <div><AppButton type="submit" :loading="busy">Simpan</AppButton></div>
       </form>
+    </AppPanel>
+
+    <AppPanel title="Cara masuk">
+      <div class="grid gap-4">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div class="grid gap-1">
+            <span class="font-medium">Google</span>
+            <span class="text-sm text-muted">{{ user.google_linked ? 'Terhubung — bisa masuk dengan tombol Google.' : 'Belum terhubung. Hubungkan agar bisa masuk tanpa kartu.' }}</span>
+          </div>
+          <AppBadge v-if="user.google_linked" tone="ok">Terhubung</AppBadge>
+          <AppButton v-else-if="config.googleEnabled" variant="secondary" :href="googleLinkUrl">Hubungkan Google</AppButton>
+          <span v-else class="text-sm text-muted">Belum tersedia</span>
+        </div>
+        <div class="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
+          <div class="grid gap-1">
+            <span class="font-medium">Kartu NFC + kode akun</span>
+            <span class="text-sm text-muted">Tempelkan kartu fisik, lalu ketik kode akun 6 angka. Atur atau ganti kodenya di detail kartu.</span>
+          </div>
+          <AppButton variant="secondary" to="/cards"><CreditCard class="size-5" /> Kartu saya</AppButton>
+        </div>
+      </div>
     </AppPanel>
 
     <AppPanel title="Notifikasi">

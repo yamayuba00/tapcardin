@@ -1,5 +1,5 @@
 <script setup>
-// A-01 — workspace (app.): masuk dengan Google (akun baru dibuat otomatis) atau kartu NFC + PIN. Tanpa email + password.
+// A-01 — workspace (app.): masuk dengan Google (akun baru dibuat otomatis) atau kartu NFC + kode akun. Tanpa email + password.
 // Panel pemilik (panel.): email + password khusus staf aktif; sesi terpisah & berakhir tiap 12 jam.
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -20,6 +20,11 @@ const GOOGLE_ERRORS = { google: 'Login Google dibatalkan atau gagal. Coba lagi.'
 const error = ref(GOOGLE_ERRORS[route.query.error] ?? '')
 const busy = ref(false)
 const adminForm = ref(null)
+
+// tap kartu → profil → "Masuk sebagai pemilik" membawa token + kunci chip ke sini
+const cardPreset = /^[0-9A-Za-z]{10}$/.test(String(route.query.card || '')) && /^[0-9a-f]{12}$/.test(String(route.query.k || ''))
+  ? { token: String(route.query.card), key: String(route.query.k) } : null
+if (cardPreset) router.replace({ query: { redirect: route.query.redirect || undefined } }) // kunci tidak tertinggal di riwayat
 
 const redirect = computed(() => {
   const r = String(route.query.redirect || '')
@@ -59,9 +64,12 @@ async function quickLogin(account) {
 
     <div v-else class="grid gap-4">
       <p v-if="error" class="rounded-md border border-line-strong bg-surface-2 px-3 py-2 text-sm text-danger" role="alert">{{ error }}</p>
-      <GoogleButton :redirect="redirect" />
-      <div class="flex items-center gap-3"><hr class="flex-1 border-line" /><span class="text-sm text-muted">atau</span><hr class="flex-1 border-line" /></div>
-      <CardLogin @success="done" />
+      <CardLogin v-if="cardPreset" :preset="cardPreset" @success="done" />
+      <template v-else>
+        <GoogleButton :redirect="redirect" />
+        <div class="flex items-center gap-3"><hr class="flex-1 border-line" /><span class="text-sm text-muted">atau</span><hr class="flex-1 border-line" /></div>
+        <CardLogin @success="done" />
+      </template>
     </div>
 
     <!-- Mode lokal: akun dummy satu klik -->
@@ -80,7 +88,7 @@ async function quickLogin(account) {
 
     <template v-if="!admin" #footer>
       Belum punya akun? Masuk dengan Google — akun dibuat otomatis.<br />
-      Login kartu diaktifkan dari detail kartu fisik Anda setelah masuk.
+      Kode akun kartu didapat saat kartu diaktifkan, dan bisa diganti di detail kartu.
     </template>
   </AuthShell>
 </template>

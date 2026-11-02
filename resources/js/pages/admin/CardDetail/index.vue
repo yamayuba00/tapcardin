@@ -1,8 +1,9 @@
 <script setup>
 // PL-07 detail — riwayat status, tap terbaru, ubah status (alasan wajib), terbitkan ulang kode aktivasi.
+// Penjualan langsung (aktivasi di tempat): tandai pembayaran QRIS / manual.
 import { ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { CopyPlus, Eye, RefreshCw, UserCheck } from 'lucide-vue-next'
+import { CopyPlus, Eye, RefreshCw, UserCheck, Wallet } from 'lucide-vue-next'
 import AppBadge from '@/components/ui/AppBadge/index.vue'
 import AppButton from '@/components/ui/AppButton/index.vue'
 import AppField from '@/components/ui/AppField/index.vue'
@@ -13,7 +14,7 @@ import AppSkeleton from '@/components/ui/AppSkeleton/index.vue'
 import PageHeader from '@/components/common/PageHeader/index.vue'
 import { adminApi } from '@/api/admin'
 import { useAction, useAsync } from '@/composables/useAsync'
-import { dateTime } from '@/lib/format'
+import { dateTime, rupiah } from '@/lib/format'
 import { useAuthStore } from '@/stores/auth'
 
 const route = useRoute()
@@ -28,11 +29,21 @@ const errors = ref({})
 const newCode = ref(null)
 
 const owner = ref('')
+const sale = ref({ status: 'unpaid', payment_method: '', amount: 0 })
 
 watch(card, (c) => {
   status.value = c?.targets[0]?.value ?? ''
   owner.value = c?.assigned?.email ?? ''
+  if (c?.sale) sale.value = { status: c.sale.status, payment_method: c.sale.payment_method ?? '', amount: c.sale.amount }
 })
+
+async function saveSale() {
+  errors.value = {}
+  try {
+    const res = await run(() => adminApi.cardSale(token, { ...sale.value, payment_method: sale.value.payment_method || null }), 'Pembayaran kartu disimpan.')
+    card.value = { ...card.value, sale: res.data }
+  } catch (e) { errors.value = e.fields || {} }
+}
 
 async function assign() {
   errors.value = {}
@@ -88,6 +99,32 @@ async function reissue() {
           <p class="text-muted">Batch 1 kartu dengan pemegang yang sama. Pemilik mengaktifkannya tanpa kode; kartu ini otomatis dicabut.</p>
           <div><AppButton :loading="busy" @click="replacementBatch"><CopyPlus class="size-5" /> Buat batch pengganti</AppButton></div>
         </template>
+      </div>
+    </AppPanel>
+
+    <AppPanel v-if="card.sale" title="Penjualan langsung">
+      <div class="grid gap-4 md:grid-cols-2">
+        <dl class="grid grid-cols-[max-content_1fr] content-start gap-x-6 gap-y-2 text-sm">
+          <dt class="text-muted">Pembeli</dt><dd><RouterLink v-if="card.sale.buyer" :to="`/users/${card.sale.buyer.id}`">{{ card.sale.buyer.name }}</RouterLink> <span class="text-muted">{{ card.sale.buyer?.email }}</span></dd>
+          <dt class="text-muted">Diaktifkan oleh</dt><dd>{{ card.sale.seller ?? '—' }} · {{ dateTime(card.sale.created_at) }}</dd>
+          <dt class="text-muted">Nominal</dt><dd class="font-mono">{{ rupiah(card.sale.amount) }}</dd>
+          <dt class="text-muted">Pembayaran</dt>
+          <dd>
+            <AppBadge :tone="card.sale.status === 'paid' ? 'ok' : 'warn'">{{ card.sale.status === 'paid' ? 'Lunas' : 'Belum dibayar' }}</AppBadge>
+            <span v-if="card.sale.status === 'paid'" class="ml-2 text-muted">{{ card.sale.payment_label }} · {{ dateTime(card.sale.paid_at) }}</span>
+          </dd>
+          <template v-if="card.sale.note"><dt class="text-muted">Catatan</dt><dd>{{ card.sale.note }}</dd></template>
+        </dl>
+        <form v-if="auth.can('cards.manage')" class="grid gap-4" @submit.prevent="saveSale">
+          <AppField label="Status pembayaran">
+            <AppSelect v-model="sale.status" :options="[{ value: 'paid', label: 'Lunas' }, { value: 'unpaid', label: 'Belum dibayar' }]" />
+          </AppField>
+          <AppField v-if="sale.status === 'paid'" label="Cara bayar" :error="errors.payment_method?.[0]">
+            <AppSelect v-model="sale.payment_method" placeholder="Pilih cara bayar" :options="Object.entries(card.sale_methods).map(([value, label]) => ({ value, label }))" />
+          </AppField>
+          <AppField label="Nominal (Rp)" :error="errors.amount?.[0]"><AppInput v-model.number="sale.amount" type="number" min="0" inputmode="numeric" /></AppField>
+          <div><AppButton type="submit" variant="secondary" :loading="busy"><Wallet class="size-5" /> Simpan pembayaran</AppButton></div>
+        </form>
       </div>
     </AppPanel>
 
