@@ -63,7 +63,7 @@ const hidden = computed(() => list.meta.value?.hidden ?? 0)
 const menu = computed(() => [
   auth.can('leads.edit.*') && { label: 'Impor CSV', icon: FileUp, onSelect: () => router.push('/connections/import') },
   auth.can('leads.export.*') && { label: 'Ekspor CSV (sesuai filter)', icon: Download, onSelect: () => (window.location.href = exportHref.value) },
-  auth.can('billing.view') && { label: 'Kirim ke CRM — segera hadir', icon: Blocks, onSelect: () => router.push('/billing#addons') },
+  auth.can('billing.view') && { label: 'Kirim ke CRM — segera hadir', icon: Blocks, onSelect: () => router.push('/addons') },
 ].filter(Boolean))
 const filtered = computed(() => Object.values(filters).some(Boolean))
 const exportHref = computed(() => `${leadsApi.exportUrl}?${toQuery(filters)}`)

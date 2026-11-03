@@ -5,7 +5,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import {
-  BellRing, CalendarDays, ChartColumn, ChevronsUpDown, CreditCard, Gem, House, LayoutDashboard, LogOut, Moon, Package, Palette, Settings, ShieldCheck, User, Users,
+  BellRing, Blocks, CalendarDays, ChartColumn, ChevronsUpDown, CreditCard, Gem, House, LayoutDashboard, LogOut, Moon, Package, Palette, Settings, ShieldCheck, User, Users,
 } from 'lucide-vue-next'
 import BrandLogo from '@/components/common/BrandLogo/index.vue'
 import InstallApp from '@/components/common/InstallApp/index.vue'
@@ -35,6 +35,7 @@ const groups = computed(() => [
   { label: 'Lainnya', items: [
     { key: 'analytics', label: 'Analitik', icon: ChartColumn, to: '/analytics' },
     { key: 'billing', label: 'Paket & tagihan', icon: Gem, to: '/billing' },
+    { key: 'addons', label: 'Add-on', icon: Blocks, to: '/addons' },
     { key: 'settings', label: 'Pengaturan', icon: Settings, to: '/settings' },
   ] },
 ])

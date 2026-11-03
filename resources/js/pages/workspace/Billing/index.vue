@@ -4,7 +4,6 @@
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowRight, Check, CircleCheck, Lock, QrCode, Receipt, Smartphone, Sparkles, TriangleAlert, X } from 'lucide-vue-next'
-import AddonList from '@/components/billing/AddonList/index.vue'
 import AppBadge from '@/components/ui/AppBadge/index.vue'
 import AppButton from '@/components/ui/AppButton/index.vue'
 import AppMeter from '@/components/ui/AppMeter/index.vue'
@@ -24,6 +23,7 @@ import { useToastStore } from '@/stores/toast'
 
 const route = useRoute()
 const router = useRouter()
+if (route.hash === '#addons') router.replace('/addons') // tautan lama: Add-on kini punya menu sendiri
 const auth = useAuthStore()
 const toast = useToastStore()
 const { data: b, reload } = useAsync(() => billingApi.get())
@@ -186,8 +186,6 @@ const COLUMNS = [
       </div>
       <p class="flex items-center gap-2 text-sm text-muted"><Lock class="size-4" /> <template v-if="gateway">Pembayaran aman lewat {{ gateway.simulator ? 'gateway simulasi (mode pengembangan)' : gateway.name }}.</template><template v-else>Pembayaran online sedang disiapkan.</template> Harga sudah termasuk pajak.</p>
     </section>
-
-    <AddonList v-if="auth.can('billing.view')" />
 
     <!-- riwayat invoice -->
     <section class="grid gap-3">
