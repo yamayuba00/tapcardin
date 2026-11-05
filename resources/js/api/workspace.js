@@ -46,11 +46,6 @@ export const bioPagesApi = {
   save: (profileId, pageId, body) => http.put(`/api/profiles/${profileId}/pages/${pageId}`, body),
   activate: (profileId, pageId) => http.post(`/api/profiles/${profileId}/pages/${pageId}/activate`),
   remove: (profileId, pageId) => http.del(`/api/profiles/${profileId}/pages/${pageId}`),
-  image: (profileId, file) => {
-    const fd = new FormData()
-    fd.append('image', file)
-    return http.post(`/api/profiles/${profileId}/bio-image`, fd)
-  },
 }
 
 export const profilesApi = {

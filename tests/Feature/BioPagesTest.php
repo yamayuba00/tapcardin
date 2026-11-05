@@ -9,8 +9,6 @@ use App\Models\Card;
 use App\Support\Bio\BioBlocks;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /** Bio link berbasis blok: maks. 3 halaman per kartu, satu aktif, blok tervalidasi per jenis. */
@@ -66,7 +64,7 @@ class BioPagesTest extends TestCase
         $this->rejects($this->save($id, $page, [['type' => 'text', 'data' => ['title' => ' ', 'body' => '']]]), 'blocks.0.data.body');
         $this->rejects($this->save($id, $page, [['type' => 'contacts'], ['type' => 'contacts']]), 'blocks.1.type');
         $this->rejects($this->save($id, $page, [['type' => 'save_contact'], ['type' => 'save_contact']]), 'blocks.1.type');
-        $this->rejects($this->save($id, $page, [['type' => 'gallery', 'data' => ['images' => [['path' => 't999/bio/'.str_repeat('a', 32).'.webp']]]]]), 'blocks.0.data.images');
+        $this->rejects($this->save($id, $page, [['type' => 'gallery', 'data' => ['images' => [['path' => 'x.webp']]]]]), 'blocks.0.type'); // galeri tidak tersedia
         $this->save($id, $page, [['type' => 'html', 'data' => []]])->assertStatus(422);
 
         $saved = $this->save($id, $page, [
@@ -123,40 +121,8 @@ class BioPagesTest extends TestCase
         BioPage::acrossTenants()->where('profile_id', $this->profileOf($rina)->id)->update(['is_active' => true]);
     }
 
-    public function test_gallery_images_upload_copy_and_cleanup(): void
-    {
-        Storage::fake('public');
-        $rina = $this->makeUser();
-        $id = $this->profileOf($rina)->public_id;
-        $page = $this->actingAs($rina)->getJson($this->pagesUrl($id))->json('data.0');
-        $img = fn () => $this->postJson($this->host('app', "/api/profiles/$id/bio-image"), ['image' => UploadedFile::fake()->image('a.jpg', 1600, 900)])
-            ->assertCreated()->json('data.path');
-        [$a, $b] = [$img(), $img()];
-        $this->assertMatchesRegularExpression("#^t{$rina->personal_tenant_id}/bio/[A-Za-z0-9]{32}\.webp$#", $a);
-
-        $saved = $this->save($id, $page, [['type' => 'gallery', 'data' => ['layout' => 'carousel', 'images' => [['path' => $a, 'caption' => 'Rumah A'], ['path' => $b]]]]])
-            ->assertOk()->json('data.blocks.0.data');
-        $this->assertSame(['carousel', 'Rumah A'], [$saved['layout'], $saved['images'][0]['caption']]);
-        $this->assertStringEndsWith($a, $saved['images'][0]['url']);
-
-        // salinan halaman memakai file sendiri
-        $copy = $this->postJson($this->pagesUrl($id), ['name' => 'Salinan', 'from' => $page['id']])->json('data');
-        $copyPaths = array_column($copy['blocks'][0]['data']['images'], 'path');
-        $this->assertEmpty(array_intersect([$a, $b], $copyPaths));
-        Storage::disk('public')->assertExists($copyPaths);
-
-        // gambar yang dibuang dari galeri dihapus; menghapus halaman salinan menghapus file salinannya
-        $this->save($id, $page, [['type' => 'gallery', 'data' => ['images' => [['path' => $a]]]]])->assertOk();
-        Storage::disk('public')->assertMissing($b);
-        Storage::disk('public')->assertExists($a);
-        $this->deleteJson($this->pagesUrl($id, "/{$copy['id']}"))->assertOk();
-        Storage::disk('public')->assertMissing($copyPaths);
-        Storage::disk('public')->assertExists($a);
-    }
-
     public function test_second_card_copies_all_pages_and_other_users_cannot_touch_them(): void
     {
-        Storage::fake('public');
         $rina = $this->makeUser();
         $this->actingAs($rina);
         $first = $this->makeCard(CardStatus::Unclaimed, buyer: $rina);
@@ -238,6 +204,13 @@ class BioPagesTest extends TestCase
         $this->assertStringStartsWith('inline;', $res->headers->get('Content-Disposition'));
         $this->assertStringContainsString('FN:Rina Saputra', $res->getContent());
         $this->withHeader('User-Agent', $chrome)->get("$url?file=1")->assertOk()->assertHeader('Content-Type', 'text/vcard; charset=utf-8');
+    }
+
+    public function test_bio_image_upload_endpoint_is_gone(): void
+    {
+        $rina = $this->makeUser();
+        $id = $this->profileOf($rina)->public_id;
+        $this->actingAs($rina)->postJson($this->host('app', "/api/profiles/$id/bio-image"))->assertNotFound();
     }
 
     public function test_video_and_link_parsers(): void

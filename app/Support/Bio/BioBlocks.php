@@ -2,7 +2,6 @@
 
 namespace App\Support\Bio;
 
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -12,7 +11,7 @@ use Illuminate\Validation\ValidationException;
  */
 final class BioBlocks
 {
-    public const TYPES = ['save_contact', 'contacts', 'button', 'text', 'video', 'gallery', 'divider'];
+    public const TYPES = ['save_contact', 'contacts', 'button', 'text', 'video', 'divider'];
 
     /** Jenis yang cukup satu per halaman. */
     public const SINGLE = ['save_contact' => 'Simpan kontak', 'contacts' => 'Kontak & tautan'];
@@ -23,17 +22,15 @@ final class BioBlocks
 
     public const MAX_BLOCKS = 30;
 
-    public const MAX_IMAGES = 12;
-
     /** Asal iframe yang boleh dimuat (dipakai juga oleh CSP frame-src). */
     public const EMBED_ORIGINS = ['https://www.youtube-nocookie.com', 'https://player.vimeo.com', 'https://www.tiktok.com', 'https://open.spotify.com'];
 
     /**
-     * Rapikan & validasi isi satu blok. Galeri hanya boleh memakai gambar yang diunggah ke folder bio tenant ini.
+     * Rapikan & validasi isi satu blok.
      *
      * @throws ValidationException
      */
-    public static function normalize(string $type, array $data, string $key, int $tenantId): array
+    public static function normalize(string $type, array $data, string $key): array
     {
         $fail = fn (string $field, string $msg) => throw ValidationException::withMessages(["$key.$field" => $msg]);
         $str = fn (string $field, int $max) => mb_substr(trim((string) ($data[$field] ?? '')), 0, $max);
@@ -65,25 +62,6 @@ final class BioBlocks
                 $v = self::video($url) ?? $fail('url', 'Tautan video belum didukung. Pakai YouTube, TikTok, Vimeo, atau Spotify.');
 
                 return ['url' => mb_substr($url, 0, 500)] + $v;
-            })(),
-            'gallery' => (function () use ($data, $pick, $fail, $tenantId) {
-                $images = array_values(array_filter((array) ($data['images'] ?? []), 'is_array'));
-                if ($images === []) {
-                    $fail('images', 'Tambahkan minimal satu gambar.');
-                }
-                if (count($images) > self::MAX_IMAGES) {
-                    $fail('images', 'Maksimal '.self::MAX_IMAGES.' gambar per galeri.');
-                }
-                $out = [];
-                foreach ($images as $img) {
-                    $path = (string) ($img['path'] ?? '');
-                    if (! preg_match('#^t'.$tenantId.'/bio/[A-Za-z0-9]{32}\.webp$#', $path) || ! Storage::disk('public')->exists($path)) {
-                        $fail('images', 'Ada gambar yang tidak ditemukan. Unggah ulang gambarnya.');
-                    }
-                    $out[] = ['path' => $path, 'caption' => mb_substr(trim((string) ($img['caption'] ?? '')), 0, 80)];
-                }
-
-                return ['layout' => $pick('layout', ['grid', 'carousel']), 'images' => $out];
             })(),
             'divider' => ['style' => $pick('style', ['line', 'space'])],
         };
@@ -165,27 +143,9 @@ final class BioBlocks
     /** Bentuk publik satu blok (resolver & preview). */
     public static function present(string $id, string $type, array $data): array
     {
-        $disk = Storage::disk('public');
-
         return ['id' => $id, 'type' => $type] + match ($type) {
             'video' => ['provider' => $data['provider']] + self::embed($data['provider'], $data['id'], $data['kind']),
-            'gallery' => ['layout' => $data['layout'], 'images' => array_map(fn ($i) => ['url' => $disk->url($i['path']), 'caption' => $i['caption'] ?: null], $data['images'])],
             default => $data,
         };
-    }
-
-    /** Path gambar yang dipakai sekumpulan blok (untuk membersihkan file yang tidak terpakai lagi). @return list<string> */
-    public static function paths(iterable $blocks): array
-    {
-        $out = [];
-        foreach ($blocks as $b) {
-            if (($b['type'] ?? null) === 'gallery') {
-                foreach ($b['data']['images'] ?? [] as $img) {
-                    $out[] = $img['path'];
-                }
-            }
-        }
-
-        return array_values(array_unique($out));
     }
 }

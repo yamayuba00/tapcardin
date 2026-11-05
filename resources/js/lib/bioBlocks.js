@@ -3,7 +3,6 @@
 
 export const MAX_PAGES = 3
 export const MAX_BLOCKS = 30
-export const MAX_IMAGES = 12
 
 export const SAVE_LABEL = 'Simpan ke Kontak HP'
 /** Blok yang cukup satu per halaman (sama dengan BioBlocks::SINGLE). */
@@ -14,7 +13,6 @@ export const BLOCK_TYPES = [
   { type: 'button', label: 'Tombol', hint: 'Ajak kolaborasi, minta penawaran, booking' },
   { type: 'text', label: 'Teks', hint: 'Judul bagian, tentang saya, layanan' },
   { type: 'video', label: 'Video / musik', hint: 'YouTube, TikTok, Vimeo, Spotify' },
-  { type: 'gallery', label: 'Galeri', hint: 'Portofolio, foto produk atau properti' },
   { type: 'divider', label: 'Pemisah', hint: 'Garis atau jarak antar bagian' },
   { type: 'contacts', label: 'Kontak & tautan', hint: 'Daftar kontak dari bagian Kontak (cukup satu)' },
 ]
@@ -24,7 +22,6 @@ export function newBlock(type) {
     button: { label: '', url: '', style: 'primary' },
     text: { title: '', body: '', align: 'left' },
     video: { url: '' },
-    gallery: { layout: 'grid', images: [] },
     divider: { style: 'line' },
     contacts: {},
     save_contact: { label: SAVE_LABEL },
@@ -81,7 +78,6 @@ export function presentBlock(b) {
       const v = parseVideo(d.url)
       return v ? { ...base, provider: v.provider, ...embedOf(v) } : null
     }
-    case 'gallery': return d.images?.length ? { ...base, layout: d.layout, images: d.images.map((i) => ({ url: i.url, caption: i.caption?.trim() || null })) } : null
     case 'divider': return { ...base, style: d.style }
     case 'contacts': return base
     case 'save_contact': return { ...base, label: d.label?.trim() || SAVE_LABEL }
@@ -89,10 +85,7 @@ export function presentBlock(b) {
   }
 }
 
-/** Blok yang dikirim ke PUT /api/profiles/{id}/pages/{page} (tanpa kunci lokal & URL gambar). */
+/** Blok yang dikirim ke PUT /api/profiles/{id}/pages/{page} (tanpa kunci lokal). */
 export function blockPayload(b) {
-  const data = b.type === 'gallery'
-    ? { layout: b.data.layout, images: b.data.images.map(({ path, caption }) => ({ path, caption: caption || '' })) }
-    : b.data
-  return { id: b.id || undefined, type: b.type, is_visible: b.is_visible, data }
+  return { id: b.id || undefined, type: b.type, is_visible: b.is_visible, data: b.data }
 }

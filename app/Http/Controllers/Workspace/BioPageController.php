@@ -9,13 +9,10 @@ use App\Models\Card;
 use App\Models\Profile;
 use App\Support\Bio\BioBlocks;
 use App\Support\Bio\BioTheme;
-use App\Support\ImageResizer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -95,11 +92,10 @@ class BioPageController extends WorkspaceController
                 'id' => $b['id'] ?? null,
                 'type' => $b['type'],
                 'is_visible' => $b['is_visible'] ?? true,
-                'data' => BioBlocks::normalize($b['type'], $b['data'] ?? [], "blocks.$i.data", $profile->tenant_id),
+                'data' => BioBlocks::normalize($b['type'], $b['data'] ?? [], "blocks.$i.data"),
             ];
         }
 
-        $before = BioPage::imagesOf($profile->id);
         DB::transaction(function () use ($page, $data, $rows) {
             $theme = BioTheme::normalize(array_merge(BioTheme::normalize($page->theme), $data['theme']));
             $page->update(['name' => $data['name'], 'theme' => $theme]);
@@ -117,7 +113,6 @@ class BioPageController extends WorkspaceController
             BioBlock::where('bio_page_id', $page->id)->whereNotIn('id', $keep)->delete();
             $page->touch();
         });
-        BioPage::pruneImages($profile->id, $before);
         $this->forgetCards($profile);
 
         return response()->json(['data' => $page->fresh('blocks')->present()]);
@@ -141,23 +136,9 @@ class BioPageController extends WorkspaceController
         if ($page->is_active) {
             throw new ApiError('bio_page_active', 'Bio link yang sedang aktif tidak bisa dihapus. Aktifkan bio lain dulu.');
         }
-        $before = BioPage::imagesOf($profile->id);
         $page->delete();
-        BioPage::pruneImages($profile->id, $before);
 
         return response()->json(['data' => $this->pages($profile)]);
-    }
-
-    /** POST /api/profiles/{id}/bio-image — gambar galeri (WebP maks. 1200 px). */
-    public function image(Request $request, Profile $profile): JsonResponse
-    {
-        $this->own($profile);
-        $request->validate(['image' => ['required', 'file', 'max:8192']]);
-        $img = ImageResizer::load($request->file('image'));
-        $path = "t{$profile->tenant_id}/bio/".Str::random(32).'.webp';
-        Storage::disk('public')->put($path, ImageResizer::webp(ImageResizer::fit($img, 1200)));
-
-        return response()->json(['data' => ['path' => $path, 'url' => Storage::disk('public')->url($path)]], 201);
     }
 
     private function pages(Profile $profile): array

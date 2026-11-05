@@ -317,7 +317,7 @@ const presetOf = (key) => catalog.value?.presets.find((p) => p.key === key)
         </AppPanel>
 
         <AppPanel :title="`Isi halaman · ${page.name || 'Tanpa nama'}`">
-          <BioBlocksEditor :key="page.id" v-model="page.blocks" :profile-id="profileId" :errors="errors" />
+          <BioBlocksEditor :key="page.id" v-model="page.blocks" :errors="errors" />
         </AppPanel>
 
         <AppPanel :title="`Tampilan · ${page.name || 'Tanpa nama'}`">
@@ -414,7 +414,7 @@ const presetOf = (key) => catalog.value?.presets.find((p) => p.key === key)
       </template>
     </AppModal>
 
-    <AppModal v-if="deleting" size="sm" :title="`Hapus bio “${deleting.name}”?`" description="Blok dan gambar galeri di bio link ini ikut terhapus. Identitas dan kontak tidak terpengaruh." @close="deleting = null">
+    <AppModal v-if="deleting" size="sm" :title="`Hapus bio “${deleting.name}”?`" description="Semua blok di bio link ini ikut terhapus. Identitas dan kontak tidak terpengaruh." @close="deleting = null">
       <template #footer>
         <AppButton variant="secondary" @click="deleting = null">Batal</AppButton>
         <AppButton variant="danger" :loading="working" @click="remove">Hapus</AppButton>

@@ -26,7 +26,6 @@ test('embedOf memberi ukuran per penyedia', () => {
 test('presentBlock menyembunyikan blok yang belum lengkap', () => {
   assert.equal(presentBlock(newBlock('button')), null)
   assert.equal(presentBlock(newBlock('video')), null)
-  assert.equal(presentBlock(newBlock('gallery')), null)
   const b = newBlock('button')
   b.data.label = ' Ajak Kolaborasi '
   assert.equal(presentBlock(b).label, 'Ajak Kolaborasi')
@@ -45,16 +44,15 @@ test('blok simpan kontak memakai teks bawaan bila kosong', () => {
 })
 
 test('newBlock tidak berbagi objek data antar blok', () => {
-  const a = newBlock('gallery')
-  const b = newBlock('gallery')
-  a.data.images.push({ path: 'x' })
-  assert.equal(b.data.images.length, 0)
+  const a = newBlock('button')
+  const b = newBlock('button')
+  a.data.label = 'x'
+  assert.equal(b.data.label, '')
   assert.notEqual(a.key, b.key)
 })
 
-test('blockPayload membuang URL gambar & kunci lokal', () => {
-  const g = { ...newBlock('gallery'), id: '01ABC' }
-  g.data.images = [{ path: 't1/bio/a.webp', url: 'http://x/a.webp', caption: null }]
-  assert.deepEqual(blockPayload(g), { id: '01ABC', type: 'gallery', is_visible: true, data: { layout: 'grid', images: [{ path: 't1/bio/a.webp', caption: '' }] } })
+test('blockPayload membuang kunci lokal', () => {
+  const t = { ...newBlock('text'), id: '01ABC' }
+  assert.deepEqual(blockPayload(t), { id: '01ABC', type: 'text', is_visible: true, data: { title: '', body: '', align: 'left' } })
   assert.equal(blockPayload(newBlock('text')).id, undefined)
 })

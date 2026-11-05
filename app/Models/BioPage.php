@@ -9,8 +9,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 /**
  * Halaman bio link milik satu profil (= satu kartu). Maks. 3 per profil, tepat satu aktif — yang tampil saat kartu
@@ -72,7 +70,7 @@ class BioPage extends Model
         });
     }
 
-    /** Salin halaman ini (tema + blok + file gambar baru) ke profil tujuan. */
+    /** Salin halaman ini (tema + blok) ke profil tujuan. */
     public function duplicateTo(Profile $to, string $name, bool $active = false): self
     {
         $copy = self::create([
@@ -80,56 +78,15 @@ class BioPage extends Model
             'is_active' => $active, 'theme' => BioTheme::normalize($this->theme),
         ]);
         foreach (BioBlock::acrossTenants()->where('bio_page_id', $this->id)->orderBy('sort')->orderBy('id')->get() as $b) {
-            $data = $b->data;
-            if ($b->type === 'gallery') {
-                $data['images'] = array_values(array_filter(array_map(
-                    fn ($img) => ($path = self::copyImage($img['path'], $to->tenant_id)) ? ['path' => $path] + $img : null,
-                    $data['images'] ?? [],
-                )));
-                if ($data['images'] === []) {
-                    continue; // file asli sudah hilang → blok kosong tidak disalin
-                }
-            }
-            $copy->blocks()->create(['tenant_id' => $to->tenant_id, 'type' => $b->type, 'data' => $data, 'is_visible' => $b->is_visible, 'sort' => $b->sort]);
+            $copy->blocks()->create(['tenant_id' => $to->tenant_id, 'type' => $b->type, 'data' => $b->data, 'is_visible' => $b->is_visible, 'sort' => $b->sort]);
         }
 
         return $copy;
     }
 
-    /** Hapus file galeri yang tidak lagi dipakai halaman mana pun dari profil ini. */
-    public static function pruneImages(int $profileId, array $before): void
-    {
-        $gone = array_diff($before, self::imagesOf($profileId));
-        if ($gone) {
-            Storage::disk('public')->delete(array_values($gone));
-        }
-    }
-
-    /** Semua path gambar galeri milik profil. @return list<string> */
-    public static function imagesOf(int $profileId): array
-    {
-        $pages = self::acrossTenants()->where('profile_id', $profileId)->pluck('id');
-
-        return BioBlocks::paths(BioBlock::acrossTenants()->whereIn('bio_page_id', $pages)->where('type', 'gallery')->get(['type', 'data'])->toArray());
-    }
-
-    private static function copyImage(string $path, int $tenantId): ?string
-    {
-        $disk = Storage::disk('public');
-        if (! $disk->exists($path)) {
-            return null;
-        }
-        $to = "t$tenantId/bio/".Str::random(32).'.webp';
-        $disk->copy($path, $to);
-
-        return $to;
-    }
-
-    /** Bentuk untuk editor: data mentah + URL gambar untuk preview. */
+    /** Bentuk untuk editor: data mentah tiap blok. */
     public function present(): array
     {
-        $disk = Storage::disk('public');
-
         return [
             'id' => $this->public_id,
             'name' => $this->name,
@@ -139,9 +96,7 @@ class BioPage extends Model
                 'id' => $b->public_id,
                 'type' => $b->type,
                 'is_visible' => $b->is_visible,
-                'data' => $b->type === 'gallery'
-                    ? ['layout' => $b->data['layout'] ?? 'grid', 'images' => array_map(fn ($i) => $i + ['url' => $disk->url($i['path'])], $b->data['images'] ?? [])]
-                    : $b->data,
+                'data' => $b->data,
             ])->values()->all(),
             'updated_at' => $this->updated_at?->toIso8601String(),
         ];

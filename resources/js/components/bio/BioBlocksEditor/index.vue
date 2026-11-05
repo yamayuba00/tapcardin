@@ -1,23 +1,19 @@
 <script setup>
 // Editor susunan blok satu halaman bio: tambah, urutkan (naik/turun), sembunyikan, hapus, dan isi per jenis blok.
-// Perubahan baru tersimpan saat tombol Simpan editor ditekan; gambar galeri langsung diunggah agar bisa dipreview.
-import { computed, ref } from 'vue'
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Eye, EyeOff, ImagePlus, LayoutList, Minus, Music, Plus, SquareMousePointer, Trash2, Type, Images, UserPlus, X } from 'lucide-vue-next'
+// Perubahan baru tersimpan saat tombol Simpan editor ditekan.
+import { computed } from 'vue'
+import { ArrowDown, ArrowUp, Eye, EyeOff, LayoutList, Minus, Music, Plus, SquareMousePointer, Trash2, Type, UserPlus } from 'lucide-vue-next'
 import AppButton from '@/components/ui/AppButton/index.vue'
 import AppField from '@/components/ui/AppField/index.vue'
 import AppInput from '@/components/ui/AppInput/index.vue'
 import AppSegmented from '@/components/ui/AppSegmented/index.vue'
 import AppTextarea from '@/components/ui/AppTextarea/index.vue'
-import { bioPagesApi } from '@/api/workspace'
-import { BLOCK_TYPES, MAX_BLOCKS, MAX_IMAGES, SAVE_LABEL, SINGLE, newBlock, parseVideo } from '@/lib/bioBlocks'
-import { useToastStore } from '@/stores/toast'
+import { BLOCK_TYPES, MAX_BLOCKS, SAVE_LABEL, SINGLE, newBlock, parseVideo } from '@/lib/bioBlocks'
 
 const blocks = defineModel({ type: Array, required: true })
-const props = defineProps({ profileId: { type: String, required: true }, errors: { type: Object, default: () => ({}) } })
-const toast = useToastStore()
-const uploading = ref(null) // key blok galeri yang sedang mengunggah
+const props = defineProps({ errors: { type: Object, default: () => ({}) } })
 
-const ICON = { save_contact: UserPlus, button: SquareMousePointer, text: Type, video: Music, gallery: Images, divider: Minus, contacts: LayoutList }
+const ICON = { save_contact: UserPlus, button: SquareMousePointer, text: Type, video: Music, divider: Minus, contacts: LayoutList }
 const META = Object.fromEntries(BLOCK_TYPES.map((t) => [t.type, t]))
 const taken = computed(() => new Set(blocks.value.filter((b) => SINGLE.includes(b.type)).map((b) => b.type)))
 const full = computed(() => blocks.value.length >= MAX_BLOCKS)
@@ -38,31 +34,6 @@ function move(i, d) {
 }
 function remove(i) {
   blocks.value = blocks.value.filter((_, k) => k !== i)
-}
-
-async function upload(b, e) {
-  const files = [...(e.target.files ?? [])]
-  e.target.value = ''
-  const room = MAX_IMAGES - b.data.images.length
-  if (files.length > room) toast.push(`Maksimal ${MAX_IMAGES} gambar per galeri — ${Math.max(room, 0)} gambar pertama yang diunggah.`)
-  uploading.value = b.key
-  try {
-    for (const file of files.slice(0, Math.max(room, 0))) {
-      const res = await bioPagesApi.image(props.profileId, file)
-      b.data.images.push({ path: res.data.path, url: res.data.url, caption: '' })
-    }
-  } catch (x) {
-    toast.error(x.fields?.image?.[0] ?? x.message ?? 'Gambar gagal diunggah.')
-  } finally {
-    uploading.value = null
-  }
-}
-function moveImage(b, i, d) {
-  const j = i + d
-  if (j < 0 || j >= b.data.images.length) return
-  const list = [...b.data.images]
-  ;[list[i], list[j]] = [list[j], list[i]]
-  b.data.images = list
 }
 </script>
 
@@ -105,32 +76,6 @@ function moveImage(b, i, d) {
             :hint="parseVideo(b.data.url) ? `Terdeteksi: ${PROVIDER[parseVideo(b.data.url).provider]}` : 'Tempel tautan YouTube, TikTok, Vimeo, atau Spotify.'">
             <AppInput v-model.trim="b.data.url" maxlength="500" inputmode="url" placeholder="https://youtu.be/…" :invalid="!!err(i, 'url') || (!!b.data.url && !parseVideo(b.data.url))" />
           </AppField>
-        </template>
-
-        <template v-else-if="b.type === 'gallery'">
-          <AppSegmented v-model="b.data.layout" label="Tata letak galeri" :options="[{ value: 'grid', label: 'Grid' }, { value: 'carousel', label: 'Geser (carousel)' }]" />
-          <ul v-if="b.data.images.length" class="grid gap-3 sm:grid-cols-2">
-            <li v-for="(img, k) in b.data.images" :key="img.path" class="flex items-start gap-3 rounded-md border border-line p-2">
-              <img :src="img.url" alt="" class="size-16 flex-none rounded-sm bg-surface-2 object-cover" />
-              <div class="grid min-w-0 flex-1 gap-1">
-                <AppInput v-model="img.caption" maxlength="80" placeholder="Keterangan (opsional)" :aria-label="`Keterangan gambar ${k + 1}`" />
-                <div class="flex gap-1">
-                  <AppButton variant="ghost" icon :disabled="k === 0" aria-label="Geser ke kiri" @click="moveImage(b, k, -1)"><ArrowLeft class="size-4" /></AppButton>
-                  <AppButton variant="ghost" icon :disabled="k === b.data.images.length - 1" aria-label="Geser ke kanan" @click="moveImage(b, k, 1)"><ArrowRight class="size-4" /></AppButton>
-                  <AppButton variant="ghost" icon aria-label="Hapus gambar" @click="b.data.images.splice(k, 1)"><X class="size-4" /></AppButton>
-                </div>
-              </div>
-            </li>
-          </ul>
-          <p v-if="err(i, 'images')" class="text-sm text-danger" role="alert">{{ err(i, 'images') }}</p>
-          <label
-            v-if="b.data.images.length < MAX_IMAGES"
-            :class="['inline-flex min-h-11 w-fit items-center gap-2 rounded-md border border-line-strong px-5 font-semibold hover:bg-surface-2', uploading === b.key ? 'pointer-events-none opacity-50' : 'cursor-pointer']"
-          >
-            <ImagePlus class="size-5" /> {{ uploading === b.key ? 'Mengunggah…' : 'Tambah gambar' }}
-            <input class="sr-only" type="file" multiple accept="image/jpeg,image/png,image/webp" :disabled="uploading === b.key" @change="upload(b, $event)" />
-          </label>
-          <span class="text-sm text-muted">{{ b.data.images.length }}/{{ MAX_IMAGES }} gambar · JPG, PNG, atau WebP</span>
         </template>
 
         <template v-else-if="b.type === 'divider'">
