@@ -7,6 +7,7 @@ use App\Models\BrandKit;
 use App\Models\Design;
 use App\Models\LanyardHardware;
 use App\Models\LanyardWidth;
+use App\Models\MerchProduct;
 use App\Models\Profile;
 use App\Support\Design\CardGeometry;
 use App\Support\Design\DesignNormalizer;
@@ -14,6 +15,7 @@ use App\Support\Design\DesignValidator;
 use App\Support\Design\Geometry;
 use App\Support\Design\LanyardGeometry;
 use App\Support\Design\LanyardPricing;
+use App\Support\Design\MerchGeometry;
 use App\Support\Design\Palette;
 use App\Support\Design\TemplateLibrary;
 use App\Support\Design\Variables;
@@ -56,6 +58,7 @@ class DesignController extends WorkspaceController
             'variables' => $this->variables(),
             'kits' => BrandKit::where('user_id', $this->user()->id)->latest('updated_at')->get()->map(fn (BrandKit $k) => $k->toKit()),
             'lanyard' => LanyardPricing::catalog(),
+            'merch' => MerchProduct::catalog(),
             'limits' => ['min_text_pt' => DesignValidator::MIN_TEXT_PT, 'max_layers' => DesignNormalizer::MAX_LAYERS, 'safe' => CardGeometry::SAFE, 'bleed' => CardGeometry::BLEED],
         ]]);
     }
@@ -63,19 +66,20 @@ class DesignController extends WorkspaceController
     public function index(Request $request): JsonResponse
     {
         $designs = Design::where('user_id', $this->user()->id)->where('is_template', false)
-            ->with(['brandKit', 'lanyardWidth', 'lanyardHardware', 'pairedCard', 'pairedLanyard'])
+            ->with(['brandKit', 'lanyardWidth', 'lanyardHardware', 'merchProduct', 'pairedCard', 'pairedLanyard'])
             ->when($request->query('kind'), fn ($q, $k) => $q->where('kind', $k))
             ->latest('updated_at')->get();
 
         return response()->json(['data' => $designs->map(fn ($d) => $this->present($d, false))]);
     }
 
-    /** Desain kartu baru dari template default, dari template milik sendiri (`from`), atau lanyard kosong (`kind=lanyard`). */
+    /** Desain kartu baru dari template default / template milik sendiri (`from`), lanyard kosong, atau merchandise (`kind=merch` + `product`). */
     public function store(Request $request): JsonResponse
     {
         $this->access()->authorize('cards.manage.own');
         $data = $request->validate([
-            'kind' => ['nullable', Rule::in(['card', 'lanyard'])],
+            'kind' => ['nullable', Rule::in(['card', 'lanyard', 'merch'])],
+            'product' => ['nullable', 'required_if:kind,merch', Rule::exists('merch_products', 'key')->where('is_active', true)],
             'template' => ['nullable', 'required_without_all:from,kind', Rule::in(array_keys(TemplateLibrary::TEMPLATES))],
             'from' => ['nullable', 'string', 'size:26'],
             'orientation' => ['nullable', Rule::in(['landscape', 'portrait'])],
@@ -83,6 +87,9 @@ class DesignController extends WorkspaceController
             'name' => ['nullable', 'string', 'max:120'],
         ]);
 
+        if (($data['kind'] ?? 'card') === 'merch') {
+            return response()->json(['data' => $this->present($this->loaded($this->createMerch($data['product'], $data['name'] ?? null)))], 201);
+        }
         if (($data['kind'] ?? 'card') === 'lanyard') {
             return response()->json(['data' => $this->present(DB::transaction(fn () => $this->createLanyard(null, $data['name'] ?? null)))], 201);
         }
@@ -144,7 +151,7 @@ class DesignController extends WorkspaceController
             if (array_key_exists('brand_kit_id', $data)) {
                 $design->brand_kit_id = $data['brand_kit_id'] ? $this->kit($data['brand_kit_id'])->id : null;
             }
-            if (array_key_exists('lanyard', $data) && ! $isLanyard) {
+            if (array_key_exists('lanyard', $data) && $design->kind === 'card') {
                 $design->lanyard = $data['lanyard'];
             }
             if ($isLanyard) {
@@ -234,7 +241,26 @@ class DesignController extends WorkspaceController
 
     private function loaded(Design $d): Design
     {
-        return $d->load(['brandKit', 'pairedCard', 'pairedLanyard', 'lanyardWidth', 'lanyardHardware']);
+        return $d->load(['brandKit', 'pairedCard', 'pairedLanyard', 'lanyardWidth', 'lanyardHardware', 'merchProduct']);
+    }
+
+    /** Desain merchandise baru: teks nama/merek di tengah area cetak, bahan putih, memakai brand kit terbaru bila ada. */
+    private function createMerch(string $productKey, ?string $name): Design
+    {
+        $product = MerchProduct::where('key', $productKey)->where('is_active', true)->firstOrFail();
+        $kit = BrandKit::where('user_id', $this->user()->id)->latest('updated_at')->first();
+        $g = new MerchGeometry($product->print_w_mm, $product->print_h_mm);
+        $side = $g->starter($kit ? '{{brand}}' : '{{name}}', Palette::hex('bone-0'), $kit ? 'kit:primary' : Palette::hex('ink-950'));
+        $design = new Design([
+            'user_id' => $this->user()->id, 'kind' => 'merch', 'name' => $name ?: "{$product->name} baru",
+            'orientation' => $g->portrait() ? 'portrait' : 'landscape', 'lanyard' => false, 'brand_kit_id' => $kit?->id,
+            'merch_product_id' => $product->id, 'print_sides' => $product->print_sides,
+            'front_json' => $side, 'back_json' => array_replace($side, ['layers' => []]), 'locked_layer_ids' => [], // produk 1 sisi: belakang tak dipakai
+        ]);
+        $this->normalize($design);
+        $design->save();
+
+        return $design;
     }
 
     private function createLanyard(?Design $card, ?string $name = null): Design
@@ -342,6 +368,9 @@ class DesignController extends WorkspaceController
             'kit' => $d->brandKit?->toKit(),
             'paired' => $p ? ['id' => $p->public_id, 'kind' => $p->kind, 'name' => $p->name, 'orientation' => $p->orientation, 'front' => $p->front_json, 'back' => $p->back_json] : null,
         ];
+        if ($d->kind === 'merch' && $d->merchProduct) {
+            $out['merch_spec'] = $d->merchProduct->present();
+        }
         if ($d->kind === 'lanyard') {
             $out['lanyard_spec'] = [
                 'width_mm' => $d->lanyardWidth?->width_mm, 'hardware' => $d->lanyardHardware?->key,
@@ -364,6 +393,11 @@ class DesignController extends WorkspaceController
 
     private function geometry(Design $d): Geometry
     {
+        if ($d->kind === 'merch') {
+            $p = $d->merchProduct ?? MerchProduct::findOrFail($d->merch_product_id);
+
+            return new MerchGeometry($p->print_w_mm, $p->print_h_mm);
+        }
         if ($d->kind === 'lanyard') {
             $w = $d->lanyard_width_id ? LanyardWidth::find($d->lanyard_width_id)?->width_mm : null;
 

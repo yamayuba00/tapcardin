@@ -94,7 +94,9 @@ final class DesignValidator
                 if ($outside) {
                     $add($id, 'warning', $lanyard
                         ? "{$label($l)} melewati tepi tali (margin {$s} mm) dan bisa terpotong jahitan."
-                        : "{$label($l)} terlalu dekat tepi (keluar safe zone {$s} mm) dan bisa terpotong.");
+                        : ($this->g instanceof MerchGeometry
+                            ? "{$label($l)} keluar dari area cetak (margin {$s} mm)."
+                            : "{$label($l)} terlalu dekat tepi (keluar safe zone {$s} mm) dan bisa terpotong."));
                 }
             }
             foreach ($system as $sys) {

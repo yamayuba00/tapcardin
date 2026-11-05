@@ -29,7 +29,8 @@ class OrderController extends WorkspaceController
     {
         $this->access()->authorize('orders.create');
         $qr = QrEncoder::encode(config('tapcard.resolver_url').'/c/XXXXXXXXXX?src=qr');
-        $designs = Design::where('user_id', $this->user()->id)->where('is_template', false)->with(['brandKit', 'lanyardWidth', 'lanyardHardware'])
+        $designs = Design::where('user_id', $this->user()->id)->where('is_template', false)->whereIn('kind', ['card', 'lanyard']) // merch: segera hadir
+            ->with(['brandKit', 'lanyardWidth', 'lanyardHardware'])
             ->latest('updated_at')->get()->map(fn (Design $d) => [
                 'id' => $d->public_id, 'kind' => $d->kind, 'name' => $d->name, 'orientation' => $d->orientation, 'ready' => $d->validated_at !== null,
                 'front' => $d->front_json, 'back' => $d->back_json, 'kit' => $d->brandKit?->toKit(),

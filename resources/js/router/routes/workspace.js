@@ -34,10 +34,11 @@ export default [
       { path: 'events', name: 'events', component: page('Events'), meta: { title: 'Event', nav: 'events' } },
       { path: 'events/:id', name: 'event-detail', component: page('EventDetail'), meta: { title: 'Event', nav: 'events' } },
       { path: 'connections/:id', name: 'connection-detail', component: page('ConnectionDetail'), meta: { title: 'Koneksi', nav: 'connections' } },
-      { path: 'designs', name: 'designs', component: page('Designs'), meta: { title: 'Desain kartu & lanyard', nav: 'designs' } },
+      { path: 'designs', name: 'designs', component: page('Designs'), meta: { title: 'Desain', nav: 'designs' } },
       // editor tampil layar penuh (tanpa sidebar) — lihat WorkspaceLayout
       { path: 'designs/:id', name: 'studio', component: page('Studio'), meta: { title: 'Design Studio', nav: 'designs', fullscreen: true } },
       { path: 'lanyards/:id', name: 'lanyard-studio', component: page('LanyardStudio'), meta: { title: 'Editor lanyard', nav: 'designs', fullscreen: true } },
+      { path: 'merch/:id', name: 'merch-studio', component: page('MerchStudio'), meta: { title: 'Editor merchandise', nav: 'designs', fullscreen: true } },
       { path: 'analytics', name: 'analytics', component: page('Analytics'), meta: { title: 'Analitik', nav: 'analytics' } },
       { path: 'orders', name: 'orders', component: page('Orders'), meta: { title: 'Pesanan', nav: 'orders' } },
       { path: 'orders/new', name: 'order-new', component: page('OrderNew'), meta: { title: 'Pesan kartu & lanyard', nav: 'orders' } },

@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
- * Desain kartu atau lanyard (BSD §4.4, format JSON §5). Lanyard menunjuk kartu pasangannya lewat
+ * Desain kartu, lanyard, atau merchandise (BSD §4.4, format JSON §5). Lanyard menunjuk kartu pasangannya lewat
  * `paired_design_id` (index unik: satu kartu ↔ satu lanyard); keduanya bisa berbagi satu brand kit.
  */
 class Design extends Model
@@ -65,6 +65,11 @@ class Design extends Model
     public function lanyardWidth(): BelongsTo
     {
         return $this->belongsTo(LanyardWidth::class);
+    }
+
+    public function merchProduct(): BelongsTo
+    {
+        return $this->belongsTo(MerchProduct::class);
     }
 
     public function lanyardHardware(): BelongsTo

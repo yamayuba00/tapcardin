@@ -32,6 +32,8 @@ sebelum kartu fisiknya tiba.
   pilih banyak, grup, ratakan, putar, kunci, lapisan, undo/redo, grid & snap, pratinjau cetak + unduh PNG.
 - **Editor lanyard** — tali 15/20/25 mm × 90 cm, desain satu pola yang diulang, cetak 1 atau 2 sisi, pilihan pengait,
   harga langsung dari katalog, dan pratinjau kartu menggantung di tali.
+- **Editor merchandise** — jaket, kaos/baju, tote bag, mug, dan topi: area cetak sesuai produk (depan/belakang),
+  warna bahan, dan pratinjau siluet produk. Pemesanan cetak merchandise segera hadir.
 - **Brand kit bersama** — warna, logo, nama merek, tagline dipakai kartu & lanyard sekaligus; elemen bisa disalin dua arah.
 - **Cek siap cetak otomatis** — batas aman, area potong, ukuran teks & QR, area chip NFC dan lubang lanyard.
   QR, ikon NFC, dan logo TapCard selalu dibangun ulang server sehingga tidak bisa rusak.

@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Storage;
  *  - warna hanya hex solid (tanpa gradien/bayangan/blur) atau rujukan brand kit `kit:primary|secondary|background|text`;
  *  - tipe layer dibatasi, angka di-clamp, teks maks 300 karakter (boleh multi-baris);
  *  - aset gambar harus milik tenant ini (atau `kit:logo`);
- *  - elemen sistem terkunci (QR, NFC, TapCard) dibangun ulang dari geometri kartu — lanyard tidak punya elemen sistem.
+ *  - elemen sistem terkunci (QR, NFC, TapCard) dibangun ulang dari geometri kartu — lanyard & merchandise tidak punya.
  * Properti umum semua layer: rotate (°), opacity, hidden, lock (dikunci pengguna), group, name.
  */
 final class DesignNormalizer
@@ -49,7 +49,7 @@ final class DesignNormalizer
             }
         }
 
-        if ($this->g instanceof LanyardGeometry) {
+        if ($this->g->kind() !== 'card') { // lanyard & merchandise tidak punya elemen sistem
             return ['size' => $this->g->size(), 'background' => $background, 'layers' => $layers, 'zones' => $this->g->zones()];
         }
         $side = TemplateLibrary::side($this->g, $this->hexOf($background['value'] ?? null) ?? Palette::hex('bone-0'), $layers, $which);

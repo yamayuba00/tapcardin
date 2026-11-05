@@ -23,7 +23,7 @@ const groups = computed(() => [
   { label: null, items: [{ key: 'dashboard', label: 'Beranda', icon: House, to: '/dashboard' }] },
   { label: 'Kartu', items: [
     { key: 'cards', label: 'Kartu saya', icon: CreditCard, to: '/cards' },
-    { key: 'designs', label: 'Desain kartu & lanyard', icon: Palette, to: '/designs' },
+    { key: 'designs', label: 'Desain & merchandise', icon: Palette, to: '/designs' },
     { key: 'orders', label: 'Pesanan', icon: Package, to: '/orders' },
   ] },
   { label: auth.contactLabel, items: [
