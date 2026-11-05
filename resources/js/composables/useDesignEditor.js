@@ -2,7 +2,8 @@
 // clipboard, tambah/hapus/duplikat, ratakan/distribusi, grup, kunci/sembunyi, urutan lapisan, brand kit,
 // pintasan keyboard. Halaman Studio & LanyardStudio hanya menyusun tampilan di atasnya.
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
-import { onBeforeRouteLeave, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
+import { useLeaveGuard } from '@/composables/useLeaveGuard'
 import { studioApi } from '@/api/studio'
 import {
   alignLayers, createLayer, distributeLayers, expandGroups, isFixed, isSystem, kitVars, moveLayer, newId, transplantLayers,
@@ -305,20 +306,16 @@ export function useDesignEditor(id) {
     if (d) { e.preventDefault(); nudge(d[0], d[1]) }
   }
 
-  const onUnload = (e) => { if (dirty.value) e.preventDefault() }
   onMounted(() => {
     load().catch(() => router.replace('/designs'))
     window.addEventListener('keydown', onKey)
-    window.addEventListener('beforeunload', onUnload)
   })
-  onBeforeUnmount(() => {
-    window.removeEventListener('keydown', onKey)
-    window.removeEventListener('beforeunload', onUnload)
-  })
-  onBeforeRouteLeave(() => !dirty.value || window.confirm('Perubahan belum disimpan. Tinggalkan editor?'))
+  onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
+  // keluar saat ada perubahan → dialog LeaveConfirm di halaman editor (bukan window.confirm)
+  const leaveGuard = useLeaveGuard(() => dirty.value)
 
   return {
-    catalog, design, sides, side, active, selection, selected, editable, issues, errors, saving, dirty, grid, snap, kit, vars, safe,
+    leaveGuard, catalog, design, sides, side, active, selection, selected, editable, issues, errors, saving, dirty, grid, snap, kit, vars, safe,
     canUndo, canRedo, undo, redo, commit, save, load, select, selectAll, switchSide, change, patch, insert, add, addImage, addKitLogo,
     remove, duplicate, copy, cut, paste, copyToOtherSide, align, distribute, group, ungroup, toggleLock, toggleHide, zOrder, reorderTo,
     nudge, setBackground, useKit, kitChanged, expandGroups,

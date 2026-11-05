@@ -5,6 +5,7 @@
 // Elemen wajib (QR, ikon NFC, zona TAP, TapCard) terkunci dan dibangun ulang server saat simpan.
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import LeaveConfirm from '@/components/common/LeaveConfirm/index.vue'
 import {
   ArrowLeft, CircleAlert, CircleCheck, Grid3x3, ImageUp, LayoutTemplate, Link2, Magnet, Printer, Redo2, ShoppingCart, Trash2, Undo2, X,
 } from 'lucide-vue-next'
@@ -39,6 +40,10 @@ const toast = useToastStore()
 const id = route.params.id
 const ed = useDesignEditor(id)
 const { catalog, design, sides, side, active, selection, selected, issues, errors, saving, dirty, grid, snap, kit, vars } = ed
+async function saveAndLeave() {
+  if (await ed.save()) ed.leaveGuard.leave()
+  else ed.leaveGuard.stay()
+}
 
 const tab = ref('props')
 const zoom = ref('fit')
@@ -303,4 +308,6 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       <AppButton variant="danger" @click="destroy">Hapus desain</AppButton>
     </template>
   </AppModal>
+
+  <LeaveConfirm v-if="ed.leaveGuard.pending.value" what="perubahan desain" can-save :saving="saving" @stay="ed.leaveGuard.stay" @leave="ed.leaveGuard.leave" @save="saveAndLeave" />
 </template>

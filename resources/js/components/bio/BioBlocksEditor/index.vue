@@ -89,7 +89,7 @@ function moveImage(b, i, d) {
         <template v-if="b.type === 'button'">
           <div class="grid gap-4 sm:grid-cols-2">
             <AppField label="Teks tombol" :error="err(i, 'label')"><AppInput v-model="b.data.label" maxlength="60" placeholder="mis. Ajak Kolaborasi" :invalid="!!err(i, 'label')" /></AppField>
-            <AppField label="Tautan" hint="Alamat web, wa.me/…, mailto:, atau tel:" :error="err(i, 'url')"><AppInput v-model.trim="b.data.url" maxlength="500" inputmode="url" placeholder="https://wa.me/62812…" :invalid="!!err(i, 'url')" /></AppField>
+            <AppField label="Tautan" :error="err(i, 'url')"><AppInput v-model.trim="b.data.url" maxlength="500" inputmode="url" placeholder="https://… atau wa.me/62812…" :invalid="!!err(i, 'url')" /></AppField>
           </div>
           <AppSegmented v-model="b.data.style" label="Gaya tombol" :options="[{ value: 'primary', label: 'Menonjol' }, { value: 'secondary', label: 'Biasa' }]" />
         </template>

@@ -3,7 +3,7 @@
 // hanya satu yang aktif — itulah yang tampil saat kartu di-tap. Identitas & kontak dipakai bersama semua bio;
 // tiap bio punya nama, tema, dan susunan blok sendiri. Preview langsung dihitung di klien dari isian form.
 import { computed, reactive, ref } from 'vue'
-import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { CircleCheck, Copy, CopyPlus, ExternalLink, Pencil, Plus, RotateCcw, Trash2 } from 'lucide-vue-next'
 import AppBadge from '@/components/ui/AppBadge/index.vue'
 import AppButton from '@/components/ui/AppButton/index.vue'
@@ -16,12 +16,14 @@ import AppSelect from '@/components/ui/AppSelect/index.vue'
 import AppSkeleton from '@/components/ui/AppSkeleton/index.vue'
 import AppTextarea from '@/components/ui/AppTextarea/index.vue'
 import AppToggle from '@/components/ui/AppToggle/index.vue'
+import LeaveConfirm from '@/components/common/LeaveConfirm/index.vue'
 import PageHeader from '@/components/common/PageHeader/index.vue'
 import BioBlocksEditor from '@/components/bio/BioBlocksEditor/index.vue'
 import ContactFieldsEditor from '@/components/profile/ContactFieldsEditor/index.vue'
 import PublicProfileView from '@/components/profile/PublicProfileView/index.vue'
 import { bioPagesApi, cardsApi, profilesApi } from '@/api/workspace'
 import { useAction } from '@/composables/useAsync'
+import { useLeaveGuard } from '@/composables/useLeaveGuard'
 import { MAX_PAGES, blockPayload, presentBlock } from '@/lib/bioBlocks'
 import { BIO_DEFAULTS, resolveTheme, themeChoice, themeStyle } from '@/lib/bioTheme'
 import { previewLinks } from '@/lib/contacts'
@@ -226,7 +228,11 @@ async function remove() {
   }
 }
 
-onBeforeRouteLeave(() => !dirtyPages.value.length || window.confirm('Ada perubahan bio link yang belum disimpan. Tinggalkan editor?'))
+const guard = useLeaveGuard(() => dirtyPages.value.length > 0)
+async function saveAndLeave() {
+  if (await save()) guard.leave()
+  else guard.stay() // tampilkan kesalahan validasi di editor
+}
 
 async function upload(e) {
   const file = e.target.files?.[0]
@@ -414,5 +420,7 @@ const presetOf = (key) => catalog.value?.presets.find((p) => p.key === key)
         <AppButton variant="danger" :loading="working" @click="remove">Hapus</AppButton>
       </template>
     </AppModal>
+
+    <LeaveConfirm v-if="guard.pending.value" what="perubahan bio link" can-save :saving="busy" @stay="guard.stay" @leave="guard.leave" @save="saveAndLeave" />
   </template>
 </template>
