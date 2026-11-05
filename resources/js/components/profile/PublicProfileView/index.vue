@@ -1,6 +1,6 @@
 <script setup>
 // P-01 / DBD §9 — bio link per kartu: foto + nama + jabatan → tombol cepat → bio → blok (Simpan ke Kontak HP, tombol,
-// teks, video, galeri, pemisah, kontak & tautan; urutan bebas) → Tukar Kontak.
+// teks, video, pemisah, kontak & tautan; urutan bebas) → Tukar Kontak.
 // Tema (preset, aksen, tata letak header, bentuk foto, sudut, gaya tombol & tautan, font) dari App\Support\Bio\BioTheme;
 // warna masuk sebagai variabel CSS semantik di subtree ini, jadi tetap memakai token DBD (tanpa hex).
 import { computed, ref } from 'vue'

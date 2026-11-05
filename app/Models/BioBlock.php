@@ -6,7 +6,7 @@ use App\Tenancy\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-/** Satu blok di halaman bio (tombol, teks, video, galeri, pemisah, atau daftar kontak profil). */
+/** Satu blok di halaman bio (simpan kontak, tombol, teks, video, pemisah, atau daftar kontak profil). */
 class BioBlock extends Model
 {
     use BelongsToTenant, HasPublicId;
