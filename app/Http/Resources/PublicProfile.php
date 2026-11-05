@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Actions\Cards\CardView;
+use App\Support\Bio\BioBlocks;
 use App\Support\Contacts\ContactTypes;
 use App\Support\Contacts\ContactValue;
 use Illuminate\Support\Facades\Crypt;
@@ -64,6 +65,8 @@ final class PublicProfile
                     'image' => $type['action'] === 'image' ? Storage::disk('public')->url($f['value']) : null,
                 ];
             }, $view->fields))),
+            'blocks' => $view->blocks === null ? null
+                : array_map(fn ($b) => BioBlocks::present($b['id'], $b['type'], $b['data']), $view->blocks),
             'vcard_url' => $preview ? null : "$base/vcard",
             'exchange' => $p['show_exchange_form'] ? [
                 'url' => $preview ? null : config('tapcard.resolver_url')."/api/c/{$view->token}/connect",

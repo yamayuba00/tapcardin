@@ -3,6 +3,7 @@
 namespace App\Actions\Profiles;
 
 use App\Enums\CardStatus;
+use App\Models\BioPage;
 use App\Models\Card;
 use App\Models\Profile;
 use App\Models\User;
@@ -67,6 +68,9 @@ final class ProvisionCardProfile
             $field = $f->replicate(['public_id']);
             $field->profile_id = $copy->id;
             $field->save();
+        }
+        foreach (BioPage::acrossTenants()->where('profile_id', $from->id)->orderBy('id')->get() as $page) {
+            $page->duplicateTo($copy, $page->name, $page->is_active);
         }
 
         return $copy;

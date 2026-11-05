@@ -7,6 +7,7 @@ use App\Authz\PlanFeatures;
 use App\Exceptions\ApiError;
 use App\Http\Resources\Present;
 use App\Http\Resources\PublicProfile;
+use App\Models\BioPage;
 use App\Models\Card;
 use App\Models\Profile;
 use App\Models\ProfileField;
@@ -99,6 +100,9 @@ class ProfileController extends WorkspaceController
             $data['theme'] = BioTheme::normalize(array_merge(BioTheme::normalize($profile->theme), $data['theme']));
         }
         $profile->update($data);
+        if (isset($data['theme'])) {
+            BioPage::where('profile_id', $profile->id)->where('is_active', true)->update(['theme' => json_encode($data['theme'])]);
+        }
         $this->forgetCards($profile);
 
         return response()->json(['data' => Present::profile($profile->fresh('fields'), true)]);
@@ -137,6 +141,7 @@ class ProfileController extends WorkspaceController
         ], ['fields.*.value.required' => 'Isi semua kolom kontak atau hapus baris yang kosong.']);
 
         $rows = [];
+        ksort($data['fields']); // validated() bisa mengacak urutan kunci array bersarang; urutan = urutan kiriman
         foreach ($data['fields'] as $i => $f) {
             $n = ContactValue::normalize(ContactTypes::get($f['type']), $f['value'], $f['meta'] ?? [], "fields.$i.value", $profile->tenant_id);
             $rows[] = [...$f, ...$n];
@@ -233,6 +238,8 @@ class ProfileController extends WorkspaceController
 
     private function forgetCards(Profile $profile): void
     {
-        Card::where('profile_id', $profile->id)->pluck('card_token')->each(fn ($t) => Cache::forget("card:$t"));
+        Card::where('profile_id', $profile->id)->pluck('card_token')->each(function ($t) {
+            Cache::forget("card:$t");
+        }); // bukan arrow fn: forget() = false menghentikan each()
     }
 }

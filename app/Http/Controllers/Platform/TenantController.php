@@ -154,6 +154,8 @@ class TenantController extends PlatformController
         if ($tenant->slug) {
             Cache::forget("tenant:slug:{$tenant->slug}");
         }
-        Card::acrossTenants()->where('tenant_id', $tenant->id)->pluck('card_token')->each(fn ($t) => Cache::forget("card:$t"));
+        Card::acrossTenants()->where('tenant_id', $tenant->id)->pluck('card_token')->each(function ($t) {
+            Cache::forget("card:$t");
+        }); // bukan arrow fn: forget() = false menghentikan each()
     }
 }

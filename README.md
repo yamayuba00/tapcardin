@@ -18,6 +18,8 @@ sebelum kartu fisiknya tiba.
   **diunduh sebagai gambar**, dibagikan lewat QR layar penuh, tautan pendek `tap…/@nama`, atau WhatsApp.
 - **Bio link per kartu** — setiap kartu punya halaman sendiri: 8 tema, 15 warna aksen, tata letak & gaya tombol,
   45 jenis kontak (WhatsApp, sosial media, toko online, rekening bank, QRIS, e-wallet), **Simpan Kontak** (vCard).
+  Halaman disusun dari **blok** (tombol, teks, video YouTube/TikTok/Vimeo/Spotify, galeri, pemisah, kontak) dan
+  satu kartu bisa punya **3 bio link** (mis. Kerja / Pameran / Personal) — hanya satu yang aktif saat kartu di-tap.
 - **Tukar Kontak & koneksi** — lawan bicara mengirim kontaknya lewat formulir dengan persetujuan tercatat; koneksi
   punya tahap pipeline, catatan, tag, pengingat follow-up, impor/ekspor CSV, dan dashboard lead yang bisa diatur.
 - **Mode Event & Mode Reader** — tandai koneksi per acara; baca kartu orang lain lewat NFC, kamera QR, atau kode.

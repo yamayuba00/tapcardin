@@ -34,6 +34,11 @@ class Profile extends Model
         return $this->hasMany(ProfileField::class)->orderBy('sort')->orderBy('id');
     }
 
+    public function bioPages(): HasMany
+    {
+        return $this->hasMany(BioPage::class)->orderBy('id');
+    }
+
     public function cards(): HasMany
     {
         return $this->hasMany(Card::class);

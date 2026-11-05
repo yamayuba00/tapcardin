@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\Bio\BioBlocks;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Vite;
@@ -33,7 +34,7 @@ class SecurityHeaders
             "style-src 'self' 'nonce-$nonce'$dev",
             "font-src 'self'",
             "connect-src 'self'$dev",
-            "frame-src 'self'",
+            "frame-src 'self' ".implode(' ', BioBlocks::EMBED_ORIGINS), // embed video bio link
             "frame-ancestors 'self'",
             "base-uri 'none'",
             "form-action 'self' ".$this->formTargets(),

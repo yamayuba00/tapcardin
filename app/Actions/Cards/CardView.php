@@ -4,6 +4,8 @@ namespace App\Actions\Cards;
 
 use App\Enums\TenantStatus;
 use App\Enums\TenantType;
+use App\Models\BioBlock;
+use App\Models\BioPage;
 use App\Models\Card;
 use App\Models\Profile;
 use App\Models\ProfileField;
@@ -34,6 +36,8 @@ final class CardView
         public readonly ?array $profile,
         /** @var list<array{id:string,type:string,label:string,value:string,is_primary:bool,in_vcard:bool}> */
         public readonly array $fields,
+        /** Blok halaman bio aktif (null = profil tanpa halaman → tampilan lama: daftar kontak). */
+        public readonly ?array $blocks = null,
     ) {}
 
     public static function cached(string $token): ?self
@@ -79,6 +83,15 @@ final class CardView
                 ])->all()
             : [];
 
+        $page = $profile
+            ? BioPage::withoutGlobalScope(TenantScope::class)->where('profile_id', $profile->id)->where('is_active', true)->first()
+            : null;
+        $blocks = $page
+            ? BioBlock::withoutGlobalScope(TenantScope::class)->where('bio_page_id', $page->id)->where('is_visible', true)
+                ->orderBy('sort')->orderBy('id')->get()
+                ->map(fn (BioBlock $b) => ['id' => $b->public_id, 'type' => $b->type, 'data' => $b->data ?? []])->all()
+            : null;
+
         $isCompany = $tenant && $tenant->type !== TenantType::Personal;
 
         return new self(
@@ -107,6 +120,7 @@ final class CardView
                 'show_exchange_form' => $profile->show_exchange_form,
             ] : null,
             fields: $fields,
+            blocks: $blocks,
         );
     }
 

@@ -1,9 +1,11 @@
 <script setup>
-// P-01 / DBD §9 — bio link per kartu: foto + nama + jabatan → Simpan Kontak → tombol cepat → bio → tautan → Tukar Kontak.
+// P-01 / DBD §9 — bio link per kartu: foto + nama + jabatan → Simpan Kontak → tombol cepat → bio → blok (tombol, teks,
+// video, galeri, pemisah, kontak & tautan; urutan bebas) → Tukar Kontak.
 // Tema (preset, aksen, tata letak header, bentuk foto, sudut, gaya tombol & tautan, font) dari App\Support\Bio\BioTheme;
 // warna masuk sebagai variabel CSS semantik di subtree ini, jadi tetap memakai token DBD (tanpa hex).
 import { computed, ref } from 'vue'
 import { Download, Mail, MessageCircle, Phone, Users } from 'lucide-vue-next'
+import BioBlock from '@/components/profile/BioBlock/index.vue'
 import ContactLink from '@/components/profile/ContactLink/index.vue'
 import ExchangeSheet from '@/components/profile/ExchangeSheet/index.vue'
 import { config } from '@/config'
@@ -23,6 +25,7 @@ const quick = computed(() => [
   props.profile.quick.phone && { key: 'tel', href: props.profile.quick.phone, icon: Phone, label: 'Telepon' },
   props.profile.quick.email && { key: 'mail', href: props.profile.quick.email, icon: Mail, label: 'Email' },
 ].filter(Boolean))
+const blocks = computed(() => props.profile.blocks ?? [{ id: 'contacts', type: 'contacts' }])
 const rings = [[30, 0.5], [60, 0.32], [90, 0.2], [120, 0.1]]
 
 const primaryBtn = computed(() => [
@@ -92,12 +95,14 @@ const nameCls = computed(() => [
 
         <p v-if="profile.bio" :class="['whitespace-pre-line', t.header === 'center' || t.header === 'cover' ? 'text-center' : '']">{{ profile.bio }}</p>
 
-        <template v-if="profile.links.length">
-          <ul :class="t.links === 'list' ? 'border-t border-line' : t.links === 'buttons' ? 'grid gap-3' : 'grid grid-cols-2 gap-3'">
+        <!-- Blok bio (urutan bebas); profil tanpa halaman bio = hanya daftar kontak seperti sebelumnya -->
+        <template v-for="b in blocks" :key="b.id">
+          <ul v-if="b.type === 'contacts' && profile.links.length" :class="t.links === 'list' ? 'border-t border-line' : t.links === 'buttons' ? 'grid gap-3' : 'grid grid-cols-2 gap-3'">
             <li v-for="(l, i) in profile.links" :key="l.id || i" :class="t.links === 'grid' && profile.links.length % 2 && i === profile.links.length - 1 ? 'col-span-2' : ''">
               <ContactLink :link="l" :variant="t.links" :corner="corner" :preview="preview" @image="(x) => (qris = x)" />
             </li>
           </ul>
+          <BioBlock v-else-if="b.type !== 'contacts'" :block="b" :theme="t" :corner="corner" :preview="preview" />
         </template>
 
         <button class="cursor-pointer" v-if="profile.exchange" type="button" :class="secondaryBtn" @click="exchanging = true"><Users class="size-5" /> Tukar Kontak</button>

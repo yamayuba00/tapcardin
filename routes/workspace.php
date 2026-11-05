@@ -6,6 +6,7 @@ use App\Http\Controllers\Workspace\ActivationController;
 use App\Http\Controllers\Workspace\AddonController;
 use App\Http\Controllers\Workspace\AnalyticsController;
 use App\Http\Controllers\Workspace\BillingController;
+use App\Http\Controllers\Workspace\BioPageController;
 use App\Http\Controllers\Workspace\BrandKitController;
 use App\Http\Controllers\Workspace\CardController;
 use App\Http\Controllers\Workspace\CardLoginKeyController;
@@ -75,6 +76,12 @@ Route::middleware('auth')->prefix('api')->name('api.')->group(function () {
     Route::put('/profiles/{profile}/fields', [ProfileController::class, 'fields'])->name('profiles.fields');
     Route::post('/profiles/{profile}/avatar', [ProfileController::class, 'avatar'])->name('profiles.avatar');
     Route::post('/profiles/{profile}/field-image', [ProfileController::class, 'fieldImage'])->middleware('throttle:30,1')->name('profiles.field-image');
+    Route::get('/profiles/{profile}/pages', [BioPageController::class, 'index'])->name('bio-pages.index');
+    Route::post('/profiles/{profile}/pages', [BioPageController::class, 'store'])->name('bio-pages.store');
+    Route::put('/profiles/{profile}/pages/{page}', [BioPageController::class, 'update'])->name('bio-pages.update');
+    Route::post('/profiles/{profile}/pages/{page}/activate', [BioPageController::class, 'activate'])->name('bio-pages.activate');
+    Route::delete('/profiles/{profile}/pages/{page}', [BioPageController::class, 'destroy'])->name('bio-pages.destroy');
+    Route::post('/profiles/{profile}/bio-image', [BioPageController::class, 'image'])->middleware('throttle:30,1')->name('bio-pages.image');
     Route::get('/contact-types', [ProfileController::class, 'contactTypes'])->name('contact-types');
 
     Route::get('/leads', [ConnectionController::class, 'list'])->name('leads.list');
