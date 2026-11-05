@@ -1,7 +1,7 @@
 <script setup>
 // P-04 / AFD F-08 — Tukar Kontak: nama*, WhatsApp atau email*, persetujuan*. Honeypot `website` + waktu render `t`.
 import { reactive, ref } from 'vue'
-import { CircleCheck, Download } from 'lucide-vue-next'
+import { CircleCheck, UserPlus } from 'lucide-vue-next'
 import AppModal from '@/components/ui/AppModal/index.vue'
 import AppField from '@/components/ui/AppField/index.vue'
 import AppInput from '@/components/ui/AppInput/index.vue'
@@ -43,7 +43,7 @@ async function submit() {
       <CircleCheck class="size-14 text-ok" aria-hidden="true" />
       <h2>Terkirim!</h2>
       <p class="text-muted">{{ profile.display_name }} akan menghubungi Anda.</p>
-      <AppButton block :href="profile.vcard_url || undefined"><Download class="size-5" /> Simpan Kontak</AppButton>
+      <AppButton block :href="profile.vcard_url || undefined"><UserPlus class="size-5" /> Simpan ke Kontak HP</AppButton>
     </div>
     <form v-else class="grid gap-4" novalidate @submit.prevent="submit">
       <p class="text-sm text-muted">Kontak Anda hanya dikirim ke {{ profile.display_name }}.</p>

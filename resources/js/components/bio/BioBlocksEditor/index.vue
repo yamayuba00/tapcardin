@@ -2,14 +2,14 @@
 // Editor susunan blok satu halaman bio: tambah, urutkan (naik/turun), sembunyikan, hapus, dan isi per jenis blok.
 // Perubahan baru tersimpan saat tombol Simpan editor ditekan; gambar galeri langsung diunggah agar bisa dipreview.
 import { computed, ref } from 'vue'
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Eye, EyeOff, ImagePlus, LayoutList, Minus, Music, Plus, SquareMousePointer, Trash2, Type, Images, X } from 'lucide-vue-next'
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Eye, EyeOff, ImagePlus, LayoutList, Minus, Music, Plus, SquareMousePointer, Trash2, Type, Images, UserPlus, X } from 'lucide-vue-next'
 import AppButton from '@/components/ui/AppButton/index.vue'
 import AppField from '@/components/ui/AppField/index.vue'
 import AppInput from '@/components/ui/AppInput/index.vue'
 import AppSegmented from '@/components/ui/AppSegmented/index.vue'
 import AppTextarea from '@/components/ui/AppTextarea/index.vue'
 import { bioPagesApi } from '@/api/workspace'
-import { BLOCK_TYPES, MAX_BLOCKS, MAX_IMAGES, newBlock, parseVideo } from '@/lib/bioBlocks'
+import { BLOCK_TYPES, MAX_BLOCKS, MAX_IMAGES, SAVE_LABEL, SINGLE, newBlock, parseVideo } from '@/lib/bioBlocks'
 import { useToastStore } from '@/stores/toast'
 
 const blocks = defineModel({ type: Array, required: true })
@@ -17,9 +17,9 @@ const props = defineProps({ profileId: { type: String, required: true }, errors:
 const toast = useToastStore()
 const uploading = ref(null) // key blok galeri yang sedang mengunggah
 
-const ICON = { button: SquareMousePointer, text: Type, video: Music, gallery: Images, divider: Minus, contacts: LayoutList }
+const ICON = { save_contact: UserPlus, button: SquareMousePointer, text: Type, video: Music, gallery: Images, divider: Minus, contacts: LayoutList }
 const META = Object.fromEntries(BLOCK_TYPES.map((t) => [t.type, t]))
-const hasContacts = computed(() => blocks.value.some((b) => b.type === 'contacts'))
+const taken = computed(() => new Set(blocks.value.filter((b) => SINGLE.includes(b.type)).map((b) => b.type)))
 const full = computed(() => blocks.value.length >= MAX_BLOCKS)
 const PROVIDER = { youtube: 'YouTube', vimeo: 'Vimeo', tiktok: 'TikTok', spotify: 'Spotify' }
 
@@ -137,6 +137,11 @@ function moveImage(b, i, d) {
           <AppSegmented v-model="b.data.style" label="Jenis pemisah" :options="[{ value: 'line', label: 'Garis' }, { value: 'space', label: 'Jarak kosong' }]" />
         </template>
 
+        <template v-else-if="b.type === 'save_contact'">
+          <AppField label="Teks tombol"><AppInput v-model="b.data.label" maxlength="40" :placeholder="SAVE_LABEL" /></AppField>
+          <p class="text-sm text-muted">Pengunjung langsung diarahkan ke form "Tambah kontak" di HP-nya — nama, nomor, email, dan perusahaan sudah terisi. Sembunyikan blok ini bila bio ini tidak perlu tombol simpan.</p>
+        </template>
+
         <p v-else-if="b.type === 'contacts'" class="text-sm text-muted">Menampilkan daftar dari bagian <b class="text-fg">Kontak & tautan</b> di bawah, dengan gaya "Tampilan tautan".</p>
       </li>
     </ol>
@@ -149,11 +154,11 @@ function moveImage(b, i, d) {
           :key="t.type"
           type="button"
           class="grid cursor-pointer content-start gap-1 rounded-md border border-line p-3 text-left hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-50"
-          :disabled="full || (t.type === 'contacts' && hasContacts)"
+          :disabled="full || taken.has(t.type)"
           @click="add(t.type)"
         >
           <span class="flex items-center gap-2 font-semibold"><Plus class="size-4" aria-hidden="true" /><component :is="ICON[t.type]" class="size-4 text-accent-text" aria-hidden="true" /> {{ t.label }}</span>
-          <span class="text-sm text-muted">{{ t.type === 'contacts' && hasContacts ? 'Sudah ada di halaman ini' : t.hint }}</span>
+          <span class="text-sm text-muted">{{ taken.has(t.type) ? 'Sudah ada di halaman ini' : t.hint }}</span>
         </button>
       </div>
       <p v-if="full" class="text-sm text-muted">Maksimal {{ MAX_BLOCKS }} blok per bio link.</p>

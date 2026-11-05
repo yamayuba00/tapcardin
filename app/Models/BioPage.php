@@ -37,7 +37,7 @@ class BioPage extends Model
         return $this->hasMany(BioBlock::class)->orderBy('sort')->orderBy('id');
     }
 
-    /** Profil tanpa halaman (dibuat sebelum fitur ini / jalur pembuatan lain) → halaman "Utama" berisi blok kontak. true = baru dibuat. */
+    /** Profil tanpa halaman (dibuat sebelum fitur ini / jalur pembuatan lain) → halaman "Utama" berisi tombol simpan kontak & daftar kontak. true = baru dibuat. */
     public static function ensureFor(Profile $profile): bool
     {
         return DB::transaction(function () use ($profile) {
@@ -49,10 +49,17 @@ class BioPage extends Model
                 'tenant_id' => $profile->tenant_id, 'profile_id' => $profile->id, 'name' => 'Utama',
                 'is_active' => true, 'theme' => BioTheme::normalize($profile->theme),
             ]);
-            $page->blocks()->create(['tenant_id' => $profile->tenant_id, 'type' => 'contacts', 'data' => [], 'sort' => 0]);
+            $page->addStarterBlocks();
 
             return true;
         });
+    }
+
+    public function addStarterBlocks(): void
+    {
+        foreach (BioBlocks::starter() as $sort => $b) {
+            $this->blocks()->create(['tenant_id' => $this->tenant_id, 'sort' => $sort] + $b);
+        }
     }
 
     /** Jadikan halaman ini satu-satunya yang aktif (nonaktifkan yang lain dulu agar unique index parsial terpenuhi). */

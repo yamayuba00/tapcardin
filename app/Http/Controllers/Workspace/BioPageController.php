@@ -36,7 +36,7 @@ class BioPageController extends WorkspaceController
         return response()->json(['data' => $this->pages($profile), 'meta' => ['limit' => BioBlocks::MAX_PAGES]]);
     }
 
-    /** POST /api/profiles/{id}/pages — halaman baru (kosong berisi blok kontak) atau salinan halaman lain (`from`). */
+    /** POST /api/profiles/{id}/pages — halaman baru (tombol simpan kontak + daftar kontak) atau salinan halaman lain (`from`). */
     public function store(Request $request, Profile $profile): JsonResponse
     {
         $this->own($profile);
@@ -59,7 +59,7 @@ class BioPageController extends WorkspaceController
                 'tenant_id' => $profile->tenant_id, 'profile_id' => $profile->id, 'name' => $data['name'],
                 'is_active' => false, 'theme' => BioTheme::normalize($active?->theme ?? $profile->theme),
             ]);
-            $page->blocks()->create(['tenant_id' => $profile->tenant_id, 'type' => 'contacts', 'data' => [], 'sort' => 0]);
+            $page->addStarterBlocks();
 
             return $page;
         });
@@ -88,8 +88,8 @@ class BioPageController extends WorkspaceController
         $rows = [];
         ksort($data['blocks']); // validated() bisa mengacak urutan kunci array bersarang; urutan = urutan kiriman
         foreach ($data['blocks'] as $i => $b) {
-            if ($b['type'] === 'contacts' && in_array('contacts', array_column($rows, 'type'), true)) {
-                throw ValidationException::withMessages(["blocks.$i.type" => 'Blok Kontak & tautan cukup satu per bio link.']);
+            if (isset(BioBlocks::SINGLE[$b['type']]) && in_array($b['type'], array_column($rows, 'type'), true)) {
+                throw ValidationException::withMessages(["blocks.$i.type" => 'Blok '.BioBlocks::SINGLE[$b['type']].' cukup satu per bio link.']);
             }
             $rows[] = [
                 'id' => $b['id'] ?? null,

@@ -32,7 +32,7 @@ onMounted(() => {
 onBeforeUnmount(() => clearInterval(timer))
 
 const VALUES = [
-  { icon: Download, title: '2 detik, bukan 2 menit', text: 'Satu tombol Simpan Kontak: nama, nomor, email, dan foto langsung masuk buku kontak. Tidak ada salah ketik nomor lagi.' },
+  { icon: Download, title: '2 detik, bukan 2 menit', text: 'Satu tombol Simpan ke Kontak HP: form kontak di HP pengunjung langsung terisi nama, nomor, dan email. Tidak ada salah ketik nomor lagi.' },
   { icon: Pencil, title: 'Cetak sekali, perbarui selamanya', text: 'Ganti jabatan, nomor, atau tautan kapan saja. Alamat di chip & QR tidak berubah, jadi kartu tidak perlu dicetak ulang.' },
   { icon: UserPlus, title: 'Setiap tap jadi peluang', text: 'Lawan bicara bisa membagikan kontaknya balik lewat Tukar Kontak. Semuanya tercatat rapi untuk ditindaklanjuti.' },
 ]
@@ -63,7 +63,7 @@ const FAQ = [
   { q: 'Apakah orang yang saya temui perlu memasang aplikasi?', a: 'Tidak. Ponsel modern membaca NFC langsung dan membuka bio link di browser. Untuk ponsel tanpa NFC, cukup scan QR di sisi belakang kartu.' },
   { q: 'Bisakah saya mengubah data setelah kartu dicetak?', a: 'Bisa, kapan saja. Chip dan QR berisi alamat permanen kartu, sedangkan isinya (nama, jabatan, tautan, tema) diatur dari akun Anda dan langsung berlaku.' },
   { q: 'Saya punya beberapa kartu. Apakah bio link-nya sama?', a: 'Tidak harus. Setiap kartu punya bio link sendiri — misalnya kartu kantor bertema korporat dan kartu komunitas bertema kreatif. Saat kartu baru diaktifkan, bio Anda yang terakhir disalin agar tidak perlu mengetik ulang.' },
-  { q: 'Belum punya kartu, atau kartunya ketinggalan?', a: 'Tetap bisa. Setiap akun mendapat kartu digital gratis: tunjukkan QR dari menu Bagikan di ponsel, atau kirim tautan pendek tap…/@nama lewat WhatsApp. Bio, Simpan Kontak, dan Tukar Kontak bekerja sama persis — dan tidak memakai kuota kartu paket Anda.' },
+  { q: 'Belum punya kartu, atau kartunya ketinggalan?', a: 'Tetap bisa. Setiap akun mendapat kartu digital gratis: tunjukkan QR dari menu Bagikan di ponsel, atau kirim tautan pendek tap…/@nama lewat WhatsApp. Bio, Simpan ke Kontak HP, dan Tukar Kontak bekerja sama persis — dan tidak memakai kuota kartu paket Anda.' },
   { q: 'Bagaimana jika kartu saya hilang?', a: 'Tandai kartu sebagai hilang dari aplikasi. Orang yang men-tap hanya melihat halaman netral tanpa data Anda, Anda diberi tahu waktu & kota tap-nya, dan Anda bisa meminta kartu pengganti dengan bio yang sama.' },
   { q: 'Apakah data saya aman?', a: 'Alamat IP pengunjung hanya disimpan dalam bentuk hash, bio tidak diindeks mesin pencari kecuali Anda izinkan, dan Anda bisa mengekspor atau menghapus semua data kapan saja.' },
   { q: 'Bisa untuk tim atau perusahaan?', a: 'Paket Tim & Perusahaan (subdomain sendiri, kartu untuk setiap anggota, branding, laporan lead) sedang kami siapkan. Daftar sekarang dengan akun personal; akun Anda bisa diundang ke workspace perusahaan nanti.' },
@@ -178,7 +178,7 @@ const FAQ = [
           <ul class="grid gap-2 text-sm text-muted sm:grid-cols-2">
             <li class="flex gap-2"><Check class="size-5 flex-none text-ok" /> 8 tema selaras template kartu</li>
             <li class="flex gap-2"><Check class="size-5 flex-none text-ok" /> 15 warna aksen, kontras dijaga otomatis</li>
-            <li class="flex gap-2"><Check class="size-5 flex-none text-ok" /> Simpan Kontak (vCard) dengan foto</li>
+            <li class="flex gap-2"><Check class="size-5 flex-none text-ok" /> Simpan ke Kontak HP sekali ketuk</li>
             <li class="flex gap-2"><Check class="size-5 flex-none text-ok" /> WhatsApp, telepon, email sekali ketuk</li>
           </ul>
         </BioShowcase>

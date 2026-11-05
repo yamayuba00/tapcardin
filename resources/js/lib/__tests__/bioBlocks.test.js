@@ -35,6 +35,15 @@ test('presentBlock menyembunyikan blok yang belum lengkap', () => {
   assert.equal(presentBlock(v).embed_url, 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ')
 })
 
+test('blok simpan kontak memakai teks bawaan bila kosong', () => {
+  const b = newBlock('save_contact')
+  assert.equal(presentBlock(b).label, 'Simpan ke Kontak HP')
+  b.data.label = '  '
+  assert.equal(presentBlock(b).label, 'Simpan ke Kontak HP')
+  b.data.label = 'Simpan nomor saya'
+  assert.equal(presentBlock(b).label, 'Simpan nomor saya')
+})
+
 test('newBlock tidak berbagi objek data antar blok', () => {
   const a = newBlock('gallery')
   const b = newBlock('gallery')

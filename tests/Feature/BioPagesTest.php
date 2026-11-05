@@ -45,10 +45,12 @@ class BioPagesTest extends TestCase
         $id = $this->profileOf($rina)->public_id;
         $pages = $this->actingAs($rina)->getJson($this->pagesUrl($id))->assertOk()->assertJsonPath('meta.limit', 3)->json('data');
         $this->assertCount(1, $pages);
-        $this->assertSame(['Utama', true, 'contacts'], [$pages[0]['name'], $pages[0]['is_active'], $pages[0]['blocks'][0]['type']]);
+        $this->assertSame(['Utama', true, ['save_contact', 'contacts']], [$pages[0]['name'], $pages[0]['is_active'], array_column($pages[0]['blocks'], 'type')]);
+        $this->assertSame('Simpan ke Kontak HP', $pages[0]['blocks'][0]['data']['label']);
         // panggilan kedua tidak membuat halaman ganda
         $this->getJson($this->pagesUrl($id))->assertJsonCount(1, 'data');
-        $this->getJson($this->host('tap', "/api/c/{$card->card_token}"))->assertJsonPath('data.profile.blocks.0.type', 'contacts');
+        $this->getJson($this->host('tap', "/api/c/{$card->card_token}"))->assertJsonPath('data.profile.blocks.0.type', 'save_contact')
+            ->assertJsonPath('data.profile.blocks.1.type', 'contacts');
     }
 
     public function test_blocks_are_validated_saved_in_order_and_rendered_publicly(): void
@@ -63,6 +65,7 @@ class BioPagesTest extends TestCase
         $this->rejects($this->save($id, $page, [['type' => 'video', 'data' => ['url' => 'https://evil.example/embed']]]), 'blocks.0.data.url');
         $this->rejects($this->save($id, $page, [['type' => 'text', 'data' => ['title' => ' ', 'body' => '']]]), 'blocks.0.data.body');
         $this->rejects($this->save($id, $page, [['type' => 'contacts'], ['type' => 'contacts']]), 'blocks.1.type');
+        $this->rejects($this->save($id, $page, [['type' => 'save_contact'], ['type' => 'save_contact']]), 'blocks.1.type');
         $this->rejects($this->save($id, $page, [['type' => 'gallery', 'data' => ['images' => [['path' => 't999/bio/'.str_repeat('a', 32).'.webp']]]]]), 'blocks.0.data.images');
         $this->save($id, $page, [['type' => 'html', 'data' => []]])->assertStatus(422);
 
@@ -71,15 +74,17 @@ class BioPagesTest extends TestCase
             ['type' => 'button', 'data' => ['label' => 'Ajak Kolaborasi', 'url' => 'wa.me/6281234567890', 'style' => 'primary']],
             ['type' => 'video', 'data' => ['url' => 'https://youtu.be/dQw4w9WgXcQ']],
             ['type' => 'divider', 'is_visible' => false, 'data' => ['style' => 'line']],
-            ['id' => $page['blocks'][0]['id'], 'type' => 'contacts'],
+            ['id' => $page['blocks'][1]['id'], 'type' => 'contacts'],
+            ['type' => 'save_contact', 'data' => ['label' => '  ']],
         ], ['theme' => ['preset' => 'ivory', 'links' => 'grid']])->assertOk();
-        $this->assertSame(['text', 'button', 'video', 'divider', 'contacts'], array_column($saved->json('data.blocks'), 'type'));
-        $this->assertSame($page['blocks'][0]['id'], $saved->json('data.blocks.4.id'), 'blok yang ada diperbarui, bukan dibuat ulang');
+        $this->assertSame(['text', 'button', 'video', 'divider', 'contacts', 'save_contact'], array_column($saved->json('data.blocks'), 'type'));
+        $this->assertSame($page['blocks'][1]['id'], $saved->json('data.blocks.4.id'), 'blok yang ada diperbarui, bukan dibuat ulang');
+        $this->assertSame('Simpan ke Kontak HP', $saved->json('data.blocks.5.data.label'), 'teks kosong → teks bawaan');
         $this->assertSame('https://wa.me/6281234567890', $saved->json('data.blocks.1.data.url'), 'tanpa skema → https://');
 
         $blocks = $this->getJson($this->host('tap', "/api/c/{$card->card_token}"))
             ->assertJsonPath('data.profile.theme.preset', 'ivory')->json('data.profile.blocks');
-        $this->assertSame(['text', 'button', 'video', 'contacts'], array_column($blocks, 'type'), 'blok tersembunyi tidak tampil');
+        $this->assertSame(['text', 'button', 'video', 'contacts', 'save_contact'], array_column($blocks, 'type'), 'blok tersembunyi tidak tampil');
         $this->assertSame(['https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ', '16/9'], [$blocks[2]['embed_url'], $blocks[2]['ratio']]);
         $this->assertArrayNotHasKey('url', $blocks[2], 'URL asli tidak perlu dikirim ke publik');
         $this->assertSame('ivory', $this->profileOf($rina)->theme['preset'], 'tema halaman aktif dicerminkan ke profil');
@@ -98,7 +103,7 @@ class BioPagesTest extends TestCase
         $this->assertSame('Kerja', $event['blocks'][0]['data']['body'], 'salinan membawa blok');
         $this->assertNotSame($main['blocks'][0]['id'] ?? null, $event['blocks'][0]['id']);
         $personal = $this->postJson($this->pagesUrl($id), ['name' => 'Personal'])->assertCreated()->json('data');
-        $this->assertSame(['contacts'], array_column($personal['blocks'], 'type'));
+        $this->assertSame(['save_contact', 'contacts'], array_column($personal['blocks'], 'type'));
         $this->postJson($this->pagesUrl($id), ['name' => 'Keempat'])->assertStatus(422)->assertJsonPath('error.code', 'bio_page_limit');
 
         // mengaktifkan satu menonaktifkan yang lain; resolver langsung ikut
@@ -203,6 +208,36 @@ class BioPagesTest extends TestCase
             ['id' => $saved[1]['id'], 'type' => 'linkedin', 'value' => 'https://www.linkedin.com/in/rina-s/'],
         ]])->assertOk()->json('data.fields');
         $this->assertSame(['email', 'instagram', 'linkedin'], array_column($order, 'type'));
+    }
+
+    /** "Simpan ke Kontak HP" tidak terasa sebagai unduhan: Android → form kontak bawaan, iPhone → vCard inline. */
+    public function test_save_contact_opens_contact_form_instead_of_downloading(): void
+    {
+        $rina = $this->makeUser();
+        $card = $this->makeCard(CardStatus::Active, $rina);
+        $id = $this->profileOf($rina)->public_id;
+        $this->actingAs($rina)->putJson($this->host('app', "/api/profiles/$id/fields"), ['fields' => [
+            ['type' => 'whatsapp', 'value' => '081234567890', 'is_primary' => true], ['type' => 'email', 'value' => 'rina@example.com'],
+        ]])->assertOk();
+        $url = $this->host('tap', "/c/{$card->card_token}/vcard");
+        $chrome = 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Mobile Safari/537.36';
+
+        $intent = $this->withHeader('User-Agent', $chrome)->get($url)->assertRedirect()->headers->get('Location');
+        $this->assertStringStartsWith('intent:#Intent;action=android.intent.action.INSERT;type=vnd.android.cursor.dir/raw_contact;', $intent);
+        $this->assertStringContainsString('S.name=Rina%20Saputra;', $intent);
+        $this->assertStringContainsString('S.phone=%2B6281234567890;', $intent);
+        $this->assertStringContainsString('S.email=rina%40example.com;', $intent);
+        $this->assertStringContainsString('S.browser_fallback_url='.rawurlencode("$url?file=1").';', $intent);
+        $this->assertStringEndsWith(';end', $intent);
+
+        // WebView aplikasi (Instagram) & iPhone → vCard inline, bukan lampiran
+        $ig = 'Mozilla/5.0 (Linux; Android 14; wv) AppleWebKit/537.36 Chrome/130.0 Mobile Safari/537.36 Instagram 300.0';
+        $this->withHeader('User-Agent', $ig)->get($url)->assertOk()->assertHeader('Content-Type', 'text/vcard; charset=utf-8');
+        $iphone = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1';
+        $res = $this->withHeader('User-Agent', $iphone)->get($url)->assertOk();
+        $this->assertStringStartsWith('inline;', $res->headers->get('Content-Disposition'));
+        $this->assertStringContainsString('FN:Rina Saputra', $res->getContent());
+        $this->withHeader('User-Agent', $chrome)->get("$url?file=1")->assertOk()->assertHeader('Content-Type', 'text/vcard; charset=utf-8');
     }
 
     public function test_video_and_link_parsers(): void

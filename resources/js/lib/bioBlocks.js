@@ -5,7 +5,12 @@ export const MAX_PAGES = 3
 export const MAX_BLOCKS = 30
 export const MAX_IMAGES = 12
 
+export const SAVE_LABEL = 'Simpan ke Kontak HP'
+/** Blok yang cukup satu per halaman (sama dengan BioBlocks::SINGLE). */
+export const SINGLE = ['save_contact', 'contacts']
+
 export const BLOCK_TYPES = [
+  { type: 'save_contact', label: 'Simpan kontak', hint: 'Pengunjung menyimpan nomor Anda ke HP-nya (cukup satu)' },
   { type: 'button', label: 'Tombol', hint: 'Ajak kolaborasi, minta penawaran, booking' },
   { type: 'text', label: 'Teks', hint: 'Judul bagian, tentang saya, layanan' },
   { type: 'video', label: 'Video / musik', hint: 'YouTube, TikTok, Vimeo, Spotify' },
@@ -22,6 +27,7 @@ export function newBlock(type) {
     gallery: { layout: 'grid', images: [] },
     divider: { style: 'line' },
     contacts: {},
+    save_contact: { label: SAVE_LABEL },
   }[type]
   return { id: null, key: crypto.randomUUID(), type, is_visible: true, data: structuredClone(data) }
 }
@@ -78,6 +84,7 @@ export function presentBlock(b) {
     case 'gallery': return d.images?.length ? { ...base, layout: d.layout, images: d.images.map((i) => ({ url: i.url, caption: i.caption?.trim() || null })) } : null
     case 'divider': return { ...base, style: d.style }
     case 'contacts': return base
+    case 'save_contact': return { ...base, label: d.label?.trim() || SAVE_LABEL }
     default: return null
   }
 }

@@ -153,7 +153,7 @@ function finish() {
 
       <form v-else-if="step === 3" class="grid gap-4" @submit.prevent="saveContacts">
         <h1>Kontak utama</h1>
-        <p class="text-muted">Tampil sebagai tombol cepat dan ikut tersimpan saat orang menekan Simpan Kontak.</p>
+        <p class="text-muted">Tampil sebagai tombol cepat dan ikut tersimpan saat orang menekan Simpan ke Kontak HP.</p>
         <AppField label="WhatsApp"><AppInput v-model="form.whatsapp" inputmode="tel" placeholder="0812…" /></AppField>
         <AppField label="Telepon (jika beda)"><AppInput v-model="form.phone" inputmode="tel" /></AppField>
         <AppField label="Email"><AppInput v-model="form.email" type="email" /></AppField>

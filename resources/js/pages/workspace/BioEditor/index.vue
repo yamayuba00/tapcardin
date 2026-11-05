@@ -376,7 +376,7 @@ const presetOf = (key) => catalog.value?.presets.find((p) => p.key === key)
         </AppPanel>
 
         <AppPanel title="Kontak & tautan">
-          <p class="mb-4 text-sm text-muted">Dipakai bersama semua bio link dan masuk ke "Simpan Kontak". Tampil di halaman lewat blok <b class="text-fg">Kontak & tautan</b>.</p>
+          <p class="mb-4 text-sm text-muted">Dipakai bersama semua bio link dan ikut tersimpan lewat tombol "Simpan ke Kontak HP". Tampil di halaman lewat blok <b class="text-fg">Kontak & tautan</b>.</p>
           <ContactFieldsEditor v-if="contactCatalog" v-model="fields" :catalog="contactCatalog" :profile-id="profileId" :errors="errors" />
         </AppPanel>
 

@@ -110,7 +110,7 @@ class ResolverTest extends TestCase
 
         $res = $this->get($this->host('tap', "/c/{$card->card_token}/vcard"));
         $res->assertOk()->assertHeader('Content-Type', 'text/vcard; charset=utf-8');
-        $this->assertStringContainsString('attachment; filename="rina-saputra.vcf"', $res->headers->get('Content-Disposition'));
+        $this->assertSame('inline; filename="rina-saputra.vcf"', $res->headers->get('Content-Disposition'), 'dibuka langsung (iOS: layar Kontak Baru), bukan diunduh');
         $body = $res->getContent();
         $this->assertStringContainsString("FN:Rina Saputra\r\n", $body);
         $this->assertStringContainsString('TEL;TYPE=CELL,WHATSAPP:+6281234567890', $body);

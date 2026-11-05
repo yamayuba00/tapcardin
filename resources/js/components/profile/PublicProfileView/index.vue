@@ -1,10 +1,10 @@
 <script setup>
-// P-01 / DBD §9 — bio link per kartu: foto + nama + jabatan → Simpan Kontak → tombol cepat → bio → blok (tombol, teks,
-// video, galeri, pemisah, kontak & tautan; urutan bebas) → Tukar Kontak.
+// P-01 / DBD §9 — bio link per kartu: foto + nama + jabatan → tombol cepat → bio → blok (Simpan ke Kontak HP, tombol,
+// teks, video, galeri, pemisah, kontak & tautan; urutan bebas) → Tukar Kontak.
 // Tema (preset, aksen, tata letak header, bentuk foto, sudut, gaya tombol & tautan, font) dari App\Support\Bio\BioTheme;
 // warna masuk sebagai variabel CSS semantik di subtree ini, jadi tetap memakai token DBD (tanpa hex).
 import { computed, ref } from 'vue'
-import { Download, Mail, MessageCircle, Phone, Users } from 'lucide-vue-next'
+import { Mail, MessageCircle, Phone, UserPlus, Users } from 'lucide-vue-next'
 import BioBlock from '@/components/profile/BioBlock/index.vue'
 import ContactLink from '@/components/profile/ContactLink/index.vue'
 import ExchangeSheet from '@/components/profile/ExchangeSheet/index.vue'
@@ -25,7 +25,7 @@ const quick = computed(() => [
   props.profile.quick.phone && { key: 'tel', href: props.profile.quick.phone, icon: Phone, label: 'Telepon' },
   props.profile.quick.email && { key: 'mail', href: props.profile.quick.email, icon: Mail, label: 'Email' },
 ].filter(Boolean))
-const blocks = computed(() => props.profile.blocks ?? [{ id: 'contacts', type: 'contacts' }])
+const blocks = computed(() => props.profile.blocks ?? [{ id: 'contacts', type: 'contacts' }]) // tanpa halaman bio: hanya kontak
 const rings = [[30, 0.5], [60, 0.32], [90, 0.2], [120, 0.1]]
 
 const primaryBtn = computed(() => [
@@ -78,8 +78,9 @@ const nameCls = computed(() => [
       </header>
 
       <div class="grid flex-1 content-start gap-6 px-4 pb-6">
-        <div class="grid gap-3">
-          <a :href="profile.vcard_url || undefined" :class="primaryBtn" :aria-disabled="preview || undefined"><Download class="size-5" /> Simpan Kontak</a>
+        <div v-if="!profile.blocks || quick.length" class="grid gap-3">
+          <!-- profil tanpa halaman bio: tombol simpan kontak tetap di sini; dengan halaman bio ia menjadi blok -->
+          <a v-if="!profile.blocks" :href="profile.vcard_url || undefined" :class="primaryBtn" :aria-disabled="preview || undefined"><UserPlus class="size-5" /> Simpan ke Kontak HP</a>
           <div v-if="quick.length" :class="['flex gap-3', t.header === 'left' ? 'justify-start' : 'justify-center']">
             <a
               v-for="q in quick"
@@ -102,6 +103,9 @@ const nameCls = computed(() => [
               <ContactLink :link="l" :variant="t.links" :corner="corner" :preview="preview" @image="(x) => (qris = x)" />
             </li>
           </ul>
+          <a v-else-if="b.type === 'save_contact'" :href="profile.vcard_url || undefined" :class="primaryBtn" :aria-disabled="preview || undefined">
+            <UserPlus class="size-5 flex-none" /> <span class="[overflow-wrap:anywhere]">{{ b.label }}</span>
+          </a>
           <BioBlock v-else-if="b.type !== 'contacts'" :block="b" :theme="t" :corner="corner" :preview="preview" />
         </template>
 

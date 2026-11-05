@@ -37,11 +37,22 @@ use Throwable;
 
 class PublicCardController extends Controller
 {
-    /** GET /c/{token}/vcard — vCard 3.0 (TRD §10.1). */
-    public function vcard(Request $request, string $token): Response
+    /**
+     * GET /c/{token}/vcard — tombol "Simpan ke Kontak HP". Tidak terasa sebagai unduhan file:
+     *  - Chrome / Samsung Internet di Android → intent "Tambah kontak" bawaan (form kontak HP langsung terbuka);
+     *  - iPhone & lainnya → vCard 3.0 inline (TRD §10.1), iOS langsung menampilkan layar "Kontak Baru".
+     * `?file=1` = vCard tanpa mencatat ulang (cadangan bila intent tidak bisa dibuka).
+     */
+    public function vcard(Request $request, string $token): Response|RedirectResponse
     {
         $view = $this->activeView($token);
         $p = $view->profile;
+        $fresh = ! $request->boolean('file');
+        if ($fresh && self::opensAndroidIntent((string) $request->userAgent())) {
+            $this->markSavedContact($request, $view);
+
+            return redirect()->away($this->androidIntent($view))->header('Cache-Control', 'private, no-store');
+        }
 
         $vcard = (new VCard($p['display_name']))->org($p['company'])->title($p['title']);
         foreach ($view->fields as $f) {
@@ -65,11 +76,13 @@ class PublicCardController extends Controller
             $vcard->photoJpeg(Storage::disk('public')->get($p['vcard_photo_path']));
         }
 
-        $this->markSavedContact($request, $view);
+        if ($fresh) {
+            $this->markSavedContact($request, $view);
+        }
 
         return response($vcard->render(), 200, [
             'Content-Type' => 'text/vcard; charset=utf-8',
-            'Content-Disposition' => 'attachment; filename="'.$vcard->filename().'"',
+            'Content-Disposition' => 'inline; filename="'.$vcard->filename().'"',
             'Cache-Control' => 'private, no-store',
         ]);
     }
@@ -206,6 +219,45 @@ class PublicCardController extends Controller
     }
 
     /** Tandai tap terakhir pengunjung ini sebagai "simpan kontak" (metrik PRD §6). */
+    /** Peramban Android yang menangani URL intent: (WebView aplikasi lain seperti Instagram/Facebook tidak). */
+    public static function opensAndroidIntent(string $ua): bool
+    {
+        return str_contains($ua, 'Android')
+            && (str_contains($ua, 'Chrome/') || str_contains($ua, 'SamsungBrowser/'))
+            && ! preg_match('/; wv\)|FBAN|FBAV|FB_IAB|Instagram|Line\/|Snapchat|TikTok|musical_ly/i', $ua);
+    }
+
+    /** Intent ContactsContract.Intents.Insert: nama, telepon, email, perusahaan, jabatan, catatan (tanpa foto). */
+    private function androidIntent(CardView $view): string
+    {
+        $p = $view->profile;
+        $first = function (string $vcardKind) use ($view) {
+            foreach ($view->fields as $f) {
+                if ($f['in_vcard'] && (ContactTypes::get($f['type'])['vcard'] ?? null) === $vcardKind) {
+                    return $f['value'];
+                }
+            }
+
+            return null;
+        };
+        $profileUrl = config('tapcard.resolver_url').'/c/'.$view->token;
+        $extras = array_filter([
+            'name' => $p['display_name'],
+            'phone' => $first('tel'),
+            'email' => $first('email'),
+            'company' => $p['company'],
+            'job_title' => $p['title'],
+            'notes' => 'Profil: '.$profileUrl,
+            'browser_fallback_url' => "$profileUrl/vcard?file=1",
+        ]);
+        $intent = 'intent:#Intent;action=android.intent.action.INSERT;type=vnd.android.cursor.dir/raw_contact;';
+        foreach ($extras as $k => $v) {
+            $intent .= "S.$k=".rawurlencode((string) $v).';';
+        }
+
+        return $intent.'end';
+    }
+
     private function markSavedContact(Request $request, CardView $view): void
     {
         $visitor = Hasher::visitor($request->ip(), $request->userAgent(), now('Asia/Jakarta')->toDateString());

@@ -12,7 +12,12 @@ use Illuminate\Validation\ValidationException;
  */
 final class BioBlocks
 {
-    public const TYPES = ['contacts', 'button', 'text', 'video', 'gallery', 'divider'];
+    public const TYPES = ['save_contact', 'contacts', 'button', 'text', 'video', 'gallery', 'divider'];
+
+    /** Jenis yang cukup satu per halaman. */
+    public const SINGLE = ['save_contact' => 'Simpan kontak', 'contacts' => 'Kontak & tautan'];
+
+    public const SAVE_LABEL = 'Simpan ke Kontak HP';
 
     public const MAX_PAGES = 3;
 
@@ -35,6 +40,7 @@ final class BioBlocks
         $pick = fn (string $field, array $allowed) => in_array($data[$field] ?? null, $allowed, true) ? $data[$field] : $allowed[0];
 
         return match ($type) {
+            'save_contact' => ['label' => $str('label', 40) ?: self::SAVE_LABEL],
             'contacts' => [],
             'button' => (function () use ($str, $pick, $fail, $data) {
                 $label = $str('label', 60);
@@ -81,6 +87,12 @@ final class BioBlocks
             })(),
             'divider' => ['style' => $pick('style', ['line', 'space'])],
         };
+    }
+
+    /** Isi halaman bio baru: tombol simpan kontak di atas, lalu daftar kontak. */
+    public static function starter(): array
+    {
+        return [['type' => 'save_contact', 'data' => ['label' => self::SAVE_LABEL]], ['type' => 'contacts', 'data' => []]];
     }
 
     /** Tautan tombol: http(s) dengan host valid, mailto:, atau tel:. Tanpa skema → dianggap https://. */
