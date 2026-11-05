@@ -8,6 +8,7 @@ import { X } from 'lucide-vue-next'
 const props = defineProps({
   title: String,
   description: String,
+  label: String, // nama dialog untuk pembaca layar bila judul digambar sendiri di isi
   sheet: Boolean,
   wide: Boolean, // = size lg (kompatibel)
   size: { type: String, default: 'md' }, // sm | md | lg
@@ -55,6 +56,7 @@ onBeforeUnmount(() => {
       role="dialog"
       aria-modal="true"
       :aria-labelledby="title ? `${id}-t` : undefined"
+      :aria-label="title ? undefined : label"
       :aria-describedby="description ? `${id}-d` : undefined"
       :class="[
         'fixed z-50 flex animate-rise flex-col border-line-strong bg-surface',
