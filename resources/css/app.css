@@ -42,6 +42,21 @@
   color: var(--text-2);
 }
 
+/* Tabel isian (mis. Katalog) di ponsel: tiap baris jadi kartu bertumpuk, label kolom dari data-label di atas isian */
+@utility table-stack {
+  @media (width < 40rem) {
+    min-width: 0 !important;
+    & thead { display: none; }
+    & tbody { display: block; }
+    & tr { display: grid; gap: .75rem; padding: 1rem; }
+    & td { display: block; padding: 0 !important; text-align: left !important; }
+    & td[data-label]::before {
+      content: attr(data-label); display: block; margin-bottom: .375rem;
+      font-size: .8125rem; font-weight: 500; color: var(--color-muted);
+    }
+  }
+}
+
 @utility num {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;

@@ -22,13 +22,15 @@ import { useAuthStore } from '@/stores/auth'
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
-const TABS = [{ value: 'approvals', label: 'Permintaan' }, { value: 'refunds', label: 'Refund' }, { value: 'reviews', label: 'Pembayaran bermasalah' }]
+// tinjauan pembayaran butuh izin tersendiri (finance.reviews) — tanpa izin, tab & permintaannya tidak ada
+const canReview = auth.can('finance.reviews')
+const TABS = [{ value: 'approvals', label: 'Permintaan' }, { value: 'refunds', label: 'Refund' }, ...(canReview ? [{ value: 'reviews', label: 'Pembayaran bermasalah' }] : [])]
 const tab = ref(TABS.some((t) => t.value === route.query.tab) ? route.query.tab : 'approvals')
 const setTab = (v) => { tab.value = v; router.replace({ query: { tab: v } }) }
 
 const approvals = usePagedList(adminApi.approvals, { status: 'pending' }, { url: false, sort: '-created_at', perPage: 25 })
 const refunds = usePagedList(adminApi.refunds, { status: 'requested' }, { url: false, sort: '-created_at', perPage: 25 })
-const reviews = usePagedList(adminApi.paymentReviews, { status: 'open' }, { url: false, sort: '-created_at', perPage: 25 })
+const reviews = usePagedList(canReview ? adminApi.paymentReviews : async () => ({ data: [], meta: null }), { status: 'open' }, { url: false, sort: '-created_at', perPage: 25 })
 
 const TONE = { pending: 'warn', requested: 'warn', approved: 'ok', paid: 'ok', rejected: 'muted', cancelled: 'muted', expired: 'muted', failed: 'danger', open: 'warn', resolved: 'ok', dismissed: 'muted' }
 const A_COLS = [{ key: 'summary', label: 'Permintaan' }, { key: 'requested_by', label: 'Pengaju' }, { key: 'status', label: 'Status' }, { key: 'created_at', label: 'Diajukan', sortable: true }, { key: 'act', label: '' }]

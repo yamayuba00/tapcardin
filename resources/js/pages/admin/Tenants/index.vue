@@ -22,11 +22,11 @@ const STATUSES = ['active', 'trialing', 'past_due', 'suspended', 'pending_deleti
 
 <template>
   <PageHeader title="Workspace" />
-  <form class="flex flex-wrap gap-2" @submit.prevent="search">
-    <AppInput v-model="filters.q" type="search" placeholder="Nama, subdomain, atau email owner" aria-label="Cari workspace" class="max-w-xs" />
-    <AppSelect v-model="filters.type" placeholder="Semua tipe" :options="[{ value: 'personal', label: 'Personal' }, { value: 'company', label: 'Perusahaan' }]" class="!w-auto" aria-label="Tipe" />
-    <AppSelect v-model="filters.status" placeholder="Semua status" :options="STATUSES" class="!w-auto" aria-label="Status" />
-    <AppButton type="submit" variant="secondary"><Search class="size-5" /> Cari</AppButton>
+  <form class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap" @submit.prevent="search">
+    <AppInput v-model="filters.q" type="search" placeholder="Nama, subdomain, atau email owner" aria-label="Cari workspace" class="col-span-2 sm:max-w-xs" />
+    <AppSelect v-model="filters.type" placeholder="Semua tipe" :options="[{ value: 'personal', label: 'Personal' }, { value: 'company', label: 'Perusahaan' }]" class="sm:!w-auto" aria-label="Tipe" />
+    <AppSelect v-model="filters.status" placeholder="Semua status" :options="STATUSES" class="sm:!w-auto" aria-label="Status" />
+    <AppButton type="submit" variant="secondary" class="col-span-2 sm:col-auto"><Search class="size-5" /> Cari</AppButton>
   </form>
 
   <DataTable

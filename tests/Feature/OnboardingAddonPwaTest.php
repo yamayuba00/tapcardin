@@ -96,11 +96,20 @@ class OnboardingAddonPwaTest extends TestCase
         $this->api('POST', '/addons/crm/interest')->assertJsonPath('error.code', 'addon_not_coming_soon');
     }
 
-    public function test_pwa_manifest_only_on_app_hosts_and_assets_exist(): void
+    public function test_pwa_manifest_on_app_and_panel_hosts_and_assets_exist(): void
     {
-        $this->get($this->host('app', '/login'))->assertOk()->assertSee('rel="manifest"', false)->assertSee('apple-touch-icon', false);
+        $this->get($this->host('app', '/login'))->assertOk()->assertSee('href="/manifest.webmanifest"', false)->assertSee('apple-touch-icon', false);
         $this->get($this->host('tap', '/k'))->assertOk()->assertDontSee('rel="manifest"', false);
-        $this->get($this->host('panel', '/login'))->assertOk()->assertDontSee('rel="manifest"', false);
+        $this->get('http://localhost/')->assertOk()->assertDontSee('rel="manifest"', false);
+        $this->get($this->host('panel', '/login'))->assertOk()->assertSee('href="/manifest-panel.webmanifest"', false)
+            ->assertSee('/icons/panel-apple-touch-icon.png', false)->assertSee('/favicon-admin.svg', false);
+
+        $panel = json_decode(file_get_contents(public_path('manifest-panel.webmanifest')), true);
+        $this->assertSame(['standalone', '/'], [$panel['display'], $panel['scope']]);
+        foreach ([...array_column($panel['icons'], 'src'), '/icons/panel-apple-touch-icon.png'] as $path) {
+            $this->assertFileExists(public_path(ltrim($path, '/')), $path);
+        }
+        $this->assertSame([512, 512], array_slice(getimagesize(public_path('icons/panel-maskable-512.png')), 0, 2));
 
         $manifest = json_decode(file_get_contents(public_path('manifest.webmanifest')), true);
         $this->assertSame('standalone', $manifest['display']);

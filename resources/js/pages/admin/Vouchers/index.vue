@@ -61,10 +61,10 @@ async function save() {
   <PageHeader eyebrow="Bisnis" title="Voucher">
     <AppButton @click="open(null)"><Plus class="size-5" /> Voucher baru</AppButton>
   </PageHeader>
-  <form class="flex flex-wrap gap-2" @submit.prevent="list.search">
-    <AppInput v-model="list.filters.q" placeholder="Cari kode / deskripsi" aria-label="Cari voucher" class="max-w-[260px]" />
-    <AppSelect v-model="list.filters.active" placeholder="Semua voucher" class="!w-auto" aria-label="Filter" :options="[{ value: '1', label: 'Sedang berlaku' }]" @update:model-value="list.search" />
-    <AppButton type="submit" variant="secondary">Saring</AppButton>
+  <form class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap" @submit.prevent="list.search">
+    <AppInput v-model="list.filters.q" placeholder="Cari kode / deskripsi" aria-label="Cari voucher" class="col-span-2 sm:max-w-[260px]" />
+    <AppSelect v-model="list.filters.active" placeholder="Semua voucher" class="sm:!w-auto" aria-label="Filter" :options="[{ value: '1', label: 'Sedang berlaku' }]" @update:model-value="list.search" />
+    <AppButton type="submit" variant="secondary" class="col-span-2 sm:col-auto">Saring</AppButton>
   </form>
   <DataTable dense :columns="COLUMNS" :rows="list.rows.value" :meta="list.meta.value" :sort="list.sort.value" :loading="list.loading.value"
     empty-text="Belum ada voucher." @sort="list.toggleSort" @page="list.goto" @per-page="list.setPerPage">

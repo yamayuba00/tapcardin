@@ -81,10 +81,10 @@ async function act(fn, message) {
     </AppPanel>
 
     <template v-if="b.counts.tokens">
-      <form class="flex flex-wrap gap-2" @submit.prevent="cards.search">
-        <AppInput v-model="cards.filters.q" type="search" placeholder="Token atau kode pendek" aria-label="Cari kartu batch" class="max-w-xs" />
-        <AppSelect v-model="cards.filters.progress" placeholder="Semua tahap" :options="PROGRESS" class="!w-auto" aria-label="Tahap" />
-        <AppButton type="submit" variant="secondary">Cari</AppButton>
+      <form class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap" @submit.prevent="cards.search">
+        <AppInput v-model="cards.filters.q" type="search" placeholder="Token atau kode pendek" aria-label="Cari kartu batch" class="col-span-2 sm:max-w-xs" />
+        <AppSelect v-model="cards.filters.progress" placeholder="Semua tahap" :options="PROGRESS" class="sm:!w-auto" aria-label="Tahap" />
+        <AppButton type="submit" variant="secondary" class="col-span-2 sm:col-auto">Cari</AppButton>
       </form>
       <CardsTable :list="cards" :show="['sequence', 'progress']" />
     </template>

@@ -54,10 +54,10 @@ async function submit() {
     <p class="mt-3 text-sm text-muted">Staf baru mendapat password sementara untuk masuk ke admin dengan email + password. Staf tidak otomatis melihat isi lead pelanggan (PRD §5.1).</p>
   </AppPanel>
 
-  <form class="flex flex-wrap gap-2" @submit.prevent="list.search">
-    <AppInput v-model="list.filters.q" type="search" placeholder="Nama atau email staf" aria-label="Cari staf" class="max-w-xs" />
-    <AppSelect v-model="list.filters.status" placeholder="Semua status" :options="[{ value: 'active', label: 'Aktif' }, { value: 'revoked', label: 'Dicabut' }]" class="!w-auto" aria-label="Status" />
-    <AppButton type="submit" variant="secondary"><Search class="size-5" /> Cari</AppButton>
+  <form class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap" @submit.prevent="list.search">
+    <AppInput v-model="list.filters.q" type="search" placeholder="Nama atau email staf" aria-label="Cari staf" class="col-span-2 sm:max-w-xs" />
+    <AppSelect v-model="list.filters.status" placeholder="Semua status" :options="[{ value: 'active', label: 'Aktif' }, { value: 'revoked', label: 'Dicabut' }]" class="sm:!w-auto" aria-label="Status" />
+    <AppButton type="submit" variant="secondary" class="col-span-2 sm:col-auto"><Search class="size-5" /> Cari</AppButton>
   </form>
   <DataTable
     dense :columns="COLUMNS" :rows="list.rows.value" :meta="list.meta.value" :sort="list.sort.value" :loading="list.loading.value"

@@ -52,10 +52,10 @@ async function create() {
     </form>
   </AppPanel>
 
-  <form class="flex flex-wrap gap-2" @submit.prevent="list.search">
-    <AppInput v-model="list.filters.q" type="search" placeholder="Kode batch atau vendor" aria-label="Cari batch" class="max-w-xs" />
-    <AppSelect v-model="list.filters.status" placeholder="Semua status" :options="STATUSES" class="!w-auto" aria-label="Status" />
-    <AppButton type="submit" variant="secondary">Cari</AppButton>
+  <form class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap" @submit.prevent="list.search">
+    <AppInput v-model="list.filters.q" type="search" placeholder="Kode batch atau vendor" aria-label="Cari batch" class="col-span-2 sm:max-w-xs" />
+    <AppSelect v-model="list.filters.status" placeholder="Semua status" :options="STATUSES" class="sm:!w-auto" aria-label="Status" />
+    <AppButton type="submit" variant="secondary" class="col-span-2 sm:col-auto">Cari</AppButton>
   </form>
   <DataTable
     dense :columns="COLUMNS" :rows="list.rows.value" :meta="list.meta.value" :sort="list.sort.value" :loading="list.loading.value"

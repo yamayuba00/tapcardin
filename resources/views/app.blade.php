@@ -14,14 +14,14 @@
     <meta property="og:type" content="profile">
     @if ($meta['image'])<meta property="og:image" content="{{ $meta['image'] }}">@endif
   @endif
-  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-  @if ($pwa ?? false)
-    {{-- Aplikasi bisa dipasang ke layar utama (PWA); service worker didaftarkan oleh resources/js/lib/pwa.js --}}
-    <link rel="manifest" href="/manifest.webmanifest">
-    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+  <link rel="icon" href="{{ $favicon ?? '/favicon.svg' }}" type="image/svg+xml">
+  @if ($pwa ?? null)
+    {{-- Aplikasi / panel bisa dipasang ke layar utama (PWA); service worker didaftarkan oleh composables/usePwa.js --}}
+    <link rel="manifest" href="{{ $pwa[0] }}">
+    <link rel="apple-touch-icon" href="{{ $pwa[2] }}">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-title" content="TapCard">
+    <meta name="apple-mobile-web-app-title" content="{{ $pwa[1] }}">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   @endif
   <link rel="preload" href="/fonts/syne-700.woff2" as="font" type="font/woff2" crossorigin>

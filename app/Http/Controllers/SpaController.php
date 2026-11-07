@@ -29,13 +29,20 @@ class SpaController extends Controller
         $suffix = $port && ! in_array($port, [80, 443], true) ? ':'.$port : '';
         $scheme = request()->getScheme();
 
-        // PWA hanya untuk aplikasi (app., subdomain workspace, domain kustom) — bukan resolver tap., panel, atau landing.
+        // PWA untuk aplikasi (app., subdomain workspace, domain kustom) dan panel (manifest & ikon sendiri) —
+        // bukan resolver tap. atau landing. Nilai = [manifest, nama di layar utama, ikon Apple] atau null.
         $host = request()->getHost();
-        $pwa = $host !== $base && ! preg_match('/^(tap|www|admin|'.preg_quote(config('tapcard.panel_subdomain'), '/').')\./', $host);
+        $panel = str_starts_with($host, config('tapcard.panel_subdomain').'.');
+        $pwa = match (true) {
+            $panel => ['/manifest-panel.webmanifest', 'TC Panel', '/icons/panel-apple-touch-icon.png'],
+            $host === $base || (bool) preg_match('/^(tap|www|admin)\./', $host) => null,
+            default => ['/manifest.webmanifest', 'TapCard', '/icons/apple-touch-icon.png'],
+        };
 
         return response()->view('app', [
             'meta' => $meta,
             'pwa' => $pwa,
+            'favicon' => $panel ? '/favicon-admin.svg' : '/favicon.svg',
             'config' => [
                 'baseDomain' => $base,
                 'resolverUrl' => config('tapcard.resolver_url'),

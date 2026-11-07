@@ -24,9 +24,9 @@ const COLUMNS = [
 
 <template>
   <PageHeader title="Pengguna" />
-  <form class="flex flex-wrap gap-2" @submit.prevent="search">
-    <AppInput v-model="filters.q" type="search" placeholder="Email, nama, atau handle" aria-label="Cari pengguna" class="max-w-xs" />
-    <AppButton type="submit" variant="secondary"><Search class="size-5" /> Cari</AppButton>
+  <form class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap" @submit.prevent="search">
+    <AppInput v-model="filters.q" type="search" placeholder="Email, nama, atau handle" aria-label="Cari pengguna" class="col-span-2 sm:max-w-xs" />
+    <AppButton type="submit" variant="secondary" class="col-span-2 sm:col-auto"><Search class="size-5" /> Cari</AppButton>
   </form>
   <DataTable
     dense :columns="COLUMNS" :rows="list.rows.value" :meta="list.meta.value" :sort="list.sort.value" :loading="list.loading.value"

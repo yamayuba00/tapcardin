@@ -8,6 +8,7 @@ import {
   Activity, BadgeCheck, BadgePercent, Boxes, Building2, CircleCheck, CircleUser, ClipboardList, Cpu, CreditCard, Gem, Globe, House, LogOut, Megaphone, Moon, Package, ShieldCheck, ShoppingCart, Stamp, Users, Wallet,
 } from 'lucide-vue-next'
 import BrandLogo from '@/components/common/BrandLogo/index.vue'
+import InstallApp from '@/components/common/InstallApp/index.vue'
 import MobileNav from '@/components/common/MobileNav/index.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useTheme } from '@/composables/useTheme'
@@ -80,6 +81,7 @@ const link = 'group flex min-h-10 items-center gap-3 rounded-lg px-3 text-[15px]
           <p class="truncate px-3 text-sm text-muted">{{ auth.me?.email }}<br /><span class="label">{{ auth.me?.role }}</span></p>
           <RouterLink to="/account" :aria-current="route.meta.nav === 'account' ? 'page' : undefined" :class="link"><CircleUser class="size-5" aria-hidden="true" /> Akun & password</RouterLink>
           <button class="cursor-pointer" type="button" :class="link" @click="toggle"><Moon class="size-5" aria-hidden="true" /> Tema</button>
+          <InstallApp :link-class="link" />
           <button class="cursor-pointer" type="button" :class="link" @click="auth.askLogout()"><LogOut class="size-5" aria-hidden="true" /> Keluar</button>
         </div>
       </aside>
@@ -94,6 +96,7 @@ const link = 'group flex min-h-10 items-center gap-3 rounded-lg px-3 text-[15px]
     <MobileNav :tabs="tabs" :groups="nav" :active="route.meta.nav" :title="auth.me?.email || 'Staf'" :subtitle="`Panel pemilik · ${auth.me?.role ?? ''}`" :initial="(auth.me?.name || auth.me?.email || '?')[0]?.toUpperCase()">
       <template #actions>
         <RouterLink to="/account" class="flex min-h-11 items-center gap-3 rounded-sm px-3 text-sm text-fg no-underline hover:bg-surface-2"><CircleUser class="size-5" /> Akun & password</RouterLink>
+        <InstallApp link-class="flex min-h-11 w-full items-center gap-3 rounded-sm px-3 text-sm text-fg hover:bg-surface-2 [&_svg]:size-5" />
         <button type="button" class="flex min-h-11 cursor-pointer items-center gap-3 rounded-sm px-3 text-sm text-fg hover:bg-surface-2" @click="toggle"><Moon class="size-5" /> Ganti tema</button>
         <button type="button" class="flex min-h-11 cursor-pointer items-center gap-3 rounded-sm px-3 text-sm text-danger hover:bg-surface-2" @click="auth.askLogout()"><LogOut class="size-5" /> Keluar</button>
       </template>

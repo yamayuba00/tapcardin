@@ -81,7 +81,7 @@ async function saveType(t, patch) {
   <template v-else>
     <AppPanel title="Kartu fisik · produk" flush>
       <div class="overflow-x-auto">
-        <table class="w-full min-w-[760px] text-sm">
+        <table class="w-full min-w-[760px] text-sm table-stack">
           <thead>
             <tr class="text-left text-muted">
               <th class="px-4 py-2 font-medium">Nama</th><th class="px-4 py-2 font-medium">Deskripsi</th><th class="px-4 py-2 font-medium">Chip</th>
@@ -90,12 +90,12 @@ async function saveType(t, patch) {
           </thead>
           <tbody>
             <tr v-for="p in products" :key="p.public_id" class="border-t border-line">
-              <td class="px-4 py-2"><AppInput v-model="p.name" maxlength="80" :aria-label="`Nama ${p.key}`" /></td>
-              <td class="px-4 py-2"><AppInput v-model="p.description" maxlength="200" :aria-label="`Deskripsi ${p.name}`" /></td>
-              <td class="px-4 py-2 font-mono uppercase">{{ p.chip_type }}</td>
-              <td class="px-4 py-2"><AppInput v-model="p.price" type="number" min="0" class="max-w-32" :aria-label="`Harga ${p.name}`" /></td>
-              <td class="px-4 py-2"><AppInput v-model="p.min_qty" type="number" min="1" class="max-w-24" :aria-label="`Minimal pesan ${p.name}`" /></td>
-              <td class="px-4 py-2"><AppToggle v-model="p.is_active" :label="p.is_active ? 'Ya' : 'Tidak'" /></td>
+              <td data-label="Nama" class="px-4 py-2"><AppInput v-model="p.name" maxlength="80" :aria-label="`Nama ${p.key}`" /></td>
+              <td data-label="Deskripsi" class="px-4 py-2"><AppInput v-model="p.description" maxlength="200" :aria-label="`Deskripsi ${p.name}`" /></td>
+              <td data-label="Chip" class="px-4 py-2 font-mono uppercase">{{ p.chip_type }}</td>
+              <td data-label="Harga / kartu (Rp)" class="px-4 py-2"><AppInput v-model="p.price" type="number" min="0" class="max-w-32" :aria-label="`Harga ${p.name}`" /></td>
+              <td data-label="Min. pesan" class="px-4 py-2"><AppInput v-model="p.min_qty" type="number" min="1" class="max-w-24" :aria-label="`Minimal pesan ${p.name}`" /></td>
+              <td data-label="Aktif" class="px-4 py-2"><AppToggle v-model="p.is_active" :label="p.is_active ? 'Ya' : 'Tidak'" /></td>
               <td class="px-4 py-2 text-right"><AppButton variant="secondary" :loading="busy" @click="saveProduct(p)"><Save class="size-4" /> Simpan</AppButton></td>
             </tr>
           </tbody>
@@ -105,7 +105,7 @@ async function saveType(t, patch) {
 
     <AppPanel title="Pengiriman" flush>
       <div class="overflow-x-auto">
-        <table class="w-full min-w-[760px] text-sm">
+        <table class="w-full min-w-[760px] text-sm table-stack">
           <thead>
             <tr class="text-left text-muted">
               <th class="px-4 py-2 font-medium">Nama</th><th class="px-4 py-2 font-medium">Estimasi</th><th class="px-4 py-2 font-medium">Ongkir / pesanan (Rp)</th>
@@ -114,11 +114,11 @@ async function saveType(t, patch) {
           </thead>
           <tbody>
             <tr v-for="m in shipping" :key="m.public_id" class="border-t border-line">
-              <td class="px-4 py-2"><AppInput v-model="m.name" maxlength="80" :aria-label="`Nama ${m.key}`" /></td>
-              <td class="px-4 py-2"><AppInput v-model="m.eta" maxlength="60" :aria-label="`Estimasi ${m.name}`" /></td>
-              <td class="px-4 py-2"><AppInput v-model="m.price" type="number" min="0" class="max-w-32" :aria-label="`Ongkir ${m.name}`" /></td>
-              <td class="px-4 py-2"><AppToggle v-model="m.needs_address" :label="m.needs_address ? 'Ya' : 'Tidak'" /></td>
-              <td class="px-4 py-2"><AppToggle v-model="m.is_active" :label="m.is_active ? 'Ya' : 'Tidak'" /></td>
+              <td data-label="Nama" class="px-4 py-2"><AppInput v-model="m.name" maxlength="80" :aria-label="`Nama ${m.key}`" /></td>
+              <td data-label="Estimasi" class="px-4 py-2"><AppInput v-model="m.eta" maxlength="60" :aria-label="`Estimasi ${m.name}`" /></td>
+              <td data-label="Ongkir / pesanan (Rp)" class="px-4 py-2"><AppInput v-model="m.price" type="number" min="0" class="max-w-32" :aria-label="`Ongkir ${m.name}`" /></td>
+              <td data-label="Perlu alamat" class="px-4 py-2"><AppToggle v-model="m.needs_address" :label="m.needs_address ? 'Ya' : 'Tidak'" /></td>
+              <td data-label="Aktif" class="px-4 py-2"><AppToggle v-model="m.is_active" :label="m.is_active ? 'Ya' : 'Tidak'" /></td>
               <td class="px-4 py-2 text-right"><AppButton variant="secondary" :loading="busy" @click="saveShipping(m)"><Save class="size-4" /> Simpan</AppButton></td>
             </tr>
           </tbody>
@@ -128,7 +128,7 @@ async function saveType(t, patch) {
 
     <AppPanel title="Lanyard · lebar tali" flush>
       <div class="overflow-x-auto">
-        <table class="w-full min-w-[760px] text-sm">
+        <table class="w-full min-w-[760px] text-sm table-stack">
           <thead>
             <tr class="text-left text-muted">
               <th class="px-4 py-2 font-medium">Lebar</th><th class="px-4 py-2 font-medium">Label</th>
@@ -138,12 +138,12 @@ async function saveType(t, patch) {
           </thead>
           <tbody>
             <tr v-for="w in widths" :key="w.public_id" class="border-t border-line">
-              <td class="px-4 py-2 font-mono">{{ w.width_mm }} mm</td>
-              <td class="px-4 py-2"><AppInput v-model="w.label" maxlength="60" :aria-label="`Label ${w.width_mm} mm`" /></td>
-              <td class="px-4 py-2"><AppInput v-model="w.price_single" type="number" min="0" :aria-label="`Harga 1 sisi ${w.width_mm} mm`" /></td>
-              <td class="px-4 py-2"><AppInput v-model="w.price_double" type="number" min="0" :aria-label="`Harga 2 sisi ${w.width_mm} mm`" /></td>
-              <td class="px-4 py-2"><AppInput v-model="w.min_qty" type="number" min="1" class="max-w-24" :aria-label="`Minimal pesan ${w.width_mm} mm`" /></td>
-              <td class="px-4 py-2"><AppToggle v-model="w.is_active" :label="w.is_active ? 'Ya' : 'Tidak'" /></td>
+              <td data-label="Lebar" class="px-4 py-2 font-mono">{{ w.width_mm }} mm</td>
+              <td data-label="Label" class="px-4 py-2"><AppInput v-model="w.label" maxlength="60" :aria-label="`Label ${w.width_mm} mm`" /></td>
+              <td data-label="Cetak 1 sisi (Rp)" class="px-4 py-2"><AppInput v-model="w.price_single" type="number" min="0" :aria-label="`Harga 1 sisi ${w.width_mm} mm`" /></td>
+              <td data-label="Cetak 2 sisi (Rp)" class="px-4 py-2"><AppInput v-model="w.price_double" type="number" min="0" :aria-label="`Harga 2 sisi ${w.width_mm} mm`" /></td>
+              <td data-label="Min. pesan" class="px-4 py-2"><AppInput v-model="w.min_qty" type="number" min="1" class="max-w-24" :aria-label="`Minimal pesan ${w.width_mm} mm`" /></td>
+              <td data-label="Aktif" class="px-4 py-2"><AppToggle v-model="w.is_active" :label="w.is_active ? 'Ya' : 'Tidak'" /></td>
               <td class="px-4 py-2 text-right"><AppButton variant="secondary" :loading="busy" @click="saveWidth(w)"><Save class="size-4" /> Simpan</AppButton></td>
             </tr>
           </tbody>
@@ -153,7 +153,7 @@ async function saveType(t, patch) {
 
     <AppPanel title="Lanyard · pengait & aksesori" flush>
       <div class="overflow-x-auto">
-        <table class="w-full min-w-[720px] text-sm">
+        <table class="w-full min-w-[720px] text-sm table-stack">
           <thead>
             <tr class="text-left text-muted">
               <th class="px-4 py-2 font-medium">Nama</th><th class="px-4 py-2 font-medium">Deskripsi</th>
@@ -162,10 +162,10 @@ async function saveType(t, patch) {
           </thead>
           <tbody>
             <tr v-for="h in hardware" :key="h.public_id" class="border-t border-line">
-              <td class="px-4 py-2"><AppInput v-model="h.name" maxlength="60" :aria-label="`Nama ${h.key}`" /></td>
-              <td class="px-4 py-2"><AppInput v-model="h.description" maxlength="200" :aria-label="`Deskripsi ${h.name}`" /></td>
-              <td class="px-4 py-2"><AppInput v-model="h.price" type="number" min="0" class="max-w-32" :aria-label="`Harga ${h.name}`" /></td>
-              <td class="px-4 py-2"><AppToggle v-model="h.is_active" :label="h.is_active ? 'Ya' : 'Tidak'" /></td>
+              <td data-label="Nama" class="px-4 py-2"><AppInput v-model="h.name" maxlength="60" :aria-label="`Nama ${h.key}`" /></td>
+              <td data-label="Deskripsi" class="px-4 py-2"><AppInput v-model="h.description" maxlength="200" :aria-label="`Deskripsi ${h.name}`" /></td>
+              <td data-label="Harga (Rp)" class="px-4 py-2"><AppInput v-model="h.price" type="number" min="0" class="max-w-32" :aria-label="`Harga ${h.name}`" /></td>
+              <td data-label="Aktif" class="px-4 py-2"><AppToggle v-model="h.is_active" :label="h.is_active ? 'Ya' : 'Tidak'" /></td>
               <td class="px-4 py-2 text-right"><AppButton variant="secondary" :loading="busy" @click="saveHardware(h)"><Save class="size-4" /> Simpan</AppButton></td>
             </tr>
             <tr class="border-t border-line">

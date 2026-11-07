@@ -71,7 +71,7 @@ async function doGrant() {
     <AppButton v-if="auth.can('finance.invoices')" variant="secondary" @click="granting = true"><Gift class="size-5" /> Ajukan beri paket</AppButton>
   </PageHeader>
 
-  <div v-if="m" class="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-4">
+  <div v-if="m" class="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
     <KpiCard label="MRR" :value="rupiah(m.mrr)" :hint="`ARR ${rupiah(m.arr)}`" />
     <KpiCard label="Pendapatan bulan ini" :value="rupiah(m.revenue_month)" :delta="growth" :hint="`Bulan lalu ${rupiah(m.revenue_prev_month)}`" />
     <KpiCard label="Langganan aktif" :value="num(m.active_subscriptions)" :hint="m.past_due ? `${m.past_due} menunggak` : 'Tidak ada tunggakan'" />
@@ -84,11 +84,11 @@ async function doGrant() {
   <AppSegmented :model-value="tab" label="Data" :options="[{ value: 'invoices', label: 'Invoice' }, { value: 'subscriptions', label: 'Langganan' }, { value: 'events', label: 'Event gateway' }]" @update:model-value="setTab" />
 
   <template v-if="tab === 'invoices'">
-    <form class="flex flex-wrap gap-2" @submit.prevent="invoices.search">
-      <AppInput v-model="invoices.filters.q" placeholder="Nomor invoice / workspace" aria-label="Cari invoice" class="max-w-[260px]" />
-      <AppSelect v-model="invoices.filters.status" placeholder="Semua status" class="!w-auto" aria-label="Status"
+    <form class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap" @submit.prevent="invoices.search">
+      <AppInput v-model="invoices.filters.q" placeholder="Nomor invoice / workspace" aria-label="Cari invoice" class="col-span-2 sm:max-w-[260px]" />
+      <AppSelect v-model="invoices.filters.status" placeholder="Semua status" class="sm:!w-auto" aria-label="Status"
         :options="Object.entries(INV).map(([value, [, label]]) => ({ value, label }))" @update:model-value="invoices.search" />
-      <AppButton type="submit" variant="secondary">Saring</AppButton>
+      <AppButton type="submit" variant="secondary" class="col-span-2 sm:col-auto">Saring</AppButton>
     </form>
     <DataTable dense :columns="INV_COLUMNS" :rows="invoices.rows.value" :meta="invoices.meta.value" :sort="invoices.sort.value" :loading="invoices.loading.value"
       empty-text="Belum ada invoice." @sort="invoices.toggleSort" @page="invoices.goto" @per-page="invoices.setPerPage">

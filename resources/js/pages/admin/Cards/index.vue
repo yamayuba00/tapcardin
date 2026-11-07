@@ -17,11 +17,11 @@ const STATUSES = Object.entries(CARD_STATUS).map(([value, s]) => ({ value, label
 
 <template>
   <PageHeader title="Kartu" />
-  <form class="flex flex-wrap gap-2" @submit.prevent="search">
-    <AppInput v-model="filters.q" type="search" placeholder="Token, kode pendek, atau email pemegang" aria-label="Cari kartu" class="max-w-xs" autofocus />
-    <AppSelect v-model="filters.status" placeholder="Semua status" :options="STATUSES" class="!w-auto" aria-label="Status" />
-    <AppSelect v-model="filters.replacement" placeholder="Semua kartu" :options="[{ value: '1', label: 'Minta pengganti' }]" class="!w-auto" aria-label="Permintaan pengganti" />
-    <AppButton type="submit" variant="secondary"><Search class="size-5" /> Cari</AppButton>
+  <form class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap" @submit.prevent="search">
+    <AppInput v-model="filters.q" type="search" placeholder="Token, kode pendek, atau email pemegang" aria-label="Cari kartu" class="col-span-2 sm:max-w-xs" autofocus />
+    <AppSelect v-model="filters.status" placeholder="Semua status" :options="STATUSES" class="sm:!w-auto" aria-label="Status" />
+    <AppSelect v-model="filters.replacement" placeholder="Semua kartu" :options="[{ value: '1', label: 'Minta pengganti' }]" class="sm:!w-auto" aria-label="Permintaan pengganti" />
+    <AppButton type="submit" variant="secondary" class="col-span-2 sm:col-auto"><Search class="size-5" /> Cari</AppButton>
   </form>
   <CardsTable :list="list" />
 </template>

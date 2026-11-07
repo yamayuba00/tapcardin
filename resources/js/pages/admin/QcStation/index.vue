@@ -131,7 +131,7 @@ async function submit() {
       <div v-if="state === 'done'" class="grid justify-items-center gap-3">
         <Check class="size-12 text-ok" aria-hidden="true" />
         <p class="font-display text-2xl">Semua kartu di batch {{ current?.code }} sudah diperiksa</p>
-        <p class="text-muted">Pilih batch lain di kanan atas, atau lanjutkan pengiriman dari halaman batch.</p>
+        <p class="text-muted">Pilih batch lain di atas, atau lanjutkan pengiriman dari halaman batch.</p>
         <AppButton variant="secondary" to="/batches">Buka daftar batch</AppButton>
       </div>
       <AppSkeleton v-else-if="!card" class="!h-64 w-full max-w-xl" />

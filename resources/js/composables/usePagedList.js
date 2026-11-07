@@ -1,5 +1,6 @@
 import { reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useToastStore } from '@/stores/toast'
 
 /**
  * Tabel server-side: filter, halaman, urutan (`sort` = `kolom` / `-kolom`), dan jumlah per halaman
@@ -21,6 +22,7 @@ export function usePagedList(fetcher, defaults = {}, opts = {}) {
   const rows = ref(null)
   const meta = ref(null)
   const loading = ref(false)
+  const toast = useToastStore()
 
   let seq = 0
   async function load() {
@@ -31,6 +33,11 @@ export function usePagedList(fetcher, defaults = {}, opts = {}) {
       if (mine !== seq) return
       rows.value = res.data
       meta.value = res.meta
+    } catch (e) {
+      // pemuatan awal tidak di-await pemanggil: tampilkan galat & kosongkan tabel, bukan promise yang tak tertangani
+      if (mine !== seq) return
+      rows.value ??= []
+      toast.error(e.message || 'Daftar gagal dimuat.')
     } finally {
       if (mine === seq) loading.value = false
     }
