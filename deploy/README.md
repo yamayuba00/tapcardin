@@ -66,6 +66,7 @@ Installer aman dijalankan ulang (mis. setelah memperbaiki isian): langkah yang s
 | Rilis versi terbaru dari `BRANCH` | `sudo bash /var/www/tapcard/current/deploy/deploy.sh` |
 | Rilis tag / branch tertentu | `sudo bash /var/www/tapcard/current/deploy/deploy.sh v1.2.0` |
 | Kembali ke rilis sebelumnya | `sudo bash /var/www/tapcard/current/deploy/rollback.sh` |
+| Pindah ke domain baru (kartu lama tetap jalan) | `sudo bash /var/www/tapcard/current/deploy/switch-domain.sh domainbaru.com` — lihat [Pindah domain](#pindah-domain) |
 | Ubah konfigurasi (SMTP, pembayaran, Google…) | edit `/var/www/tapcard/shared/.env`, lalu jalankan rilis ulang |
 | Status worker & scheduler | `sudo supervisorctl status` |
 | Log aplikasi | `/var/www/tapcard/shared/storage/logs/` |
@@ -137,6 +138,31 @@ Domain kustom (`kartu.perusahaan.com`) yang sudah diverifikasi di panel diarahka
 Server block di atas hanya melayani `domain` & `*.domain`; untuk domain kustom tambahkan server block per domain dengan
 sertifikatnya sendiri (`certbot certonly --webroot -w /var/www/letsencrypt -d kartu.perusahaan.com`), atau pakai proxy
 dengan TLS on-demand (mis. Caddy) di depan Nginx.
+
+## Pindah domain
+
+```bash
+sudo bash /var/www/tapcard/current/deploy/switch-domain.sh domainbaru.com --dry-run   # lihat rencana & cek DNS dulu
+sudo bash /var/www/tapcard/current/deploy/switch-domain.sh domainbaru.com             # jalankan
+```
+
+Chip NFC & QR berisi alamat tetap `https://tap.<domain-lama>/c/…` yang tidak bisa diubah setelah dicetak. Karena itu
+domain lama **tidak dimatikan**: semua alamatnya dialihkan permanen (308, path & query tetap) ke domain baru —
+`tap.lama.com/c/AbC…` → `tap.baru.com/c/AbC…`, `{slug}.lama.com` → `{slug}.baru.com`. **Domain lama harus tetap
+diperpanjang dan tetap mengarah ke VPS** selama kartu lama masih beredar.
+
+Sebelum menjalankan: buat record A `domainbaru.com` dan `*.domainbaru.com` ke IP VPS. Untuk sertifikat wildcard
+(`--ssl cloudflare`, bawaan bila dulu memasang dengan Cloudflare), token harus berizin untuk zona domain baru —
+token lain: `CLOUDFLARE_API_TOKEN=… sudo -E bash …/switch-domain.sh domainbaru.com`.
+
+Yang dikerjakan script: sertifikat domain baru → Nginx domain baru + pengalihan domain lama (diuji `nginx -t`, gagal =
+dikembalikan) → `.env` (`APP_URL`, `TAPCARD_BASE_DOMAIN`, `TAPCARD_RESOLVER_URL`, `REVERB_HOST`, `GOOGLE_REDIRECT_URI`;
+cadangan di `shared/domain-switch-<waktu>/`) → cache & restart → pemeriksaan. Pindah berkali-kali tetap satu langkah
+pengalihan (semua domain lama langsung ke domain terbaru); kembali ke domain lama = jalankan lagi dengan domain lama.
+
+Setelahnya, ubah manual: redirect URI Google OAuth, URL webhook di dashboard payment gateway, verifikasi domain pengirim
+di penyedia SMTP (`MAIL_FROM_ADDRESS` tidak diubah otomatis), dan CNAME domain kustom pelanggan ke `app.domainbaru.com`.
+Pengguna perlu login ulang dan memasang ulang aplikasi PWA.
 
 ## Pemecahan masalah
 
