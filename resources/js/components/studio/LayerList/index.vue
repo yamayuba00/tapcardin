@@ -44,12 +44,12 @@ const reset = () => { dragId.value = null; overId.value = null }
       <button
         type="button"
         :aria-current="selection.includes(l.id) ? 'true' : undefined"
-        :class="['flex min-h-9 min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-sm px-2 text-left text-sm text-muted hover:bg-surface-2 hover:text-fg aria-[current=true]:bg-surface-2 aria-[current=true]:text-fg', l.hidden ? 'line-through opacity-60' : '']"
+        :class="['flex min-h-9 w-0 min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-sm px-2 text-left text-sm text-muted hover:bg-surface-2 hover:text-fg aria-[current=true]:bg-surface-2 aria-[current=true]:text-fg', l.hidden ? 'line-through opacity-60' : '']"
         @click="click($event, l)"
       >
         <Lock v-if="isSystem(l)" class="size-3.5 flex-none text-accent-text" aria-label="Elemen wajib" />
         <Group v-else-if="l.group" class="size-3.5 flex-none text-accent-text" aria-label="Dalam grup" />
-        <span class="truncate">{{ layerLabel(l, vars) }}</span>
+        <span class="min-w-0 truncate">{{ layerLabel(l, vars) }}</span>
       </button>
       <template v-if="!isSystem(l)">
         <button type="button" class="grid size-8 cursor-pointer place-items-center rounded-sm text-muted hover:bg-surface-2 hover:text-fg" :aria-label="l.lock ? 'Buka kunci' : 'Kunci'" :title="l.lock ? 'Buka kunci' : 'Kunci posisi'" @click="emit('toggle-lock', [l.id])">

@@ -11,7 +11,8 @@ defineProps({ busy: Boolean })
     <div class="grid grid-cols-[minmax(0,1fr)] content-start lg:min-h-0 lg:grid-cols-[64px_minmax(0,1fr)_360px] lg:grid-rows-1 lg:content-stretch">
       <aside class="border-b border-line p-2 lg:overflow-y-auto lg:border-r lg:border-b-0 lg:scrollbar-none"><slot name="tools" /></aside>
       <main class="relative overflow-x-auto bg-surface-2 lg:min-h-0 lg:overflow-auto" :aria-busy="busy || undefined"><slot name="canvas" /></main>
-      <aside class="border-t border-line bg-surface lg:overflow-y-auto lg:border-t-0 lg:border-l"><slot name="panel" /></aside>
+      <!-- panel properti: tidak pernah bergeser ke samping (isi panjang dipotong komponennya) -->
+      <aside class="min-w-0 overflow-x-hidden border-t border-line bg-surface lg:overflow-y-auto lg:border-t-0 lg:border-l"><slot name="panel" /></aside>
     </div>
   </div>
 </template>

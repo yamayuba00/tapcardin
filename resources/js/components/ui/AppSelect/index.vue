@@ -166,7 +166,8 @@ const VISIBLE_CHIPS = 3
     @keydown="onKey"
   >
     <!-- multiple: chip -->
-    <span v-if="multiple && chosen.length" class="flex min-w-0 flex-1 flex-wrap gap-1.5">
+    <!-- w-0 + flex-1: label panjang dipotong "…" dan tidak ikut melebarkan wadah (mis. panel editor) -->
+    <span v-if="multiple && chosen.length" class="flex w-0 min-w-0 flex-1 flex-wrap gap-1.5">
       <span v-for="o in chosen.slice(0, VISIBLE_CHIPS)" :key="o.value" class="inline-flex max-w-[160px] items-center gap-1 rounded-sm bg-surface-2 py-0.5 pr-1 pl-2 text-sm">
         <span class="truncate">{{ o.label }}</span>
         <span role="button" tabindex="-1" class="grid size-5 cursor-pointer place-items-center rounded-sm text-muted hover:bg-line hover:text-fg" :aria-label="`Hapus ${o.label}`" @click.stop="removeChip(o.value)"><X class="size-3.5" /></span>
@@ -174,11 +175,11 @@ const VISIBLE_CHIPS = 3
       <span v-if="chosen.length > VISIBLE_CHIPS" class="inline-flex items-center rounded-sm bg-surface-2 px-2 py-0.5 font-mono text-xs text-muted">+{{ chosen.length - VISIBLE_CHIPS }}</span>
     </span>
     <!-- single -->
-    <span v-else-if="!multiple && chosen.length" class="flex min-w-0 flex-1 items-center gap-2">
+    <span v-else-if="!multiple && chosen.length" class="flex w-0 min-w-0 flex-1 items-center gap-2">
       <component :is="chosen[0].icon" v-if="chosen[0].icon" class="size-4 flex-none text-accent-text" aria-hidden="true" />
       <span class="truncate">{{ chosen[0].label }}</span>
     </span>
-    <span v-else class="min-w-0 flex-1 truncate text-muted">{{ placeholder || 'Pilih…' }}</span>
+    <span v-else class="w-0 min-w-0 flex-1 truncate text-muted">{{ placeholder || 'Pilih…' }}</span>
 
     <span
       v-if="showClear && !disabled" role="button" tabindex="-1"
