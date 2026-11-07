@@ -6,10 +6,11 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import {
-  BellRing, Blocks, CalendarDays, ChartColumn, ChevronsUpDown, CreditCard, Gem, House, LayoutDashboard, LayoutGrid, LogOut, Moon, Package, Palette, Settings, ShieldCheck, User, Users, X,
+  BellRing, Blocks, CalendarDays, ChartColumn, ChevronsUpDown, CreditCard, Gem, House, LayoutDashboard, LogOut, Moon, Package, Palette, Settings, ShieldCheck, User, Users,
 } from 'lucide-vue-next'
 import BrandLogo from '@/components/common/BrandLogo/index.vue'
 import InstallApp from '@/components/common/InstallApp/index.vue'
+import MobileNav from '@/components/common/MobileNav/index.vue'
 import { config } from '@/config'
 import { useAuthStore } from '@/stores/auth'
 import { useNotificationStore } from '@/stores/notifications'
@@ -46,11 +47,14 @@ const mainEl = ref(null)
 watch(() => route.path, () => mainEl.value?.scrollTo({ top: 0 }))
 const fullscreen = computed(() => route.meta.fullscreen === true)
 
-// lembar "Menu" ponsel: tertutup saat pindah halaman; tombolnya aktif bila halaman sekarang bukan 3 tab utama
-const sheet = ref(false)
-watch(() => route.fullPath, () => (sheet.value = false))
-const onEsc = (e) => { if (e.key === 'Escape') sheet.value = false }
-const inSheet = computed(() => !['dashboard', 'connections', 'cards'].includes(active.value))
+// ponsel: 3 tab utama + "Menu" (kelompok berlabel; Beranda sudah jadi tab)
+const unread = computed(() => (notifications.unread ? (notifications.unread > 99 ? '99+' : String(notifications.unread)) : null))
+const tabs = computed(() => [
+  { key: 'dashboard', label: 'Beranda', icon: House, to: '/dashboard', badge: unread.value },
+  { key: 'connections', label: auth.contactLabel, icon: Users, to: '/connections' },
+  { key: 'cards', label: 'Kartu', icon: CreditCard, to: '/cards' },
+])
+const workspaceLine = computed(() => `${auth.workspace?.type === 'personal' ? 'Personal' : auth.workspace?.name ?? ''} · ${auth.workspace?.plan_name ?? ''}`)
 
 const menu = ref(false)
 const menuEl = ref(null)
@@ -58,12 +62,8 @@ const closeMenu = (e) => { if (menu.value && !menuEl.value?.contains(e.target)) 
 onMounted(() => {
   notifications.start()
   document.addEventListener('pointerdown', closeMenu)
-  document.addEventListener('keydown', onEsc)
 })
-onBeforeUnmount(() => {
-  document.removeEventListener('pointerdown', closeMenu)
-  document.removeEventListener('keydown', onEsc)
-})
+onBeforeUnmount(() => document.removeEventListener('pointerdown', closeMenu))
 const link = 'group flex min-h-9 cursor-pointer items-center gap-3 rounded-lg px-3 text-[14px] font-medium text-muted no-underline hover:bg-surface-2 hover:text-fg aria-[current=page]:bg-surface-2 aria-[current=page]:text-fg'
 </script>
 
@@ -117,68 +117,16 @@ const link = 'group flex min-h-9 cursor-pointer items-center gap-3 rounded-lg px
       </div>
     </main>
 
-    <!-- Ponsel: 4 tombol sama lebar; label dipotong (truncate) supaya "Koneksi"/"Lead" tidak mendorong tombol lain.
-         Scan kartu (Mode Reader) tidak di navigasi — dibuka dari tombol "Scan kartu" di halaman Koneksi. -->
-    <nav class="fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 print:hidden border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] lg:hidden" aria-label="Navigasi">
-      <RouterLink to="/dashboard" :aria-current="active === 'dashboard' ? 'page' : undefined" class="grid min-w-0 justify-items-center gap-1 px-1 pt-2.5 pb-2 text-[11px] font-medium text-muted no-underline aria-[current=page]:text-accent-text">
-        <House class="size-[22px]" aria-hidden="true" /><span class="max-w-full truncate">Beranda</span>
-      </RouterLink>
-      <RouterLink to="/connections" :aria-current="active === 'connections' ? 'page' : undefined" class="grid min-w-0 justify-items-center gap-1 px-1 pt-2.5 pb-2 text-[11px] font-medium text-muted no-underline aria-[current=page]:text-accent-text">
-        <Users class="size-[22px]" aria-hidden="true" /><span class="max-w-full truncate">{{ auth.contactLabel }}</span>
-      </RouterLink>
-      <RouterLink to="/cards" :aria-current="active === 'cards' ? 'page' : undefined" class="grid min-w-0 justify-items-center gap-1 px-1 pt-2.5 pb-2 text-[11px] font-medium text-muted no-underline aria-[current=page]:text-accent-text">
-        <CreditCard class="size-[22px]" aria-hidden="true" /><span class="max-w-full truncate">Kartu</span>
-      </RouterLink>
-      <button
-        type="button" :aria-expanded="sheet" aria-controls="mobile-menu" :aria-current="inSheet ? 'page' : undefined"
-        class="relative grid min-w-0 cursor-pointer justify-items-center gap-1 px-1 pt-2.5 pb-2 text-[11px] font-medium text-muted aria-[current=page]:text-accent-text"
-        @click="sheet = !sheet"
-      >
-        <LayoutGrid class="size-[22px]" aria-hidden="true" /><span class="max-w-full truncate">Menu</span>
-      </button>
-    </nav>
-
-    <!-- Lembar menu ponsel: semua menu sidebar dalam ubin 3 kolom per kelompok, lalu akun. Di bawah bilah navigasi
-         (z-20 < z-30) sehingga tombol "Menu" tetap terlihat untuk menutupnya. -->
-    <template v-if="sheet">
-      <div class="fixed inset-0 z-20 bg-scrim lg:hidden" aria-hidden="true" @click="sheet = false"></div>
-      <section
-        id="mobile-menu" role="dialog" aria-modal="true" aria-label="Menu"
-        class="fixed inset-x-0 bottom-0 z-20 grid max-h-[85dvh] animate-rise gap-4 overflow-y-auto overscroll-contain rounded-t-lg border-t border-line-strong bg-surface px-4 pt-3 pb-[calc(76px+env(safe-area-inset-bottom))] lg:hidden"
-      >
-        <div class="flex items-center justify-between">
-          <span class="flex min-w-0 items-center gap-3">
-            <span class="grid size-9 flex-none place-items-center rounded-sm bg-surface-2 font-display text-sm font-semibold" aria-hidden="true">{{ (auth.me?.name || auth.workspace?.name || '?')[0]?.toUpperCase() }}</span>
-            <span class="grid min-w-0">
-              <span class="truncate text-sm font-semibold">{{ auth.me?.name || 'Akun' }}</span>
-              <span class="label truncate !text-[10px] !tracking-[.12em]">{{ auth.workspace?.type === 'personal' ? 'Personal' : auth.workspace?.name }} · {{ auth.workspace?.plan_name }}</span>
-            </span>
-          </span>
-          <button type="button" class="grid size-10 flex-none cursor-pointer place-items-center rounded-md text-muted hover:bg-surface-2 hover:text-fg" aria-label="Tutup menu" @click="sheet = false"><X class="size-5" /></button>
-        </div>
-        <!-- Beranda sudah ada di bilah bawah → hanya kelompok berlabel -->
-        <nav v-for="g in groups.filter((x) => x.label)" :key="g.label" class="grid gap-2" :aria-label="g.label">
-          <p class="label !text-[10px]">{{ g.label }}</p>
-          <div class="grid grid-cols-3 gap-2">
-            <RouterLink
-              v-for="item in g.items" :key="item.key" :to="item.to" :aria-current="active === item.key ? 'page' : undefined"
-              class="relative grid min-h-[72px] content-center justify-items-center gap-1.5 rounded-md border border-line px-1 py-2 text-center text-xs font-medium text-fg no-underline hover:bg-surface-2 aria-[current=page]:border-accent aria-[current=page]:text-accent-text"
-            >
-              <component :is="item.icon" class="size-[22px]" aria-hidden="true" />
-              <span class="line-clamp-2 leading-tight">{{ item.label }}</span>
-              <span v-if="item.key === 'dashboard' && notifications.unread" class="absolute top-1.5 right-1.5 h-5 min-w-5 rounded-full bg-accent px-1.5 text-center font-mono text-[11px] leading-5 font-semibold text-accent-ink">
-                {{ notifications.unread > 99 ? '99+' : notifications.unread }}
-              </span>
-            </RouterLink>
-          </div>
-        </nav>
-        <div class="grid gap-0.5 border-t border-line pt-3">
-          <a v-if="auth.me?.is_staff" :href="config.adminUrl" class="flex min-h-11 items-center gap-3 rounded-sm px-3 text-sm text-fg no-underline hover:bg-surface-2"><ShieldCheck class="size-5" /> Panel pemilik</a>
-          <button type="button" class="flex min-h-11 cursor-pointer items-center gap-3 rounded-sm px-3 text-sm text-fg hover:bg-surface-2" @click="toggle"><Moon class="size-5" /> Ganti tema</button>
-          <InstallApp link-class="flex min-h-11 w-full items-center gap-3 rounded-sm px-3 text-sm text-fg hover:bg-surface-2 [&_svg]:size-5" />
-          <button type="button" class="flex min-h-11 cursor-pointer items-center gap-3 rounded-sm px-3 text-sm text-danger hover:bg-surface-2" @click="auth.logout()"><LogOut class="size-5" /> Keluar</button>
-        </div>
-      </section>
-    </template>
+    <MobileNav
+      :tabs="tabs" :groups="groups.filter((g) => g.label)" :active="active"
+      :title="auth.me?.name || 'Akun'" :subtitle="workspaceLine" :initial="(auth.me?.name || auth.workspace?.name || '?')[0]?.toUpperCase()"
+    >
+      <template #actions>
+        <a v-if="auth.me?.is_staff" :href="config.adminUrl" class="flex min-h-11 items-center gap-3 rounded-sm px-3 text-sm text-fg no-underline hover:bg-surface-2"><ShieldCheck class="size-5" /> Panel pemilik</a>
+        <button type="button" class="flex min-h-11 cursor-pointer items-center gap-3 rounded-sm px-3 text-sm text-fg hover:bg-surface-2" @click="toggle"><Moon class="size-5" /> Ganti tema</button>
+        <InstallApp link-class="flex min-h-11 w-full items-center gap-3 rounded-sm px-3 text-sm text-fg hover:bg-surface-2 [&_svg]:size-5" />
+        <button type="button" class="flex min-h-11 cursor-pointer items-center gap-3 rounded-sm px-3 text-sm text-danger hover:bg-surface-2" @click="auth.logout()"><LogOut class="size-5" /> Keluar</button>
+      </template>
+    </MobileNav>
   </div>
 </template>

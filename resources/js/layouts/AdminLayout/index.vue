@@ -1,19 +1,20 @@
 <script setup>
 // DBD §10.7 — pembeda panel pemilik: bilah atas 4 px --info + label "PANEL PEMILIK". Menu mengikuti izin staf.
 // App shell: tinggi layar penuh, sidebar & konten masing-masing scroll sendiri (sidebar tidak ikut tergulung).
+// Ponsel: navigasi sama dengan app. (MobileNav) — 3 tab utama sesuai izin staf + "Menu" berisi semua kelompok.
 import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import {
-  Activity, BadgeCheck, BadgePercent, Boxes, Building2, CircleCheck, CircleUser, ClipboardList, Cpu, CreditCard, Gem, Globe, House, LogOut, Megaphone, Menu, Moon, Package, ShieldCheck, ShoppingCart, Stamp, Users, Wallet,
+  Activity, BadgeCheck, BadgePercent, Boxes, Building2, CircleCheck, CircleUser, ClipboardList, Cpu, CreditCard, Gem, Globe, House, LogOut, Megaphone, Moon, Package, ShieldCheck, ShoppingCart, Stamp, Users, Wallet,
 } from 'lucide-vue-next'
 import BrandLogo from '@/components/common/BrandLogo/index.vue'
+import MobileNav from '@/components/common/MobileNav/index.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useTheme } from '@/composables/useTheme'
 
 const route = useRoute()
 const auth = useAuthStore()
 const { toggle } = useTheme()
-const menuOpen = ref(false)
 const mainEl = ref(null)
 
 const groups = [
@@ -46,7 +47,13 @@ const groups = [
   ] },
 ]
 const nav = computed(() => groups.map((g) => ({ ...g, items: g.items.filter((i) => auth.can(i.perm)) })).filter((g) => g.items.length))
-watch(() => route.fullPath, () => (menuOpen.value = false))
+// tab ponsel: 3 menu terpenting yang diizinkan peran staf ini (urutan prioritas), sisanya di "Menu"
+const PRIMARY = ['dashboard', 'field', 'encode', 'orders', 'cards', 'qc', 'finance', 'tenants', 'users']
+const SHORT = { dashboard: 'Dashboard', field: 'Aktivasi', encode: 'Encode', orders: 'Pesanan', cards: 'Kartu', qc: 'QC', finance: 'Keuangan', tenants: 'Workspace', users: 'Pengguna' }
+const tabs = computed(() => {
+  const all = nav.value.flatMap((g) => g.items)
+  return PRIMARY.map((k) => all.find((i) => i.key === k)).filter(Boolean).slice(0, 3).map((i) => ({ ...i, label: SHORT[i.key] ?? i.label }))
+})
 watch(() => route.path, () => mainEl.value?.scrollTo({ top: 0 }))
 
 const link = 'group flex min-h-10 items-center gap-3 rounded-lg px-3 text-[15px] font-medium text-muted no-underline hover:bg-surface-2 hover:text-fg aria-[current=page]:bg-surface-2 aria-[current=page]:text-fg'
@@ -77,30 +84,19 @@ const link = 'group flex min-h-10 items-center gap-3 rounded-lg px-3 text-[15px]
         </div>
       </aside>
 
-      <main ref="mainEl" class="min-h-0 min-w-0 overflow-y-auto overscroll-contain px-4 py-6 print:overflow-visible print:p-0 lg:px-8 lg:py-8">
+      <main ref="mainEl" class="min-h-0 min-w-0 overflow-y-auto overscroll-contain px-4 pt-6 pb-[calc(88px+env(safe-area-inset-bottom))] print:overflow-visible print:p-0 lg:px-8 lg:py-8">
         <div class="grid w-full gap-6">
-          <div class="lg:hidden no-print">
-            <!-- Keluar selalu terlihat di ponsel (tidak tersembunyi di dalam menu) -->
-            <div class="flex items-center justify-between gap-2">
-              <button type="button" class="cursor-pointer inline-flex min-h-11 items-center gap-2 rounded-md border border-line-strong px-4 font-semibold" :aria-expanded="menuOpen" @click="menuOpen = !menuOpen">
-                <Menu class="size-5" aria-hidden="true" /> Menu
-              </button>
-              <button type="button" class="cursor-pointer inline-flex min-h-11 items-center gap-2 rounded-md border border-line-strong px-4 font-semibold text-danger" @click="auth.logout()">
-                <LogOut class="size-5" aria-hidden="true" /> Keluar
-              </button>
-            </div>
-            <nav v-if="menuOpen" class="mt-3 grid gap-3">
-              <div v-for="g in nav" :key="g.label" class="grid gap-0.5">
-                <span class="label px-3">{{ g.label }}</span>
-                <RouterLink v-for="item in g.items" :key="item.key" :to="item.to" :class="link"><component :is="item.icon" class="size-5" /> {{ item.label }}</RouterLink>
-              </div>
-              <RouterLink to="/account" :class="link"><CircleUser class="size-5" /> Akun & password</RouterLink>
-              <button class="cursor-pointer" type="button" :class="link" @click="auth.logout()"><LogOut class="size-5" /> Keluar</button>
-            </nav>
-          </div>
           <RouterView />
         </div>
       </main>
     </div>
+
+    <MobileNav :tabs="tabs" :groups="nav" :active="route.meta.nav" :title="auth.me?.email || 'Staf'" :subtitle="`Panel pemilik · ${auth.me?.role ?? ''}`" :initial="(auth.me?.name || auth.me?.email || '?')[0]?.toUpperCase()">
+      <template #actions>
+        <RouterLink to="/account" class="flex min-h-11 items-center gap-3 rounded-sm px-3 text-sm text-fg no-underline hover:bg-surface-2"><CircleUser class="size-5" /> Akun & password</RouterLink>
+        <button type="button" class="flex min-h-11 cursor-pointer items-center gap-3 rounded-sm px-3 text-sm text-fg hover:bg-surface-2" @click="toggle"><Moon class="size-5" /> Ganti tema</button>
+        <button type="button" class="flex min-h-11 cursor-pointer items-center gap-3 rounded-sm px-3 text-sm text-danger hover:bg-surface-2" @click="auth.logout()"><LogOut class="size-5" /> Keluar</button>
+      </template>
+    </MobileNav>
   </div>
 </template>
