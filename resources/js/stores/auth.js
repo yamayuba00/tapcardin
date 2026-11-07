@@ -6,7 +6,7 @@ import { adminApi } from '@/api/admin'
 
 /** Sesi pengguna (workspace) atau staf (admin). `me` = null berarti tamu. */
 export const useAuthStore = defineStore('auth', {
-  state: () => ({ me: null, loaded: false }),
+  state: () => ({ me: null, loaded: false, confirmingLogout: false }),
   getters: {
     isLoggedIn: (s) => !!s.me,
     permissions: (s) => new Set(s.me?.permissions ?? []),
@@ -32,6 +32,10 @@ export const useAuthStore = defineStore('auth', {
         return [...this.permissions].some((p) => p.startsWith(prefix))
       }
       return this.permissions.has(permission)
+    },
+    /** Tombol "Keluar" di UI: tampilkan konfirmasi dulu (LogoutConfirm di App). */
+    askLogout() {
+      this.confirmingLogout = true
     },
     async logout() {
       await authApi.logout().catch(() => {})

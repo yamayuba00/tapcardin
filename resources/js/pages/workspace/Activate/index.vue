@@ -92,7 +92,7 @@ async function activate(c = card.value) {
         </AppField>
         <p v-if="error" class="flex items-center gap-1 text-sm text-danger" role="alert"><CircleAlert class="size-4" /> {{ error.message }}</p>
         <AppButton type="submit" size="lg" block :loading="busy" :disabled="!!card.locked_until || !ready">Aktifkan kartu</AppButton>
-        <AppButton v-if="error?.code === 'card_assigned_elsewhere'" variant="secondary" block @click="auth.logout()">Keluar & masuk dengan email lain</AppButton>
+        <AppButton v-if="error?.code === 'card_assigned_elsewhere'" variant="secondary" block @click="auth.askLogout()">Keluar & masuk dengan email lain</AppButton>
       </form>
     </template>
   </div>

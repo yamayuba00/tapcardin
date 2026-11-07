@@ -170,7 +170,7 @@ async function destroy() {
     <div class="grid gap-3 sm:flex sm:flex-wrap">
       <AppButton variant="secondary" @click="toggleTheme"><Moon class="size-5" /> Ganti tema</AppButton>
       <InstallApp link-class="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-line-strong px-4 font-semibold hover:bg-surface-2" />
-      <AppButton variant="danger" @click="auth.logout()"><LogOut class="size-5" /> Keluar</AppButton>
+      <AppButton variant="danger" @click="auth.askLogout()"><LogOut class="size-5" /> Keluar</AppButton>
     </div>
   </AppPanel>
 

@@ -80,7 +80,7 @@ const link = 'group flex min-h-10 items-center gap-3 rounded-lg px-3 text-[15px]
           <p class="truncate px-3 text-sm text-muted">{{ auth.me?.email }}<br /><span class="label">{{ auth.me?.role }}</span></p>
           <RouterLink to="/account" :aria-current="route.meta.nav === 'account' ? 'page' : undefined" :class="link"><CircleUser class="size-5" aria-hidden="true" /> Akun & password</RouterLink>
           <button class="cursor-pointer" type="button" :class="link" @click="toggle"><Moon class="size-5" aria-hidden="true" /> Tema</button>
-          <button class="cursor-pointer" type="button" :class="link" @click="auth.logout()"><LogOut class="size-5" aria-hidden="true" /> Keluar</button>
+          <button class="cursor-pointer" type="button" :class="link" @click="auth.askLogout()"><LogOut class="size-5" aria-hidden="true" /> Keluar</button>
         </div>
       </aside>
 
@@ -95,7 +95,7 @@ const link = 'group flex min-h-10 items-center gap-3 rounded-lg px-3 text-[15px]
       <template #actions>
         <RouterLink to="/account" class="flex min-h-11 items-center gap-3 rounded-sm px-3 text-sm text-fg no-underline hover:bg-surface-2"><CircleUser class="size-5" /> Akun & password</RouterLink>
         <button type="button" class="flex min-h-11 cursor-pointer items-center gap-3 rounded-sm px-3 text-sm text-fg hover:bg-surface-2" @click="toggle"><Moon class="size-5" /> Ganti tema</button>
-        <button type="button" class="flex min-h-11 cursor-pointer items-center gap-3 rounded-sm px-3 text-sm text-danger hover:bg-surface-2" @click="auth.logout()"><LogOut class="size-5" /> Keluar</button>
+        <button type="button" class="flex min-h-11 cursor-pointer items-center gap-3 rounded-sm px-3 text-sm text-danger hover:bg-surface-2" @click="auth.askLogout()"><LogOut class="size-5" /> Keluar</button>
       </template>
     </MobileNav>
   </div>
