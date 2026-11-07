@@ -35,11 +35,15 @@ sebelum kartu fisiknya tiba.
   harga langsung dari katalog, dan pratinjau kartu menggantung di tali.
 - **Editor merchandise** — jaket, kaos/baju, tote bag, mug, dan topi: area cetak sesuai produk (depan/belakang),
   warna bahan, dan pratinjau siluet produk. Pemesanan cetak merchandise segera hadir.
+- **Mode sederhana di editor** — pilih layout siap pakai (kartu: 9 layout; kaos/jaket: logo dada, logo tengah,
+  punggung, nama & nomor; tote bag, mug, topi), isi teks & logo, pilih warna bahan/tulisan; edit bebas tetap tersedia.
 - **Brand kit bersama** — warna, logo, nama merek, tagline dipakai kartu & lanyard sekaligus; elemen bisa disalin dua arah.
 - **Cek siap cetak otomatis** — batas aman, area potong, ukuran teks & QR, area chip NFC dan lubang lanyard.
   QR, ikon NFC, dan logo TapCard selalu dibangun ulang server sehingga tidak bisa rusak.
 
 ### Pemesanan kartu fisik & lanyard
+- **Keranjang**: kartu, ID badge, & lanyard satuan atau paket kartu + lanyard pasangan; pesan item yang dicentang.
+- **Kode promo**, alamat kirim lengkap yang dicek per kolom, dan pembayaran **QRIS**.
 - **Pesan dari desain sendiri** — pilih desain yang lolos cek cetak, jenis kartu (PVC NFC / NFC Secure) dan jumlah,
   lanyard (lebar, sisi cetak, pengait mengikuti desain), metode kirim & alamat; harga dihitung server dari katalog.
 - **Bayar lewat payment service yang sama** dengan langganan (saat ini QRIS); status dikonfirmasi otomatis.

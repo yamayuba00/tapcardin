@@ -3,7 +3,7 @@
 // produk (mm, dari katalog server); alat sama dengan Studio kartu (teks, bentuk, ikon, gambar, logo brand kit, grup,
 // ratakan, putar, kunci, undo/redo, zoom, grid & snap). Pratinjau siluet produk berwarna bahan.
 // Pemesanan cetak merchandise belum dibuka ("Segera hadir") — desain bisa dibuat & disimpan lebih dulu.
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import LeaveConfirm from '@/components/common/LeaveConfirm/index.vue'
 import { ArrowLeft, CircleAlert, CircleCheck, Clock, Grid3x3, Magnet, Redo2, Trash2, Undo2 } from 'lucide-vue-next'
@@ -23,6 +23,7 @@ import LayerList from '@/components/studio/LayerList/index.vue'
 import LayerProperties from '@/components/studio/LayerProperties/index.vue'
 import MerchMockup from '@/components/studio/MerchMockup/index.vue'
 import SaveStatus from '@/components/studio/SaveStatus/index.vue'
+import SimpleMerchPanel from '@/components/studio/SimpleMerchPanel/index.vue'
 import ToolRail from '@/components/studio/ToolRail/index.vue'
 import ZoomControl from '@/components/studio/ZoomControl/index.vue'
 import { studioApi } from '@/api/studio'
@@ -40,7 +41,9 @@ async function saveAndLeave() {
   else ed.leaveGuard.stay()
 }
 
-const tab = ref('product')
+const tab = ref('simple') // mode sederhana dulu; Edit/Lapisan untuk edit bebas
+// ketuk elemen di kanvas saat di mode sederhana → langsung buka propertinya
+watch(selection, (ids) => { if (ids.length && tab.value === 'simple') tab.value = 'props' })
 const zoom = ref('fit')
 const zoomer = ref(null)
 const confirmDelete = ref(false)
@@ -58,8 +61,9 @@ const canvasStyle = computed(() => {
 const grouped = computed(() => selected.value.length > 1 && selected.value.every((l) => l.group && l.group === selected.value[0].group))
 const anyLocked = computed(() => selected.value.some((l) => l.lock))
 const TABS = computed(() => [
+  { value: 'simple', label: 'Sederhana' },
   { value: 'product', label: 'Produk' },
-  { value: 'props', label: 'Edit' },
+  { value: 'props', label: 'Edit bebas' },
   { value: 'layers', label: 'Lapisan' },
   { value: 'kit', label: 'Brand kit' },
   { value: 'issues', label: issues.value.length ? `Cek cetak (${issues.value.length})` : 'Cek cetak' },
@@ -169,7 +173,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         <AppSegmented v-model="tab" label="Panel" :options="TABS" class="flex-wrap" />
       </div>
       <div class="grid gap-4 p-4">
-        <template v-if="tab === 'product'">
+        <SimpleMerchPanel v-if="tab === 'simple'" :ed="ed" :spec="spec" :design-id="id" />
+
+        <template v-else-if="tab === 'product'">
           <div class="grid gap-1">
             <h2 class="text-base font-semibold">{{ spec.name }}</h2>
             <p class="text-sm text-muted">{{ spec.description }}</p>

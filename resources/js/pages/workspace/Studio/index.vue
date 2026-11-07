@@ -3,7 +3,7 @@
 // gambar, logo brand kit; seleksi banyak, grup, ratakan/distribusi, putar, kunci/sembunyi, urutan lapisan, undo/redo,
 // zoom, grid & snap, pratinjau cetak + PNG, simpan sebagai template, brand kit bersama, lanyard pasangan.
 // Elemen wajib (QR, ikon NFC, zona TAP, TapCard) terkunci dan dibangun ulang server saat simpan.
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import LeaveConfirm from '@/components/common/LeaveConfirm/index.vue'
 import {
@@ -27,6 +27,7 @@ import LayerList from '@/components/studio/LayerList/index.vue'
 import LayerProperties from '@/components/studio/LayerProperties/index.vue'
 import PrintPreview from '@/components/studio/PrintPreview/index.vue'
 import SaveStatus from '@/components/studio/SaveStatus/index.vue'
+import SimpleCardPanel from '@/components/studio/SimpleCardPanel/index.vue'
 import ToolRail from '@/components/studio/ToolRail/index.vue'
 import ZoomControl from '@/components/studio/ZoomControl/index.vue'
 import { studioApi } from '@/api/studio'
@@ -45,7 +46,9 @@ async function saveAndLeave() {
   else ed.leaveGuard.stay()
 }
 
-const tab = ref('props')
+const tab = ref('simple') // mode sederhana dulu; Edit bebas/Lapisan untuk mengatur elemen satu per satu
+// ketuk elemen di kanvas saat di mode sederhana → langsung buka propertinya
+watch(selection, (ids) => { if (ids.length && tab.value === 'simple') tab.value = 'props' })
 const zoom = ref('fit')
 const zoomer = ref(null)
 const previewing = ref(false)
@@ -62,7 +65,8 @@ const grouped = computed(() => selected.value.length > 1 && selected.value.every
 const anyLocked = computed(() => selected.value.some((l) => l.lock))
 const otherSide = computed(() => (active.value === 'front' ? 'belakang' : 'depan'))
 const TABS = computed(() => [
-  { value: 'props', label: 'Edit' },
+  { value: 'simple', label: 'Sederhana' },
+  { value: 'props', label: 'Edit bebas' },
   { value: 'layers', label: 'Lapisan' },
   { value: 'kit', label: 'Brand kit' },
   { value: 'lanyard', label: 'Lanyard' },
@@ -223,7 +227,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         <AppSegmented v-model="tab" label="Panel" :options="TABS" class="flex-wrap" />
       </div>
       <div class="grid gap-4 p-4">
-        <template v-if="tab === 'props'">
+        <SimpleCardPanel v-if="tab === 'simple'" :ed="ed" :orientation="design.orientation" />
+
+        <template v-else-if="tab === 'props'">
           <LayerProperties v-if="selected.length" :layers="selected" :palette="catalog.palette" :fonts="catalog.fonts" :vars="vars" :kit="kit" @change="ed.patch" />
           <template v-else>
             <div class="grid gap-1">
