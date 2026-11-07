@@ -147,6 +147,16 @@ else
   done
   set_env MAIL_FROM_ADDRESS "${MAIL_FROM_ADDRESS:-noreply@$DOMAIN}"
   set_env PAYMENT_DRIVER link
+  # realtime (Reverb): kunci acak, browser tersambung lewat wss://ws.$DOMAIN (Nginx → 127.0.0.1:8080)
+  set_env BROADCAST_CONNECTION reverb
+  set_env REVERB_APP_ID "$(( RANDOM * 32768 + RANDOM ))"
+  set_env REVERB_APP_KEY "$(openssl rand -hex 10)"
+  set_env REVERB_APP_SECRET "$(openssl rand -hex 20)"
+  set_env REVERB_HOST "ws.$DOMAIN"
+  set_env REVERB_PORT 443
+  set_env REVERB_SCHEME https
+  set_env REVERB_SERVER_HOST 127.0.0.1
+  set_env REVERB_SERVER_PORT 8080
   set_env GOOGLE_REDIRECT_URI "https://app.$DOMAIN/auth/google/callback"
   ok ".env dibuat (kunci aplikasi & pepper acak)"
 fi
@@ -185,7 +195,7 @@ else
         --dns-cloudflare --dns-cloudflare-credentials /root/.secrets/cloudflare.ini --dns-cloudflare-propagation-seconds 30 \
         -d "$DOMAIN" -d "*.$DOMAIN" ;;
     http)
-      NAMES=(-d "$DOMAIN"); for s in www app tap panel; do getent ahosts "$s.$DOMAIN" >/dev/null && NAMES+=(-d "$s.$DOMAIN"); done
+      NAMES=(-d "$DOMAIN"); for s in www app tap panel ws; do getent ahosts "$s.$DOMAIN" >/dev/null && NAMES+=(-d "$s.$DOMAIN"); done
       cat > /etc/nginx/sites-available/tapcard-acme.conf <<EOF
 server { listen 80 default_server; listen [::]:80 default_server; server_name _;
   location ^~ /.well-known/acme-challenge/ { root /var/www/letsencrypt; } location / { return 404; } }

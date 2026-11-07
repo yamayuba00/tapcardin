@@ -7,6 +7,7 @@ const props = defineProps({
   lastAt: { type: Date, required: true },
   refreshing: Boolean,
   every: { type: Number, default: 60_000 },
+  live: Boolean, // tersambung realtime: data baru masuk langsung
 })
 defineEmits(['refresh'])
 
@@ -22,6 +23,6 @@ const interval = computed(() => (props.every >= 60_000 ? `${Math.round(props.eve
     >
       <RefreshCw class="size-4" :class="refreshing ? 'animate-spin' : ''" aria-hidden="true" />
     </button>
-    <span aria-live="polite">{{ refreshing ? 'Memuat ulang…' : `Diperbarui ${time}` }} · otomatis tiap {{ interval }}</span>
+    <span aria-live="polite">{{ refreshing ? 'Memuat ulang…' : `Diperbarui ${time}` }} · <template v-if="live"><span class="inline-flex items-center gap-1 text-ok"><span class="size-1.5 rounded-full bg-ok" aria-hidden="true"></span>langsung (realtime)</span></template><template v-else>otomatis tiap {{ interval }}</template></span>
   </div>
 </template>

@@ -34,7 +34,9 @@ class StreamController extends WorkspaceController
         $retry = $singleThreaded ? 10000 : 3000;
 
         return response()->stream(function () use ($uid, $tid, $last, $hold, $retry) {
-            echo "retry: $retry\n\n";
+            // posisi kursor selalu dikirim: saat menyambung ulang browser membawa Last-Event-ID ini, jadi notifikasi yang
+            // dibuat di sela dua koneksi tidak terlewat (tanpa ini koneksi kosong membuat server mulai lagi dari yang terbaru)
+            echo "retry: $retry\nid: $last\n\n";
             $until = time() + $hold;
             do {
                 $rows = Notification::query()

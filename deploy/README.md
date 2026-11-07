@@ -1,7 +1,7 @@
 # Deploy TapCard ke VPS
 
 Satu perintah memasang server kosong sampai aplikasi online: Nginx, PHP 8.3-FPM, Composer, Node 22,
-Supervisor (worker antrean + scheduler), sertifikat SSL, firewall, rilis pertama, data awal, dan akun Pemilik Platform.
+Supervisor (worker antrean + scheduler + Reverb realtime), sertifikat SSL, firewall, rilis pertama, data awal, dan akun Pemilik Platform.
 
 **Kebutuhan:** VPS Ubuntu **22.04 atau 24.04** (min. 2 GB RAM), akses root, domain yang DNS-nya bisa Anda atur,
 database PostgreSQL (terkelola, mis. Sumopod — atau dipasang otomatis di VPS), dan akun SMTP untuk email.
@@ -11,7 +11,7 @@ database PostgreSQL (terkelola, mis. Sumopod — atau dipasang otomatis di VPS),
 | Tipe | Nama | Nilai |
 |---|---|---|
 | A | `@` (domain utama) | IP VPS |
-| A | `*` (semua subdomain: app, tap, panel, workspace perusahaan) | IP VPS |
+| A | `*` (semua subdomain: app, tap, panel, ws, workspace perusahaan) | IP VPS |
 
 Di Cloudflare, set kedua record ke **DNS only** (awan abu-abu) saat instalasi.
 
@@ -36,7 +36,7 @@ Penjelasan setiap isian ada di [`install.env.example`](install.env.example). Fil
 | Mode | Sertifikat | Kapan dipakai |
 |---|---|---|
 | `cloudflare` (disarankan) | Wildcard `*.domain` lewat DNS Cloudflare — isi `CLOUDFLARE_API_TOKEN` (izin *Zone → DNS → Edit*) | Workspace perusahaan (`{slug}.domain`) ikut aman |
-| `http` | `domain`, `www`, `app`, `tap`, `panel` | DNS bukan di Cloudflare; subdomain perusahaan belum tercakup |
+| `http` | `domain`, `www`, `app`, `tap`, `panel`, `ws` | DNS bukan di Cloudflare; subdomain perusahaan belum tercakup |
 | `none` | Self-signed 30 hari | Uji coba saja |
 
 ## 3. Jalankan
@@ -93,9 +93,9 @@ terakhir disimpan untuk rollback. Migrasi TapCard hanya menambah tabel/kolom, ja
 
 | Komponen | Detail |
 |---|---|
-| Nginx | [`nginx/tapcard.conf`](nginx/tapcard.conf) — satu server block untuk domain & semua subdomain, HTTP→HTTPS, aset ber-hash di-cache setahun, SSE notifikasi tanpa buffering. Kompatibel Nginx 1.18–1.27 |
+| Nginx | [`nginx/tapcard.conf`](nginx/tapcard.conf) — satu server block untuk domain & semua subdomain, HTTP→HTTPS, aset ber-hash di-cache setahun, SSE notifikasi tanpa buffering, `ws.<domain>` diteruskan ke Reverb (WebSocket). Kompatibel Nginx 1.18–1.27 |
 | PHP-FPM | [`php/fpm-pools.conf`](php/fpm-pools.conf) — pool utama (jumlah worker dihitung dari RAM) + pool terpisah untuk notifikasi realtime; [`php/opcache-production.ini`](php/opcache-production.ini) |
-| Supervisor | [`supervisor/tapcard.conf`](supervisor/tapcard.conf) — 2 worker antrean (`taps`, `notify`, `leads`, `default`, `render`) + scheduler |
+| Supervisor | [`supervisor/tapcard.conf`](supervisor/tapcard.conf) — 2 worker antrean (`taps`, `notify`, `leads`, `default`, `render`) + scheduler + `tapcard-reverb` (WebSocket realtime di 127.0.0.1:8080) |
 | Scheduler | pengingat follow-up (tiap menit), statistik kartu (15 menit), tagihan & masa tenggang langganan (01.00 WIB), partisi & pembersihan data (harian) |
 | SSL | Certbot, perpanjang otomatis (timer sistem) + reload Nginx |
 | Keamanan | UFW: hanya SSH, 80, 443 terbuka · `.env` tidak terbaca publik · PHP selain `index.php` tidak dieksekusi |
@@ -146,5 +146,6 @@ dengan TLS on-demand (mis. Caddy) di depan Nginx.
 | Halaman error 500 | `tail -f /var/www/tapcard/shared/storage/logs/laravel-*.log` |
 | Kode daftar/lupa password tidak sampai | `tapcard:mail-test` (lihat tabel di atas); pastikan domain pengirim terverifikasi di penyedia SMTP |
 | Tap/notifikasi tidak tercatat | `sudo supervisorctl status` — worker `tapcard-queue` harus `RUNNING` |
+| Notifikasi tidak langsung (status bukan "langsung (realtime)") | `sudo supervisorctl status tapcard-reverb` harus `RUNNING`; DNS `ws.<domain>` mengarah ke VPS; `REVERB_*` di `.env` lalu `php artisan config:cache`. Tanpa Reverb aplikasi otomatis kembali ke SSE |
 | Sertifikat gagal (`http`) | DNS subdomain harus sudah mengarah ke VPS dan port 80 terbuka |
 | Sertifikat gagal (`cloudflare`) | token harus berizin *Zone → DNS → Edit* untuk domain tersebut |

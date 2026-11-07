@@ -57,7 +57,7 @@ const { filters } = list
 const stages = ref([])
 const events = ref([])
 const cards = ref([])
-const auto = useAutoRefresh(() => list.reload())
+const auto = useAutoRefresh(() => list.reload(), 60_000, { on: ['lead_new'] })
 watch(list.rows, auto.touch)
 const hidden = computed(() => list.meta.value?.hidden ?? 0)
 const menu = computed(() => [
@@ -142,7 +142,7 @@ const overdue = (iso) => iso && new Date(iso) < new Date()
       />
     </div>
   </div>
-  <RefreshStatus :last-at="auto.lastAt.value" :refreshing="auto.refreshing.value" :every="auto.every" class="sm:justify-end" @refresh="auto.refresh" />
+  <RefreshStatus :last-at="auto.lastAt.value" :refreshing="auto.refreshing.value" :every="auto.every" :live="auto.live.value" class="sm:justify-end" @refresh="auto.refresh" />
 
   <AppEmpty
     v-if="list.rows.value && !list.rows.value.length && !filtered"

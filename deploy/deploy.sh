@@ -57,6 +57,7 @@ ln -sfn "$NEW" "$APP/current.tmp" && mv -Tf "$APP/current.tmp" "$APP/current"
 systemctl reload "php${PHP_VERSION:-8.3}-fpm"
 as_app php "$APP/current/artisan" queue:restart
 supervisorctl restart tapcard-schedule >/dev/null 2>&1 || true
+supervisorctl restart tapcard-reverb >/dev/null 2>&1 || true   # realtime: muat kode & config baru
 
 ls -1dt "$APP"/releases/* | tail -n +$((KEEP + 1)) | xargs -r rm -rf
 echo "✓ Rilis aktif: $NEW"

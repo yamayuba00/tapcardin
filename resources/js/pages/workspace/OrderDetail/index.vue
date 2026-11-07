@@ -14,6 +14,7 @@ import OrderItems from '@/components/orders/OrderItems/index.vue'
 import OrderTimeline from '@/components/orders/OrderTimeline/index.vue'
 import { ordersApi } from '@/api/workspace'
 import { useAction, useAsync } from '@/composables/useAsync'
+import { useNotificationStore } from '@/stores/notifications'
 import { rupiah } from '@/lib/format'
 import { ORDER_STATUS } from '@/lib/orders'
 
@@ -35,7 +36,10 @@ watch(o, (v) => {
   check()
   timer = setInterval(check, 4000)
 }, { immediate: true })
-onBeforeUnmount(() => clearInterval(timer))
+// kabar pesanan lewat realtime (lunas / dikirim) → langsung muat status terbaru
+const notifications = useNotificationStore()
+const unsubscribe = notifications.subscribe((type, d) => { if (type === 'order_status' && (!d?.id || d.id === id)) check() })
+onBeforeUnmount(() => { clearInterval(timer); unsubscribe() })
 
 async function pay() {
   const res = await run(() => ordersApi.pay(id)).catch(() => null)

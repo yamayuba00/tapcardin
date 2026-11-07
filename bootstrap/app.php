@@ -23,6 +23,8 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
+    // otorisasi channel privat Reverb: POST /api/broadcasting/auth (sesi app., sama dengan API workspace)
+    ->withBroadcasting(__DIR__.'/../routes/channels.php', ['prefix' => 'api', 'middleware' => ['web', 'auth']])
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web(prepend: [UseAdminSession::class], append: [SecurityHeaders::class, EnsureNotBlocked::class]);
         $middleware->alias([

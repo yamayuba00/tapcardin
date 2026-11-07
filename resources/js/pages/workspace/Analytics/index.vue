@@ -34,7 +34,7 @@ async function load({ silent = false } = {}) {
   retention.value = res.retention_days
   auto.touch()
 }
-const auto = useAutoRefresh(load)
+const auto = useAutoRefresh(load, 60_000, { on: ['tap', 'lead_new'] })
 watch(days, () => load(), { immediate: true })
 </script>
 
@@ -44,7 +44,7 @@ watch(days, () => load(), { immediate: true })
   </PageHeader>
   <div class="flex flex-wrap items-center justify-between gap-3">
     <p class="text-sm text-muted">{{ retention ? `Paket Anda menyimpan data analitik ${retention} hari.` : '' }}</p>
-    <RefreshStatus :last-at="auto.lastAt.value" :refreshing="auto.refreshing.value" :every="auto.every" @refresh="auto.refresh" />
+    <RefreshStatus :last-at="auto.lastAt.value" :refreshing="auto.refreshing.value" :every="auto.every" :live="auto.live.value" @refresh="auto.refresh" />
   </div>
 
   <AppSkeleton v-if="!data" class="!h-56" />

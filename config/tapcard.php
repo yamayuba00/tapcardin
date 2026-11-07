@@ -54,7 +54,7 @@ return [
     ],
 
     'reserved_slugs' => [
-        'www', 'app', 'admin', 'panel', 'tap', 'api', 'mail', 'help', 'status', 'docs', 'blog',
+        'www', 'app', 'admin', 'panel', 'tap', 'ws', 'api', 'mail', 'help', 'status', 'docs', 'blog',
         'cdn', 'static', 'staging', 'dev', 'support', 'billing', 'login', 'auth',
     ],
 ];

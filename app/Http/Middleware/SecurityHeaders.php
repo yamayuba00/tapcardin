@@ -30,13 +30,17 @@ class SecurityHeaders
         // unggahan di S3: gambar dimuat dari host bucket, dan diambil (fetch) saat ekspor PNG desain
         $media = config('filesystems.disks.public.driver') === 's3' && ($u = parse_url((string) config('filesystems.disks.public.url'))) && isset($u['host'])
             ? ' '.$u['scheme'].'://'.$u['host'] : '';
+        // WebSocket Reverb (ws:// lokal, wss:// produksi) untuk notifikasi realtime
+        $rt = config('broadcasting.default') === 'reverb' && ($h = config('broadcasting.connections.reverb.options.host'))
+            ? ' '.(config('broadcasting.connections.reverb.options.scheme') === 'https' ? 'wss' : 'ws').'://'.$h.':'.config('broadcasting.connections.reverb.options.port')
+            : '';
         $csp = implode('; ', [
             "default-src 'self'",
             "img-src 'self' data: blob: ".$this->formTargets().$media,
             "script-src 'self' 'nonce-$nonce'$dev",
             "style-src 'self' 'nonce-$nonce'$dev",
             "font-src 'self'",
-            "connect-src 'self'$dev$media",
+            "connect-src 'self'$dev$media$rt",
             "frame-src 'self' ".implode(' ', BioBlocks::EMBED_ORIGINS), // embed video bio link
             "frame-ancestors 'self'",
             "base-uri 'none'",

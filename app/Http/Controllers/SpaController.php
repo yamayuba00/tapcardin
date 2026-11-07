@@ -50,6 +50,13 @@ class SpaController extends Controller
                 'adminUrl' => "$scheme://".config('tapcard.panel_subdomain').".$base$suffix",
                 'marketingUrl' => "$scheme://$base$suffix",
                 'googleEnabled' => (bool) config('services.google.client_id'),
+                // Realtime (Reverb): alamat publik WebSocket untuk Echo; null → SSE/polling seperti sebelumnya
+                'realtime' => config('broadcasting.default') === 'reverb' && config('broadcasting.connections.reverb.key') ? [
+                    'key' => config('broadcasting.connections.reverb.key'),
+                    'host' => config('broadcasting.connections.reverb.options.host'),
+                    'port' => (int) config('broadcasting.connections.reverb.options.port'),
+                    'tls' => config('broadcasting.connections.reverb.options.scheme') === 'https',
+                ] : null,
                 // Hanya terisi di APP_ENV=local: akun dummy satu klik (app. tanpa Google; panel pakai password ini).
                 'devLogin' => AuthController::devLogin() ? [
                     'password' => DummyAccountSeeder::DEV_PASSWORD,

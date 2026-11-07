@@ -37,7 +37,7 @@ Route::domain($panel.'.'.$base)->name('admin.')->group(function () use ($spa) {
 });
 
 Route::domain('{workspace}.'.$base)
-    ->where(['workspace' => '(?!(?:tap|admin|panel|www)\.)[a-z0-9][a-z0-9-]{0,28}[a-z0-9]'])
+    ->where(['workspace' => '(?!(?:tap|admin|panel|www|ws)\.)[a-z0-9][a-z0-9-]{0,28}[a-z0-9]'])
     ->middleware('workspace')
     ->group(function () use ($spa) {
         require base_path('routes/workspace.php');

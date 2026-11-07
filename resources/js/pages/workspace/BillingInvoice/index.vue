@@ -11,6 +11,7 @@ import BrandLogo from '@/components/common/BrandLogo/index.vue'
 import PageHeader from '@/components/common/PageHeader/index.vue'
 import { billingApi } from '@/api/workspace'
 import { useAction, useAsync } from '@/composables/useAsync'
+import { useNotificationStore } from '@/stores/notifications'
 import { dateTime } from '@/lib/format'
 import { useAuthStore } from '@/stores/auth'
 
@@ -39,7 +40,10 @@ watch(inv, (v) => {
   check()
   timer = setInterval(check, 4000)
 }, { immediate: true })
-onBeforeUnmount(() => clearInterval(timer))
+// kabar lunas lewat realtime → langsung muat status invoice
+const notifications = useNotificationStore()
+const unsubscribe = notifications.subscribe((type) => { if (type === 'invoice_paid') check() })
+onBeforeUnmount(() => { clearInterval(timer); unsubscribe() })
 
 const print = () => window.print()
 
