@@ -43,7 +43,7 @@ class DashboardController extends PlatformController
                 'tenants_company' => Tenant::where('type', 'company')->count(),
                 'cards' => collect(CardStatus::cases())->mapWithKeys(fn ($s) => [$s->value => (int) ($cards[$s->value] ?? 0)])->all(),
                 'activation_rate' => $shippedCount ? round($activated7 / $shippedCount * 100) : null,
-                'taps_today' => Tap::acrossTenants()->where('created_at', '>=', now('Asia/Jakarta')->startOfDay())->count(),
+                'taps_today' => Tap::acrossTenants()->where('created_at', '>=', now('Asia/Jakarta')->startOfDay()->utc())->count(),
                 'taps_30' => array_sum(array_column($series, 'value')),
                 'series' => $series,
             ];

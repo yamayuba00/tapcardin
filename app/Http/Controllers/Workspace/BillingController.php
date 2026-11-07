@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Workspace;
 
 use App\Actions\Billing\ApplyPayment;
 use App\Actions\Billing\CreateCheckout;
+use App\Actions\Billing\CreateTapTopup;
+use App\Actions\Cards\CreateDigitalCard;
 use App\Authz\PlanFeatures;
 use App\Exceptions\ApiError;
 use App\Models\Card;
@@ -74,6 +76,18 @@ class BillingController extends WorkspaceController
         return response()->json(['data' => ['invoice' => self::presentInvoice($r['invoice']), 'payment_url' => $r['payment_url']]], 201);
     }
 
+    /**
+     * POST /api/billing/tap-topup — tambahan kuota tap kartu digital milik pengguna ini di workspace ini. Kartunya milik
+     * pribadi, jadi pemegang boleh membeli tanpa izin kelola tagihan workspace.
+     */
+    public function topup(Request $request, CreateTapTopup $create): JsonResponse
+    {
+        $card = CreateDigitalCard::of($this->user(), $this->tenant()) ?? throw new ApiError('topup_unavailable', 'Anda belum punya kartu digital di workspace ini.');
+        $r = $create->handle($card, $this->user(), $request->getSchemeAndHttpHost());
+
+        return response()->json(['data' => ['invoice' => self::presentInvoice($r['invoice']), 'payment_url' => $r['payment_url']]], 201);
+    }
+
     /** POST /api/billing/voucher {code, plan, cycle} -> pratinjau potongan sebelum checkout. */
     public function voucher(Request $request): JsonResponse
     {
@@ -102,21 +116,25 @@ class BillingController extends WorkspaceController
 
     public function invoice(Invoice $invoice): JsonResponse
     {
-        $this->access()->authorize('billing.view');
+        $this->authorizeInvoice($invoice, 'billing.view');
 
         return response()->json(['data' => self::presentInvoice($invoice->load('plan')) + [
             'tenant' => $this->tenant()->name,
             'bill_to' => $invoice->billing_snapshot,
             'simulator' => $invoice->payment_provider === 'simulator',
-            // halaman tujuan setelah bayar (pesanan kartu → halaman pesanan)
-            'return_to' => $invoice->order_id && ($o = Order::withoutGlobalScopes()->find($invoice->order_id)) ? "/orders/{$o->public_id}" : "/billing/invoices/{$invoice->public_id}",
+            // halaman tujuan setelah bayar (pesanan kartu → halaman pesanan, tambahan tap → pengaturan)
+            'return_to' => match (true) {
+                $invoice->type === 'topup' => '/settings',
+                $invoice->order_id && ($o = Order::withoutGlobalScopes()->find($invoice->order_id)) !== null => "/orders/{$o->public_id}",
+                default => "/billing/invoices/{$invoice->public_id}",
+            },
         ]]);
     }
 
     /** POST /api/billing/invoices/{id}/pay — buka (lagi) halaman bayar invoice yang masih terbuka. */
     public function pay(Request $request, Invoice $invoice): JsonResponse
     {
-        $this->access()->authorize('billing.manage');
+        $this->authorizeInvoice($invoice, 'billing.manage');
         if (! $invoice->isPayable()) {
             throw new ApiError('invoice_not_payable', $invoice->status === 'paid' ? 'Invoice ini sudah lunas.' : 'Invoice ini sudah tidak berlaku. Buat pembayaran baru dari halaman Paket.');
         }
@@ -132,7 +150,7 @@ class BillingController extends WorkspaceController
      */
     public function check(Invoice $invoice, ApplyPayment $apply): JsonResponse
     {
-        $this->access()->authorize('billing.view');
+        $this->authorizeInvoice($invoice, 'billing.view');
         if ($invoice->isPayable() && ($gw = PaymentService::gatewayFor($invoice->payment_provider)) && ($n = $gw->fetchStatus($invoice))) {
             $apply->handle($n);
         }
@@ -143,7 +161,7 @@ class BillingController extends WorkspaceController
     /** POST /api/billing/invoices/{id}/simulate {result, method} — hanya gateway simulator (lokal/test). */
     public function simulate(Request $request, Invoice $invoice, ApplyPayment $apply): JsonResponse
     {
-        $this->access()->authorize('billing.manage');
+        $this->authorizeInvoice($invoice, 'billing.manage');
         abort_unless($invoice->payment_provider === 'simulator' && ! app()->isProduction(), 404);
         $data = $request->validate(['result' => ['required', Rule::in(['paid', 'failed'])], 'method' => ['required', 'string', 'max:40']]);
         $outcome = $apply->handle(SimulatorGateway::notification($invoice, $data['result'], $data['method']));
@@ -180,6 +198,14 @@ class BillingController extends WorkspaceController
 
             return ['label' => $label, 'value' => $kind === 'limit' ? ($v === null ? 'Tanpa batas' : number_format($v, 0, ',', '.').' '.$unit) : $v];
         }, self::COMPARE);
+    }
+
+    /** Pembeli tambahan tap boleh melihat & membayar invoicenya sendiri walau tanpa izin tagihan workspace. */
+    private function authorizeInvoice(Invoice $invoice, string $permission): void
+    {
+        if ($invoice->type !== 'topup' || $invoice->user_id !== $this->user()->id) {
+            $this->access()->authorize($permission);
+        }
     }
 
     public static function presentInvoice(Invoice $i): array

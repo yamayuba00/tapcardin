@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\DB;
  * Kartu digital — langsung aktif tanpa chip/batch, punya bio link sendiri (1 kartu = 1 bio) dan alamat
  * `/c/{token}` permanen yang sama seperti kartu fisik. Idempoten: satu kartu digital (belum dicabut)
  * per pengguna per workspace (indeks unik parsial `cards_digital_holder_uniq`).
- * Tidak dihitung ke batas `cards_active` paket.
+ * Tidak dihitung ke batas `cards_active` paket; punya paket sendiri: kuota tap (TapQuota) & 1 bio link.
  */
 final class CreateDigitalCard
 {
@@ -39,6 +39,7 @@ final class CreateDigitalCard
                     'form' => Card::DIGITAL, 'card_token' => self::unique('card_token', fn () => Base62::random(10)),
                     'short_code' => self::unique('short_code', fn () => Crockford::random(8)),
                     'tenant_id' => $tenant->id, 'holder_user_id' => $user->id, 'label' => self::LABEL,
+                    'tap_quota' => (int) config('tapcard.digital_card.tap_quota'),
                 ]);
                 $card->profile_id = $this->provision->handle($user, $card)->id;
                 $card->status = CardStatus::Active;

@@ -6,6 +6,7 @@ use App\Enums\CardStatus;
 use App\Models\BioBlock;
 use App\Models\BioPage;
 use App\Models\Card;
+use App\Models\User;
 use App\Support\Bio\BioBlocks;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -34,9 +35,16 @@ class BioPagesTest extends TestCase
         $this->assertArrayHasKey($key, $res->json('error.fields') ?? [], (string) $res->getContent());
     }
 
+    /** makeCard() memasang kartu fisik ke profil pertama — profil kartu digital; cabut kartu digitalnya agar berlaku batas kartu fisik. */
+    private function physicalOnly(User $user): void
+    {
+        Card::acrossTenants()->where(['holder_user_id' => $user->id, 'form' => Card::DIGITAL])->update(['status' => 'revoked']);
+    }
+
     public function test_profile_without_pages_keeps_legacy_view_then_gets_default_page(): void
     {
         $rina = $this->makeUser();
+        $this->physicalOnly($rina);
         $card = $this->makeCard(CardStatus::Active, $rina);
         $this->getJson($this->host('tap', "/api/c/{$card->card_token}"))->assertJsonPath('data.profile.blocks', null);
 
@@ -91,6 +99,7 @@ class BioPagesTest extends TestCase
     public function test_max_three_pages_only_one_active_and_active_cannot_be_deleted(): void
     {
         $rina = $this->makeUser();
+        $this->physicalOnly($rina);
         $card = $this->makeCard(CardStatus::Active, $rina);
         $id = $this->profileOf($rina)->public_id;
         $main = $this->actingAs($rina)->getJson($this->pagesUrl($id))->json('data.0');

@@ -38,6 +38,16 @@ return [
     // refresh/spam tidak menggelembungkan statistik & tidak mengirim notifikasi berulang. 0 = hitung semua.
     'tap_dedupe_minutes' => (int) env('TAP_DEDUPE_MINUTES', 30),
 
+    // Paket kartu digital — terpisah dari paket workspace (kartu fisik). Kuota tap berlaku kumulatif (tidak di-reset
+    // tiap bulan): habis → profil tidak bisa dibuka sampai pemilik membeli tambahan. Tap yang dihitung = tap unik
+    // (lihat tap_dedupe_minutes), bot tidak dihitung. Kartu fisik tanpa kuota tap.
+    'digital_card' => [
+        'tap_quota' => (int) env('DIGITAL_TAP_QUOTA', 1500),
+        'topup_taps' => (int) env('DIGITAL_TOPUP_TAPS', 2000),
+        'topup_price' => (int) env('DIGITAL_TOPUP_PRICE', 70000),
+        'bio_pages' => 1, // kartu fisik: BioBlocks::MAX_PAGES
+    ],
+
     // Kebijakan refund (nominal dalam rupiah). Refund ≥ owner_threshold harus disetujui Pemilik Platform.
     'refund' => [
         'owner_threshold' => (int) env('REFUND_OWNER_THRESHOLD', 500000),

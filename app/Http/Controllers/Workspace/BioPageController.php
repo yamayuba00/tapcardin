@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Workspace;
 
+use App\Actions\Profiles\ProvisionCardProfile;
 use App\Exceptions\ApiError;
 use App\Models\BioBlock;
 use App\Models\BioPage;
@@ -17,7 +18,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Halaman bio link per kartu (maks. 3, satu aktif) + susunan bloknya. Identitas & kontak tetap di ProfileController;
+ * Halaman bio link per kartu (kartu fisik maks. 3, kartu digital 1; satu aktif) + susunan bloknya. Identitas & kontak tetap di ProfileController;
  * di sini hanya nama halaman, tema, dan blok.
  */
 class BioPageController extends WorkspaceController
@@ -30,7 +31,7 @@ class BioPageController extends WorkspaceController
             $this->forgetCards($profile); // resolver beralih dari tampilan lama ke blok
         }
 
-        return response()->json(['data' => $this->pages($profile), 'meta' => ['limit' => BioBlocks::MAX_PAGES]]);
+        return response()->json(['data' => $this->pages($profile), 'meta' => ['limit' => self::limit($profile)]]);
     }
 
     /** POST /api/profiles/{id}/pages — halaman baru (tombol simpan kontak + daftar kontak) atau salinan halaman lain (`from`). */
@@ -45,8 +46,11 @@ class BioPageController extends WorkspaceController
 
         $page = DB::transaction(function () use ($profile, $data) {
             Profile::whereKey($profile->id)->lockForUpdate()->first(); // dua klik bersamaan tidak melewati batas
-            if (BioPage::where('profile_id', $profile->id)->count() >= BioBlocks::MAX_PAGES) {
-                throw new ApiError('bio_page_limit', 'Satu kartu maksimal punya '.BioBlocks::MAX_PAGES.' bio link. Hapus salah satu dulu.');
+            $limit = self::limit($profile);
+            if (BioPage::where('profile_id', $profile->id)->count() >= $limit) {
+                throw new ApiError('bio_page_limit', $limit === 1
+                    ? 'Kartu digital hanya punya 1 bio link. Kartu fisik bisa sampai '.BioBlocks::MAX_PAGES.'.'
+                    : 'Satu kartu maksimal punya '.$limit.' bio link. Hapus salah satu dulu.');
             }
             if ($data['from'] ?? null) {
                 return $this->find($profile, $data['from'])->duplicateTo($profile, $data['name']);
@@ -139,6 +143,15 @@ class BioPageController extends WorkspaceController
         $page->delete();
 
         return response()->json(['data' => $this->pages($profile)]);
+    }
+
+    /** Paket kartu digital: 1 bio link; kartu fisik BioBlocks::MAX_PAGES (1 kartu = 1 profil, ProvisionCardProfile). */
+    public static function limit(Profile $profile): int
+    {
+        $digital = Card::acrossTenants()->where('profile_id', $profile->id)->where('form', Card::DIGITAL)
+            ->whereIn('status', ProvisionCardProfile::OWNING)->exists();
+
+        return $digital ? (int) config('tapcard.digital_card.bio_pages') : BioBlocks::MAX_PAGES;
     }
 
     private function pages(Profile $profile): array

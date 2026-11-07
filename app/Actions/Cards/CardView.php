@@ -38,6 +38,8 @@ final class CardView
         public readonly array $fields,
         /** Blok halaman bio aktif (null = profil tanpa halaman → tampilan lama: daftar kontak). */
         public readonly ?array $blocks = null,
+        /** Kartu digital: tap memakai kuota paket (TapQuota). */
+        public readonly bool $digital = false,
     ) {}
 
     public static function cached(string $token): ?self
@@ -121,6 +123,7 @@ final class CardView
             ] : null,
             fields: $fields,
             blocks: $blocks,
+            digital: $card->isDigital(),
         );
     }
 

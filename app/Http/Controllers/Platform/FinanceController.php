@@ -34,8 +34,8 @@ class FinanceController extends PlatformController
         $tz = 'Asia/Jakarta';
         $active = Subscription::acrossTenants()->with('plan')->whereIn('status', ['active', 'past_due'])->get();
         $mrr = (int) round($active->sum(fn ($s) => $s->cycle === 'yearly' ? $s->plan->price_yearly / 12 : $s->plan->price_monthly));
-        $paid = fn ($from, $to) => (int) Invoice::acrossTenants()->where('status', 'paid')->whereBetween('paid_at', [$from, $to])->sum('total');
-        $series = Invoice::acrossTenants()->where('status', 'paid')->where('paid_at', '>=', now($tz)->subDays(29)->startOfDay())
+        $paid = fn ($from, $to) => (int) Invoice::acrossTenants()->where('status', 'paid')->whereBetween('paid_at', [$from->copy()->utc(), $to->copy()->utc()])->sum('total');
+        $series = Invoice::acrossTenants()->where('status', 'paid')->where('paid_at', '>=', now($tz)->subDays(29)->startOfDay()->utc())
             ->selectRaw('(paid_at at time zone ?)::date as d, sum(total) as v', [$tz])->groupBy('d')->pluck('v', 'd');
 
         return [

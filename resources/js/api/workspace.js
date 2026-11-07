@@ -161,6 +161,8 @@ export const billingApi = {
   get: () => http.get('/api/billing'),
   checkout: (plan, cycle, voucher = null) => http.post('/api/billing/checkout', { plan, cycle, voucher }),
   voucher: (code, plan, cycle) => http.post('/api/billing/voucher', { code, plan, cycle }),
+  /** tambahan kuota tap kartu digital milik saya di workspace ini */
+  tapTopup: () => http.post('/api/billing/tap-topup'),
   invoices: (params) => http.get('/api/billing/invoices', params),
   invoice: (id) => http.get(`/api/billing/invoices/${id}`),
   pay: (id) => http.post(`/api/billing/invoices/${id}/pay`),

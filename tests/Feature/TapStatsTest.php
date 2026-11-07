@@ -8,6 +8,7 @@ use App\Models\Tap;
 use App\Support\UserAgent;
 use App\Tenancy\TenantScope;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
@@ -36,7 +37,7 @@ class TapStatsTest extends TestCase
         Tap::withoutGlobalScope(TenantScope::class)->create($attrs + [
             'tenant_id' => $card->tenant_id, 'card_id' => $card->id, 'holder_user_id' => $card->holder_user_id,
             'source' => 'nfc', 'ip_hash' => str_repeat('a', 64), 'visitor_hash' => hash('sha256', uniqid('', true)),
-            'device' => 'android', 'city' => 'Bandung', 'created_at' => now('Asia/Jakarta')->parse($at),
+            'device' => 'android', 'city' => 'Bandung', 'created_at' => Carbon::parse($at, 'Asia/Jakarta'), // waktu WIB, apa pun jam tes dijalankan
         ]);
     }
 
@@ -83,7 +84,7 @@ class TapStatsTest extends TestCase
         $this->artisan('tapcard:aggregate-stats', ['--days' => 30])->assertSuccessful();
         // tap lama di tabel mentah yang belum diringkas tidak boleh terbaca (bukti ringkasan yang dipakai)
         $this->seedTap($card, '-5 days 09:30');
-        $this->seedTap($card, 'today 08:00', ['city' => 'Jakarta']);
+        $this->seedTap($card, 'today 00:00', ['city' => 'Jakarta']); // selalu sudah lewat, jam berapa pun tes dijalankan
 
         $res = $this->actingAs($rina)->getJson($this->host('app', '/api/analytics/cards?days=30'))->assertOk();
         $res->assertJsonPath('data.totals.taps', 4)

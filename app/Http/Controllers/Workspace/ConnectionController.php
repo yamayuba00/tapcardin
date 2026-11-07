@@ -218,7 +218,7 @@ class ConnectionController extends WorkspaceController
         $tz = $this->user()->timezone ?: 'Asia/Jakarta';
         match ($request->query('due')) {
             'overdue' => $q->where('next_followup_at', '<', now()),
-            'today' => $q->whereBetween('next_followup_at', [now($tz)->startOfDay(), now($tz)->endOfDay()]),
+            'today' => $q->whereBetween('next_followup_at', [now($tz)->startOfDay()->utc(), now($tz)->endOfDay()->utc()]),
             'week' => $q->whereBetween('next_followup_at', [now(), now()->addDays(7)]),
             'none' => $q->whereNull('next_followup_at')->whereNull('closed_at'),
             default => null,

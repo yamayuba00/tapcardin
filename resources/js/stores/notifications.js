@@ -5,7 +5,7 @@ import { useToastStore } from './toast'
 import { config } from '@/config'
 import { connectRealtime } from '@/lib/realtime'
 
-const TYPES = ['tap', 'lead_new', 'lost_card_tapped', 'saved_back', 'reminder_due', 'import_done', 'invoice_paid', 'invoice_due', 'plan_changed', 'order_status', 'announcement']
+const TYPES = ['tap', 'lead_new', 'lost_card_tapped', 'saved_back', 'reminder_due', 'import_done', 'invoice_paid', 'invoice_due', 'plan_changed', 'order_status', 'announcement', 'tap_quota']
 
 const messages = {
   tap: (d) => `Seseorang membuka profil Anda${d.city ? ' · ' + d.city : ''}`,
@@ -13,7 +13,10 @@ const messages = {
   lost_card_tapped: (d) => `Kartu hilang Anda baru di-tap${d.city ? ' di ' + d.city : ''}`,
   saved_back: (d) => `${d.name} menyimpan Anda sebagai koneksi. Buka Scan untuk simpan balik.`,
   reminder_due: (d) => `Waktunya follow-up ${d.name}${d.note ? ' · ' + d.note : ''}`,
-  invoice_paid: (d) => `Pembayaran ${d.number} berhasil — paket ${d.plan} aktif`,
+  invoice_paid: (d) => (d.label ? `Pembayaran ${d.number} berhasil — ${d.label} aktif` : `Pembayaran ${d.number} berhasil — paket ${d.plan} aktif`),
+  tap_quota: (d) => (d.level >= 100
+    ? `Kuota tap kartu digital habis (${d.used}/${d.quota}) — profil tidak bisa dibuka. Tambah tap di Pengaturan.`
+    : `Kuota tap kartu digital tinggal sedikit (${d.used}/${d.quota}). Tambah tap di Pengaturan.`),
   invoice_due: (d) => `Tagihan perpanjangan ${d.number} sudah terbit`,
   plan_changed: (d) => `Paket workspace kini ${d.plan}`,
   order_status: (d) => `Pesanan ${d.number}: ${d.label}${d.tracking ? ' · resi ' + d.tracking : ''}`,

@@ -57,6 +57,8 @@ const contactCatalog = ref(null)
 
 // ── Halaman bio ────────────────────────────────────────────
 const pages = ref([])
+// kartu fisik maks. MAX_PAGES bio link, kartu digital 1 (dari server: meta.limit)
+const pageLimit = ref(MAX_PAGES)
 const saved = ref({}) // id halaman → snapshot terakhir yang tersimpan (deteksi perubahan)
 const currentId = ref(null)
 const page = computed(() => pages.value.find((p) => p.id === currentId.value) ?? null)
@@ -118,6 +120,7 @@ async function load() {
   serverPreview.value = pv.data
   catalog.value = cat.data
   apply(p.data)
+  pageLimit.value = pg.meta?.limit ?? MAX_PAGES
   pages.value = []
   pg.data.forEach(replacePage)
   currentId.value = pages.value.find((x) => x.is_active)?.id ?? pages.value[0]?.id
@@ -261,7 +264,7 @@ const presetOf = (key) => catalog.value?.presets.find((p) => p.key === key)
       <AppButton variant="ghost" @click="copyUrl"><Copy class="size-5" /> Salin</AppButton>
     </div>
 
-    <!-- Pilihan bio link kartu ini (maks. 3, satu aktif) -->
+    <!-- Pilihan bio link kartu ini (fisik maks. 3, digital 1; satu aktif) -->
     <section class="grid gap-3 rounded-md border border-line bg-surface p-4" aria-label="Bio link kartu ini">
       <div class="flex flex-wrap items-center gap-2" role="tablist" aria-label="Pilih bio link">
         <button
@@ -277,8 +280,8 @@ const presetOf = (key) => catalog.value?.presets.find((p) => p.key === key)
           <AppBadge v-if="p.is_active" tone="ok" dot>Aktif</AppBadge>
           <span v-if="isDirty(p)" class="size-2 rounded-full bg-warn" title="Belum disimpan" aria-label="Belum disimpan"></span>
         </button>
-        <AppButton v-if="pages.length < MAX_PAGES" variant="ghost" :disabled="working" @click="openCreate()"><Plus class="size-5" /> Bio baru</AppButton>
-        <span class="text-sm text-muted sm:ml-auto">{{ pages.length }}/{{ MAX_PAGES }} bio link</span>
+        <AppButton v-if="pages.length < pageLimit" variant="ghost" :disabled="working" @click="openCreate()"><Plus class="size-5" /> Bio baru</AppButton>
+        <span class="text-sm text-muted sm:ml-auto">{{ pages.length }}/{{ pageLimit }} bio link<template v-if="pageLimit === 1"> · kartu digital (kartu fisik bisa {{ MAX_PAGES }})</template></span>
       </div>
 
       <div class="grid gap-3 border-t border-line pt-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
@@ -288,7 +291,7 @@ const presetOf = (key) => catalog.value?.presets.find((p) => p.key === key)
         <div class="flex flex-wrap items-center gap-2">
           <span v-if="page.is_active" class="flex min-h-11 items-center gap-2 text-sm text-ok"><CircleCheck class="size-5" /> Tampil saat kartu di-tap</span>
           <AppButton v-else :loading="working" @click="activate"><CircleCheck class="size-5" /> Jadikan aktif</AppButton>
-          <AppButton v-if="pages.length < MAX_PAGES" variant="secondary" :disabled="working" @click="openCreate(page.id)"><CopyPlus class="size-5" /> Duplikat</AppButton>
+          <AppButton v-if="pages.length < pageLimit" variant="secondary" :disabled="working" @click="openCreate(page.id)"><CopyPlus class="size-5" /> Duplikat</AppButton>
           <AppButton v-if="!page.is_active" variant="ghost" :disabled="working" aria-label="Hapus bio link ini" @click="deleting = page"><Trash2 class="size-5 text-danger" /> Hapus</AppButton>
         </div>
       </div>

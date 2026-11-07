@@ -2,22 +2,24 @@
 
 namespace App\Http\Controllers\Workspace;
 
-use App\Actions\Cards\ChangeCardStatus;
+use App\Actions\Auth\DeleteAccount;
+use App\Actions\Cards\CreateDigitalCard;
 use App\Authz\PlanFeatures;
-use App\Enums\CardStatus;
 use App\Http\Resources\Present;
+use App\Models\BioPage;
 use App\Models\Card;
 use App\Models\Connection;
+use App\Models\Invoice;
 use App\Models\PlatformStaff;
 use App\Models\Profile;
 use App\Models\Tap;
 use App\Models\TenantMember;
 use App\Support\Phone;
+use App\Support\TapQuota;
 use App\Tenancy\TenantScope;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -34,6 +36,7 @@ class MeController extends WorkspaceController
         'invoice_paid' => 'Pembayaran berhasil',
         'invoice_due' => 'Tagihan perpanjangan paket',
         'plan_changed' => 'Perubahan paket',
+        'tap_quota' => 'Kuota tap kartu digital hampir / sudah habis',
     ];
 
     /** Data halaman pengaturan: preferensi notifikasi, paket & pemakaian, izin efektif. */
@@ -56,8 +59,35 @@ class MeController extends WorkspaceController
                     'connections' => Connection::count(),
                 ],
             ],
+            'digital_card' => $this->digitalCard(),
+            'deletion' => [
+                'retention_days' => DeleteAccount::RETENTION_DAYS,
+                'cards' => Card::acrossTenants()->where('holder_user_id', $u->id)->where('status', '!=', 'revoked')->count(),
+                'profiles' => Profile::acrossTenants()->where('user_id', $u->id)->count(),
+                'connections' => $u->personal_tenant_id ? Connection::acrossTenants()->where('tenant_id', $u->personal_tenant_id)->count() : 0,
+            ],
             'permissions' => $this->access()->list(),
         ]]);
+    }
+
+    /** Paket kartu digital (terpisah dari paket workspace): kuota tap, bio link, dan harga tambahan tap. */
+    private function digitalCard(): ?array
+    {
+        $card = CreateDigitalCard::of($this->user(), $this->tenant());
+        if (! $card) {
+            return null;
+        }
+        $c = config('tapcard.digital_card');
+        $open = Invoice::where('type', 'topup')->where('status', 'issued')->where('due_at', '>', now())
+            ->whereRaw("(billing_snapshot->>'card_id')::bigint = ?", [$card->id])->latest('id')->first();
+
+        return [
+            'token' => $card->card_token, 'status' => $card->status->value,
+            'taps' => TapQuota::of($card),
+            'bio_pages' => ['used' => $card->profile_id ? BioPage::where('profile_id', $card->profile_id)->count() : 0, 'limit' => $c['bio_pages']],
+            'topup' => ['taps' => $c['topup_taps'], 'price' => $c['topup_price']],
+            'open_invoice' => $open?->public_id,
+        ];
     }
 
     public function show(): JsonResponse
@@ -149,23 +179,13 @@ class MeController extends WorkspaceController
         return response()->json(null, 204);
     }
 
-    /** PV-02 / AFD F-15 — hapus akun: kartu dicabut, soft delete 30 hari. */
-    public function destroy(Request $request, ChangeCardStatus $status): JsonResponse
+    /** PV-02 / AFD F-15 — hapus akun (skema lengkap: DeleteAccount). */
+    public function destroy(Request $request, DeleteAccount $delete): JsonResponse
     {
         $u = $this->user();
         $request->validate(['confirm_email' => ['required', Rule::in([$u->email])]], ['confirm_email.in' => 'Ketik email akun Anda persis untuk konfirmasi.']);
 
-        DB::transaction(function () use ($u, $status) {
-            Card::acrossTenants()->where('holder_user_id', $u->id)->whereNotIn('status', [CardStatus::Revoked->value])->get()
-                ->each(function (Card $c) use ($status) {
-                    // active/paused tidak bisa langsung revoked (AFD §4.1): lewat lost dulu
-                    if (! $c->isDigital() && in_array($c->status, [CardStatus::Active, CardStatus::Paused], true)) {
-                        $status->handle($c, CardStatus::Lost, 'Akun dihapus');
-                    }
-                    $status->handle($c, CardStatus::Revoked, 'Akun dihapus');
-                });
-            $u->delete();
-        });
+        $delete->handle($u);
         Auth::logout();
         $request->session()->invalidate();
 

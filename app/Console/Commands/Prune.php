@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Actions\Auth\DeleteAccount;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -29,19 +30,12 @@ class Prune extends Command
         return self::SUCCESS;
     }
 
-    /** TRD §12 — akun soft delete 30 hari lalu hard delete + anonimisasi tap. */
+    /** TRD §12 — akun dihapus > 30 hari: data pribadi dihapus permanen, riwayat disimpan tanpa identitas (DeleteAccount). */
     private function purgeUsers(): int
     {
-        $ids = DB::table('users')->whereNotNull('deleted_at')->where('deleted_at', '<', now()->subDays(30))->pluck('id');
-        foreach ($ids as $id) {
-            DB::transaction(function () use ($id) {
-                DB::table('taps')->where('holder_user_id', $id)->update(['holder_user_id' => null, 'ip_hash' => str_repeat('0', 64), 'visitor_hash' => str_repeat('0', 64)]);
-                DB::table('users')->where('id', $id)->update([
-                    'name' => 'Pengguna dihapus', 'email' => "deleted-$id@invalid", 'phone' => null, 'google_id' => null,
-                    'handle' => null, 'avatar_path' => null, 'remember_token' => null,
-                ]);
-            });
-        }
+        $ids = DB::table('users')->whereNotNull('deleted_at')->where('deleted_at', '<', now()->subDays(DeleteAccount::RETENTION_DAYS))
+            ->where('name', '!=', 'Pengguna dihapus')->pluck('id');
+        $ids->each(fn ($id) => DeleteAccount::purge($id));
 
         return $ids->count();
     }

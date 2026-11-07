@@ -8,6 +8,7 @@ use App\Jobs\RecordTap;
 use App\Jobs\TapContext;
 use App\Models\Event;
 use App\Support\Hasher;
+use App\Support\TapQuota;
 use App\Support\UserAgent;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -28,14 +29,23 @@ final class ResolveCard
         }
 
         // NTAG 424 DNA (SUN) masuk v1.5; tap dari chip biasa tidak membawa e & m.
-        if ($view->tenantId && in_array($view->status, ['active', 'lost', 'paused'], true) && self::countable($request, $view->cardId)) {
-            RecordTap::dispatch($view->tenantId, $view->cardId, TapContext::fromRequest($request));
+        $quotaEmpty = false;
+        if ($view->tenantId && in_array($view->status, ['active', 'lost', 'paused'], true)) {
+            $count = self::countable($request, $view->cardId);
+            // kartu digital: tap unik memakai kuota paket; kuota habis → profil tidak dibuka & tap tidak dicatat
+            if ($view->digital && $view->status === 'active') {
+                $quotaEmpty = ! ($count ? TapQuota::consume($view->cardId, $view->holderUserId, $view->tenantId) : TapQuota::available($view->cardId));
+            }
+            if ($count && ! $quotaEmpty) {
+                RecordTap::dispatch($view->tenantId, $view->cardId, TapContext::fromRequest($request));
+            }
         }
 
         $inactive = fn (string $reason) => ['state' => 'inactive', 'reason' => $reason, 'brand' => $this->brand($view)];
 
         $data = match (true) {
             $view->tenantSuspended => $inactive('suspended'),
+            $quotaEmpty => $inactive('quota'),
             $view->status === 'manufactured' => $inactive('manufactured'),
             $view->status === 'unclaimed' && $view->isCompanyPool => $inactive('company_idle'),
             $view->status === 'unclaimed' => ['state' => 'activate', 'token' => $view->token,

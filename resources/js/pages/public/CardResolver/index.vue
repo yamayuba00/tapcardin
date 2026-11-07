@@ -40,6 +40,8 @@ const INACTIVE = {
     text: 'Pemiliknya melaporkan kartu ini hilang, jadi data pribadinya disembunyikan. Pemilik sudah diberi tahu bahwa kartunya baru saja di-tap.' },
   revoked: { icon: Ban, tone: 'muted', badge: 'Tidak berlaku', title: 'Kartu ini sudah tidak berlaku',
     text: 'Kartu dinonaktifkan permanen — biasanya karena sudah diganti dengan kartu baru.' },
+  quota: { icon: CirclePause, tone: 'muted', badge: 'Tidak tersedia', title: 'Profil sementara tidak tersedia',
+    text: 'Profil ini sedang tidak dapat dibuka. Pemilik kartu sudah diberi tahu — coba lagi nanti, atau minta kontaknya secara langsung.' },
   suspended: { icon: Lock, tone: 'muted', badge: 'Tidak tersedia', title: 'Profil sementara tidak tersedia',
     text: 'Profil ini sedang tidak dapat ditampilkan. Silakan coba lagi nanti.' },
   company_idle: { icon: Building2, tone: 'muted', badge: 'Belum ditugaskan', title: 'Kartu ini belum dipakai', text: null },

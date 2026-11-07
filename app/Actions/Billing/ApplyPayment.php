@@ -17,6 +17,7 @@ use App\Services\Payment\PaymentService;
 use App\Support\Audit;
 use App\Support\Notify;
 use App\Support\OrderRisk;
+use App\Support\TapQuota;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -84,6 +85,11 @@ final class ApplyPayment
 
                 return 'paid';
             }
+            if ($invoice->type === 'topup') {
+                $this->topupPaid($invoice);
+
+                return 'paid';
+            }
 
             $sub = $this->activate($invoice);
             $invoice->update(['subscription_id' => $sub->id]);
@@ -118,6 +124,17 @@ final class ApplyPayment
         Audit::tenant($order->tenant_id, 'order.paid', $order, null, ['number' => $order->number, 'total' => $order->total, 'invoice' => $invoice->number, 'risk' => $risk['score']]);
         if ($order->user_id) {
             Notify::user($order->user_id, $order->tenant_id, 'order_status', ['id' => $order->public_id, 'number' => $order->number, 'status' => 'paid', 'label' => $order->label()]);
+        }
+    }
+
+    /** Tambahan tap kartu digital lunas → kuota kartu naik; profil yang tadinya terkunci langsung bisa dibuka lagi. */
+    private function topupPaid(Invoice $invoice): void
+    {
+        $s = $invoice->billing_snapshot;
+        TapQuota::add((int) $s['card_id'], (int) $s['taps']);
+        Audit::tenant($invoice->tenant_id, 'billing.topup_paid', $invoice, null, ['number' => $invoice->number, 'total' => $invoice->total, 'taps' => $s['taps']]);
+        if ($invoice->user_id) {
+            Notify::user($invoice->user_id, $invoice->tenant_id, 'invoice_paid', ['id' => $invoice->public_id, 'number' => $invoice->number, 'label' => $s['label'] ?? null]);
         }
     }
 

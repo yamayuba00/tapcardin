@@ -23,14 +23,14 @@ class ReminderController extends WorkspaceController
             ->whereHas('connection', fn ($c) => $c->whereNull('merged_into_id'));
         match ($request->query('due')) {
             'overdue' => $q->whereNull('done_at')->where('due_at', '<', now()),
-            'today' => $q->whereNull('done_at')->whereBetween('due_at', [now(), now($tz)->endOfDay()]),
-            'upcoming' => $q->whereNull('done_at')->where('due_at', '>', now($tz)->endOfDay()),
+            'today' => $q->whereNull('done_at')->whereBetween('due_at', [now(), now($tz)->endOfDay()->utc()]),
+            'upcoming' => $q->whereNull('done_at')->where('due_at', '>', now($tz)->endOfDay()->utc()),
             'done' => $q->whereNotNull('done_at'),
             default => $q->whereNull('done_at'),
         };
 
         $counts = LeadReminder::where('user_id', $this->user()->id)->whereNull('done_at')
-            ->selectRaw('count(*) filter (where due_at < ?) as overdue, count(*) filter (where due_at >= ? and due_at <= ?) as today', [now(), now(), now($tz)->endOfDay()])
+            ->selectRaw('count(*) filter (where due_at < ?) as overdue, count(*) filter (where due_at >= ? and due_at <= ?) as today', [now(), now(), now($tz)->endOfDay()->utc()])
             ->first();
 
         return Table::json(

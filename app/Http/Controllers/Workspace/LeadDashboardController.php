@@ -51,7 +51,7 @@ class LeadDashboardController extends WorkspaceController
         $days = (int) ($request->query('days') ?? $prefs['days'] ?? 30);
 
         $tz = $this->user()->timezone ?: 'Asia/Jakarta';
-        $from = now($tz)->subDays($days - 1)->startOfDay();
+        $from = now($tz)->subDays($days - 1)->startOfDay()->utc(); // binding query tanpa offset → harus UTC
         $prevFrom = (clone $from)->subDays($days);
         $data = [];
         foreach (array_unique(array_column($layout, 'id')) as $id) {
@@ -117,7 +117,7 @@ class LeadDashboardController extends WorkspaceController
             })(),
             'kpi_followup' => [
                 'overdue' => $this->leads()->whereNull('closed_at')->where('next_followup_at', '<', now())->count(),
-                'today' => $this->leads()->whereNull('closed_at')->whereBetween('next_followup_at', [now(), now($tz)->endOfDay()])->count(),
+                'today' => $this->leads()->whereNull('closed_at')->whereBetween('next_followup_at', [now(), now($tz)->endOfDay()->utc()])->count(),
             ],
             'kpi_value' => [
                 'value' => (int) $this->leads()->whereNull('closed_at')->sum('value_amount'),
