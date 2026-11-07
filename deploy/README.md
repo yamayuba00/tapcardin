@@ -69,6 +69,7 @@ Installer aman dijalankan ulang (mis. setelah memperbaiki isian): langkah yang s
 | Pindah ke domain baru (kartu lama tetap jalan) | `sudo bash /var/www/tapcard/current/deploy/switch-domain.sh domainbaru.com` — lihat [Pindah domain](#pindah-domain) |
 | Ubah konfigurasi (SMTP, pembayaran, Google…) | edit `/var/www/tapcard/shared/.env`, lalu jalankan rilis ulang |
 | Status worker & scheduler | `sudo supervisorctl status` |
+| Pindahkan antrean & cache ke Redis | `sudo bash /var/www/tapcard/current/deploy/enable-redis.sh` — lihat [Kapan pindah ke Redis](#kapan-pindah-ke-redis) |
 | Log aplikasi | `/var/www/tapcard/shared/storage/logs/` |
 | Log worker / scheduler | `/var/log/tapcard/queue.log`, `/var/log/tapcard/schedule.log` |
 | Uji email | `sudo -u www-data php /var/www/tapcard/current/artisan tapcard:mail-test email@anda.com` |
@@ -125,12 +126,29 @@ lalu rilis ulang; bila bentuk API-nya berbeda, tambah satu kelas di `app/Service
 
 ## Kapan pindah ke Redis
 
-Default `database` untuk cache/antrean/sesi sudah cukup untuk awal. Ganti ke Redis
-(`CACHE_STORE=redis`, `QUEUE_CONNECTION=redis`, `SESSION_DRIVER=redis` di `shared/.env`, lalu rilis ulang) bila:
+Default `database` (PostgreSQL) untuk antrean, cache, dan sesi sudah cukup untuk awal. Pindahkan **antrean & cache**
+ke Redis dengan satu perintah — kapan saja, tanpa downtime:
 
-- tap > ~20/detik pada jam sibuk, atau tabel `jobs` sering > 1.000 baris menunggu;
-- p95 resolver `/c/{token}` > 300 ms padahal query kartu sudah ter-cache;
-- pengguna notifikasi serentak > ~150 (sekalian pindahkan notifikasi realtime ke Reverb/WebSocket).
+```bash
+sudo bash /var/www/tapcard/current/deploy/enable-redis.sh                    # pasang & pindah (memori maks 256 MB)
+sudo bash /var/www/tapcard/current/deploy/enable-redis.sh --maxmemory 512mb  # ubah batas memori
+sudo bash /var/www/tapcard/current/deploy/enable-redis.sh --off              # kembali ke database
+```
+
+Untuk server baru: isi `REDIS=yes` di `tapcard-install.env`. Script memasang `redis-server` dari repositori Ubuntu
+(lisensi BSD, gratis) + `php-redis`, lalu mengatur: hanya mendengar di `127.0.0.1` dengan password acak (port 6379
+tidak dibuka), simpan ke disk tiap detik (AOF — Redis/VPS restart, job paling banyak hilang 1 detik), batas memori
+dengan `volatile-lru` (hanya cache yang dibuang saat penuh, job antrean tidak pernah). Koneksi diuji dari Laravel
+sebelum dipakai; gagal = `.env` dikembalikan. Job yang menunggu di tabel `jobs` tetap dikerjakan sampai habis.
+
+**Sesi login sengaja tetap di database**: "blokir pengguna" dan "keluarkan dari semua perangkat" di panel membaca
+tabel `sessions` — di Redis kedua fitur itu berhenti bekerja.
+
+Saatnya pindah (panel → Sistem / `tapcard:health` memberi tanda) bila:
+
+- tap > ~20/detik pada jam sibuk, atau job menunggu sering > 1.000;
+- umur job tertua rutin > 1 menit;
+- p95 resolver `/c/{token}` > 300 ms padahal query kartu sudah ter-cache.
 
 ## Domain kustom pelanggan
 

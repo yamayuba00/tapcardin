@@ -252,6 +252,12 @@ systemctl enable --now supervisor >/dev/null
 supervisorctl reread >/dev/null && supervisorctl update >/dev/null
 sleep 2; supervisorctl status | grep tapcard | sed 's/^/  /'
 
+# ── 10b. Redis (opsional) — antrean & cache; sesi tetap di database ──────────────────────────
+if [[ ${REDIS:-no} == yes ]]; then
+  step "Redis"
+  bash "$APP/current/deploy/enable-redis.sh" --yes --maxmemory "${REDIS_MAXMEMORY:-256mb}"
+fi
+
 # ── 11. rotasi log & backup ───────────────────────────────────────────────────────────────────
 cat > /etc/logrotate.d/tapcard <<'EOF'
 /var/log/tapcard/*.log /var/log/php-fpm/*.log {
