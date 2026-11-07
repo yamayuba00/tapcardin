@@ -11,6 +11,7 @@ use App\Models\ProfileField;
 use App\Models\Tap;
 use App\Tenancy\TenantScope;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Exceptions;
 use Tests\TestCase;
 
@@ -188,9 +189,11 @@ class ResolverTest extends TestCase
     {
         $card = $this->makeCard(CardStatus::Active, $this->makeUser());
         $this->getJson($this->host('tap', "/api/c/{$card->card_token}?src=qr"))->assertOk();
-        $this->getJson($this->host('tap', "/api/c/{$card->card_token}"))->assertOk();
+        // pengunjung kedua (IP lain); pengunjung yang sama dalam 30 menit dihitung sekali (lihat TapStatsTest)
+        $this->withServerVariables(['REMOTE_ADDR' => '10.0.0.9'])->getJson($this->host('tap', "/api/c/{$card->card_token}"))->assertOk();
 
         $this->artisan('tapcard:aggregate-stats')->assertSuccessful();
         $this->assertDatabaseHas('daily_card_stats', ['card_id' => $card->id, 'taps' => 2, 'qr' => 1, 'nfc' => 1, 'connections' => 0]);
+        $this->assertSame(['other' => 2], json_decode(DB::table('daily_card_stats')->where('card_id', $card->id)->value('devices'), true));
     }
 }

@@ -7,7 +7,10 @@ use App\Http\Resources\PublicProfile;
 use App\Jobs\RecordTap;
 use App\Jobs\TapContext;
 use App\Models\Event;
+use App\Support\Hasher;
+use App\Support\UserAgent;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -25,7 +28,7 @@ final class ResolveCard
         }
 
         // NTAG 424 DNA (SUN) masuk v1.5; tap dari chip biasa tidak membawa e & m.
-        if ($view->tenantId && in_array($view->status, ['active', 'lost', 'paused'], true)) {
+        if ($view->tenantId && in_array($view->status, ['active', 'lost', 'paused'], true) && self::countable($request, $view->cardId)) {
             RecordTap::dispatch($view->tenantId, $view->cardId, TapContext::fromRequest($request));
         }
 
@@ -73,5 +76,21 @@ final class ResolveCard
         $event = EventForCard::at($view->tenantId, $view->cardId, $view->holderUserId, now());
 
         return ($event?->settings['show_on_profile'] ?? false) ? $event->name : null;
+    }
+
+    /**
+     * Satu tap per pengunjung (IP + browser) per kartu dalam `tap_dedupe_minutes`: refresh, buka ulang, atau spam
+     * tidak menambah statistik & notifikasi. Bukan per IP saja — satu IP dipakai banyak orang (Wi-Fi kantor/event,
+     * CGNAT operator seluler), jadi pengunjung berbeda di jaringan yang sama tetap terhitung. Bot & pratinjau link diabaikan.
+     */
+    private static function countable(Request $request, int $cardId): bool
+    {
+        if (UserAgent::isBot($request->userAgent())) {
+            return false;
+        }
+        $minutes = (int) config('tapcard.tap_dedupe_minutes');
+
+        return $minutes <= 0
+            || Cache::add('tap:seen:'.$cardId.':'.Hasher::ip($request->ip().'|'.$request->userAgent()), 1, now()->addMinutes($minutes));
     }
 }

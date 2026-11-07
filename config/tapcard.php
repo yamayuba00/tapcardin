@@ -34,6 +34,10 @@ return [
 
     'consent_text_version' => 'v1',
 
+    // Tap berulang dari pengunjung yang sama (IP + browser) ke kartu yang sama dalam N menit dihitung sekali —
+    // refresh/spam tidak menggelembungkan statistik & tidak mengirim notifikasi berulang. 0 = hitung semua.
+    'tap_dedupe_minutes' => (int) env('TAP_DEDUPE_MINUTES', 30),
+
     // Kebijakan refund (nominal dalam rupiah). Refund ≥ owner_threshold harus disetujui Pemilik Platform.
     'refund' => [
         'owner_threshold' => (int) env('REFUND_OWNER_THRESHOLD', 500000),

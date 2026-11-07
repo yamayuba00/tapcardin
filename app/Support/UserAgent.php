@@ -17,6 +17,21 @@ final class UserAgent
         };
     }
 
+    /**
+     * Bot, crawler, & pratinjau tautan (WhatsApp/Telegram/Facebook membuka link untuk membuat preview) — bukan
+     * interaksi orang, jadi tidak dihitung sebagai tap. UA kosong juga dianggap bot: browser selalu mengirim UA.
+     */
+    public static function isBot(?string $ua): bool
+    {
+        return trim((string) $ua) === '' || (bool) preg_match(
+            // `bot/` (Googlebot/2.1, bingbot/2.0), bukan sekadar "bot": ponsel CUBOT tetap dihitung
+            '/\bbot\b|bot\/|crawl|spider|slurp|preview|facebookexternalhit|facebookcatalog|WhatsApp\/|TelegramBot|Discordbot|'
+            .'Slackbot|LinkedInBot|Twitterbot|Pinterest|SkypeUriPreview|vkShare|HeadlessChrome|PhantomJS|curl\/|Wget|'
+            .'python-requests|python-urllib|Go-http-client|okhttp|Java\/|libwww|axios\/|node-fetch|Postman/i',
+            (string) $ua,
+        );
+    }
+
     public static function browser(?string $ua): ?string
     {
         $ua = (string) $ua;

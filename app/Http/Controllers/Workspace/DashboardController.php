@@ -8,6 +8,7 @@ use App\Models\Card;
 use App\Models\Connection;
 use App\Models\Tap;
 use App\Support\Onboarding;
+use App\Support\TapStats;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -25,30 +26,28 @@ class DashboardController extends WorkspaceController
         $data = Cache::remember("t{$tid}:stats:today:{$uid}", 60, function () use ($uid, $scopeAll) {
             $taps = Tap::query()->when(! $scopeAll, fn ($q) => $q->where('holder_user_id', $uid));
             $since30 = now()->subDays(30);
-            $since7 = now()->subDays(7);
-            $prev7 = now()->subDays(14);
+            $stats = TapStats::range(now('Asia/Jakarta')->subDays(29), $scopeAll ? null : $uid)['days'];
 
-            $agg = (clone $taps)->where('created_at', '>=', $since30)->selectRaw('
-                count(*) filter (where created_at >= ?) as taps_7,
-                count(*) filter (where created_at >= ? and created_at < ?) as taps_prev_7,
-                count(*) as taps_30,
-                count(distinct visitor_hash) as visitors_30,
-                count(*) filter (where saved_contact) as saved_30
-            ', [$since7, $prev7, $since7])->first();
-
-            $series = (clone $taps)->where('created_at', '>=', now('Asia/Jakarta')->subDays(29)->startOfDay())
-                ->selectRaw("(created_at at time zone 'Asia/Jakarta')::date as d, count(*) as n")
-                ->groupBy('d')->pluck('n', 'd');
+            // 30 hari kalender WIB; 7 hari = hari ini + 6 hari sebelumnya, pembanding = 7 hari sebelum itu
             $days = [];
+            $sum = ['taps_7' => 0, 'taps_prev_7' => 0, 'taps_30' => 0, 'visitors_30' => 0, 'saved_30' => 0];
             for ($i = 29; $i >= 0; $i--) {
                 $d = now('Asia/Jakarta')->subDays($i)->toDateString();
-                $days[] = ['date' => $d, 'value' => (int) ($series[$d] ?? 0)];
+                $day = $stats[$d] ?? ['taps' => 0, 'unique' => 0, 'saved' => 0];
+                $days[] = ['date' => $d, 'value' => $day['taps']];
+                $sum['taps_30'] += $day['taps'];
+                $sum['visitors_30'] += $day['unique'];
+                $sum['saved_30'] += $day['saved'];
+                if ($i < 14) {
+                    $sum[$i < 7 ? 'taps_7' : 'taps_prev_7'] += $day['taps'];
+                }
             }
+            $agg = (object) $sum;
 
             $connections = Connection::query()->when(! $scopeAll, fn ($q) => $q->where('assignee_user_id', $uid));
             $conn30 = (clone $connections)->where('created_at', '>=', $since30)->count();
 
-            $recentTaps = (clone $taps)->latest('created_at')->limit(8)->get(['card_id', 'city', 'source', 'device', 'created_at']);
+            $recentTaps = (clone $taps)->where('created_at', '>=', $since30)->latest('created_at')->limit(8)->get(['card_id', 'city', 'source', 'device', 'created_at']);
             $cardLabels = Card::whereIn('id', $recentTaps->pluck('card_id'))->pluck('label', 'id');
             $recent = $recentTaps->map(fn ($t) => [
                 'type' => 'tap', 'at' => $t->created_at->toIso8601String(),
