@@ -38,7 +38,23 @@ return [
             'report' => false,
         ],
 
-        'public' => [
+        // Unggahan yang tampil ke publik (foto profil, logo, gambar desain, QRIS). PUBLIC_DISK_DRIVER=s3 → disimpan di
+        // bucket S3 (folder public/, dibaca publik lewat bucket policy); selain itu di storage/app/public server.
+        'public' => env('PUBLIC_DISK_DRIVER', 'local') === 's3' ? [
+            'driver' => 's3',
+            'key' => env('AWS_ACCESS_KEY_ID'),
+            'secret' => env('AWS_SECRET_ACCESS_KEY'),
+            'region' => env('AWS_DEFAULT_REGION'),
+            'bucket' => env('AWS_BUCKET'),
+            'endpoint' => env('AWS_ENDPOINT'),
+            'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
+            'root' => 'public',
+            'url' => rtrim((string) env('AWS_URL'), '/').'/public',
+            // bucket tidak menerima ACL per objek; akses baca diatur bucket policy untuk public/*
+            'retain_visibility' => false,
+            'throw' => false,
+            'report' => false,
+        ] : [
             'driver' => 'local',
             'root' => storage_path('app/public'),
             'url' => rtrim(env('APP_URL', 'http://localhost'), '/').'/storage',

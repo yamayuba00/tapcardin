@@ -27,13 +27,16 @@ class SecurityHeaders
         $host = $request->getHost();
         $isScanPage = $host !== $base && ! str_starts_with($host, 'tap.');
         $dev = app()->isLocal() ? ' http://localhost:5173 http://[::1]:5173 ws://localhost:5173 ws://[::1]:5173' : '';
+        // unggahan di S3: gambar dimuat dari host bucket, dan diambil (fetch) saat ekspor PNG desain
+        $media = config('filesystems.disks.public.driver') === 's3' && ($u = parse_url((string) config('filesystems.disks.public.url'))) && isset($u['host'])
+            ? ' '.$u['scheme'].'://'.$u['host'] : '';
         $csp = implode('; ', [
             "default-src 'self'",
-            "img-src 'self' data: blob: ".$this->formTargets(),
+            "img-src 'self' data: blob: ".$this->formTargets().$media,
             "script-src 'self' 'nonce-$nonce'$dev",
             "style-src 'self' 'nonce-$nonce'$dev",
             "font-src 'self'",
-            "connect-src 'self'$dev",
+            "connect-src 'self'$dev$media",
             "frame-src 'self' ".implode(' ', BioBlocks::EMBED_ORIGINS), // embed video bio link
             "frame-ancestors 'self'",
             "base-uri 'none'",
