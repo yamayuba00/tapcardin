@@ -24,7 +24,7 @@ import PublicProfileView from '@/components/profile/PublicProfileView/index.vue'
 import { bioPagesApi, cardsApi, profilesApi } from '@/api/workspace'
 import { useAction } from '@/composables/useAsync'
 import { useLeaveGuard } from '@/composables/useLeaveGuard'
-import { MAX_PAGES, blockPayload, presentBlock } from '@/lib/bioBlocks'
+import { MAX_PAGES, blockPayload, editableData, presentBlock } from '@/lib/bioBlocks'
 import { BIO_DEFAULTS, resolveTheme, themeChoice, themeStyle } from '@/lib/bioTheme'
 import { previewLinks } from '@/lib/contacts'
 import { initials } from '@/lib/format'
@@ -66,7 +66,7 @@ const toLocal = (p) => ({
   name: p.name,
   is_active: p.is_active,
   theme: { ...BIO_DEFAULTS, accent: null, ...themeChoice(p.theme) },
-  blocks: p.blocks.map((b) => ({ ...b, key: b.id, data: structuredClone(b.data ?? {}) })),
+  blocks: p.blocks.map((b) => ({ ...b, key: b.id, data: editableData(b.type, b.data) })),
 })
 const payload = (p) => ({ name: p.name.trim(), theme: { ...p.theme }, blocks: p.blocks.map(blockPayload) })
 const snapshot = (p) => JSON.stringify(payload(p))

@@ -115,6 +115,8 @@ export const eventsApi = {
   remove: (id) => http.del(`/api/events/${id}`),
   activate: (id) => http.post(`/api/events/${id}/activate`),
   deactivate: () => http.del('/api/events/active'),
+  /** Kartu yang dibawa ke event (ganti seluruh daftar token). */
+  cards: (id, cards) => http.put(`/api/events/${id}/cards`, { cards }),
 }
 
 /** F-09 — Mode Reader. */

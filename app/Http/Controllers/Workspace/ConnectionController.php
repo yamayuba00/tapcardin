@@ -10,6 +10,7 @@ use App\Enums\LeadSource;
 use App\Enums\StageKind;
 use App\Http\Resources\Present;
 use App\Models\Connection;
+use App\Models\FormSubmission;
 use App\Models\LeadActivity;
 use App\Models\LeadStage;
 use App\Support\Audit;
@@ -45,7 +46,12 @@ class ConnectionController extends WorkspaceController
     {
         $this->visible($connection);
 
-        return response()->json(['data' => Present::connection($connection->load(['stage', 'assignee', 'card', 'event', 'activities.user']), true)]);
+        // jawaban formulir bio link milik koneksi ini (terbaru dulu)
+        $forms = FormSubmission::where('connection_id', $connection->id)->with(['card', 'event'])->latest('created_at')->limit(20)->get();
+
+        return response()->json(['data' => Present::connection($connection->load(['stage', 'assignee', 'card', 'event', 'activities.user']), true) + [
+            'forms' => $forms->map(fn (FormSubmission $s) => $s->present())->all(),
+        ]]);
     }
 
     public function store(Request $request, CreateConnection $create): JsonResponse

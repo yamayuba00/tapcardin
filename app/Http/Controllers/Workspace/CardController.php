@@ -12,6 +12,8 @@ use App\Exceptions\ApiError;
 use App\Http\Resources\Present;
 use App\Models\Card;
 use App\Models\Design;
+use App\Models\Event;
+use App\Models\EventCard;
 use App\Models\ProductEvent;
 use App\Models\Tap;
 use App\Support\Audit;
@@ -68,6 +70,10 @@ class CardController extends WorkspaceController
         return response()->json(['data' => Present::card($card) + [
             'stats_30' => $stats ? array_map('intval', $stats->only(['taps', 'visitors', 'saved', 'nfc', 'qr', 'other'])) : [],
             'lost_taps' => $lastLostTaps,
+            // event yang membawa kartu ini (berlangsung / akan datang dulu)
+            'events' => Event::whereIn('id', EventCard::where('card_id', $card->id)->select('event_id'))
+                ->orderByRaw('ends_at < now()')->orderBy('starts_at')->limit(10)->get()
+                ->map(fn (Event $e) => EventController::present($e)),
             'login_key' => CardLoginKeyController::present($card, $this->user()->id),
             'qr_svg_url' => config('tapcard.resolver_url').'/c/'.$card->card_token.'/qr.svg',
             // kartu digital paket Free: QR berganti otomatis, QR lama berhenti berlaku

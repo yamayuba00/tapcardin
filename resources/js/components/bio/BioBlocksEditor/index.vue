@@ -2,18 +2,20 @@
 // Editor susunan blok satu halaman bio: tambah, urutkan (naik/turun), sembunyikan, hapus, dan isi per jenis blok.
 // Perubahan baru tersimpan saat tombol Simpan editor ditekan.
 import { computed } from 'vue'
-import { ArrowDown, ArrowUp, Eye, EyeOff, LayoutList, Minus, Music, Plus, SquareMousePointer, Trash2, Type, UserPlus } from 'lucide-vue-next'
+import { ArrowDown, ArrowUp, ClipboardList, Eye, EyeOff, LayoutList, Minus, Music, Plus, SquareMousePointer, Trash2, Type, UserPlus, X } from 'lucide-vue-next'
 import AppButton from '@/components/ui/AppButton/index.vue'
 import AppField from '@/components/ui/AppField/index.vue'
 import AppInput from '@/components/ui/AppInput/index.vue'
+import AppCheckbox from '@/components/ui/AppCheckbox/index.vue'
 import AppSegmented from '@/components/ui/AppSegmented/index.vue'
+import AppSelect from '@/components/ui/AppSelect/index.vue'
 import AppTextarea from '@/components/ui/AppTextarea/index.vue'
-import { BLOCK_TYPES, MAX_BLOCKS, SAVE_LABEL, SINGLE, newBlock, parseVideo } from '@/lib/bioBlocks'
+import { BLOCK_TYPES, FIELD_TYPES, FORM_SUCCESS, MAX_BLOCKS, MAX_FIELDS, SAVE_LABEL, SINGLE, hasOptions, newBlock, newField, parseVideo } from '@/lib/bioBlocks'
 
 const blocks = defineModel({ type: Array, required: true })
 const props = defineProps({ errors: { type: Object, default: () => ({}) } })
 
-const ICON = { save_contact: UserPlus, button: SquareMousePointer, text: Type, video: Music, divider: Minus, contacts: LayoutList }
+const ICON = { save_contact: UserPlus, form: ClipboardList, button: SquareMousePointer, text: Type, video: Music, divider: Minus, contacts: LayoutList }
 const META = Object.fromEntries(BLOCK_TYPES.map((t) => [t.type, t]))
 const taken = computed(() => new Set(blocks.value.filter((b) => SINGLE.includes(b.type)).map((b) => b.type)))
 const full = computed(() => blocks.value.length >= MAX_BLOCKS)
@@ -32,6 +34,23 @@ function move(i, d) {
   ;[list[i], list[j]] = [list[j], list[i]]
   blocks.value = list
 }
+// ── pertanyaan formulir ──
+const FIELD_OPTIONS = FIELD_TYPES.map((t) => ({ value: t.type, label: t.label }))
+function addField(b) {
+  if (b.data.fields.length < MAX_FIELDS) b.data.fields = [...b.data.fields, newField()]
+}
+function moveField(b, k, d) {
+  const j = k + d
+  if (j < 0 || j >= b.data.fields.length) return
+  const list = [...b.data.fields]
+  ;[list[k], list[j]] = [list[j], list[k]]
+  b.data.fields = list
+}
+function setFieldType(f, type) {
+  f.type = type
+  if (hasOptions(type) && f.options.length < 2) f.options = [...f.options, '', ''].slice(0, Math.max(2, f.options.length))
+}
+
 function remove(i) {
   blocks.value = blocks.value.filter((_, k) => k !== i)
 }
@@ -81,6 +100,47 @@ function remove(i) {
 
         <template v-else-if="b.type === 'divider'">
           <AppSegmented v-model="b.data.style" label="Jenis pemisah" :options="[{ value: 'line', label: 'Garis' }, { value: 'space', label: 'Jarak kosong' }]" />
+        </template>
+
+        <template v-else-if="b.type === 'form'">
+          <div class="grid gap-4 sm:grid-cols-2">
+            <AppField label="Teks tombol" :error="err(i, 'label')"><AppInput v-model="b.data.label" maxlength="40" placeholder="mis. Ajak Kolaborasi" :invalid="!!err(i, 'label')" /></AppField>
+            <AppField label="Judul formulir (opsional)"><AppInput v-model="b.data.title" maxlength="80" :placeholder="b.data.label || 'Sama dengan teks tombol'" /></AppField>
+          </div>
+          <AppField label="Keterangan (opsional)"><AppTextarea v-model="b.data.description" maxlength="300" rows="2" placeholder="mis. Ceritakan kebutuhan Anda, saya balas maks. 1×24 jam." /></AppField>
+          <div class="grid gap-2">
+            <span class="label">Kontak pengirim (selalu diminta)</span>
+            <AppSegmented v-model="b.data.contact" label="Kontak pengirim" :options="[{ value: 'both', label: 'WA atau email' }, { value: 'whatsapp', label: 'WhatsApp' }, { value: 'email', label: 'Email' }]" />
+            <span class="text-sm text-muted">Nama selalu wajib. Jawaban masuk ke <b class="text-fg">Koneksi</b> & Anda mendapat notifikasi.</span>
+          </div>
+
+          <div class="grid gap-2">
+            <span class="label">Pertanyaan ({{ b.data.fields.length }}/{{ MAX_FIELDS }})</span>
+            <p v-if="err(i, 'fields')" class="text-sm text-danger" role="alert">{{ err(i, 'fields') }}</p>
+            <ol class="grid grid-cols-1 gap-2">
+              <li v-for="(f, k) in b.data.fields" :key="f.id || f.key" class="grid grid-cols-1 gap-3 rounded-md border border-line bg-surface-2 p-3">
+                <div class="flex items-center gap-1">
+                  <span class="min-w-0 flex-1 truncate text-sm font-semibold">{{ k + 1 }}. {{ f.label || 'Pertanyaan baru' }}</span>
+                  <AppButton variant="ghost" icon class="!min-h-9 !w-9" :disabled="k === 0" aria-label="Naikkan pertanyaan" @click="moveField(b, k, -1)"><ArrowUp class="size-4" /></AppButton>
+                  <AppButton variant="ghost" icon class="!min-h-9 !w-9" :disabled="k === b.data.fields.length - 1" aria-label="Turunkan pertanyaan" @click="moveField(b, k, 1)"><ArrowDown class="size-4" /></AppButton>
+                  <AppButton variant="ghost" icon class="!min-h-9 !w-9" aria-label="Hapus pertanyaan" @click="b.data.fields.splice(k, 1)"><X class="size-4" /></AppButton>
+                </div>
+                <div class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_180px]">
+                  <AppField label="Pertanyaan" :error="err(i, `fields.${k}.label`)"><AppInput v-model="f.label" maxlength="80" placeholder="mis. Nama brand" :invalid="!!err(i, `fields.${k}.label`)" /></AppField>
+                  <AppField label="Jenis isian"><AppSelect :model-value="f.type" :options="FIELD_OPTIONS" :searchable="false" :aria-label="`Jenis isian ${k + 1}`" @update:model-value="(v) => setFieldType(f, v)" /></AppField>
+                </div>
+                <AppField v-if="hasOptions(f.type)" label="Pilihan (satu per baris)" :error="err(i, `fields.${k}.options`)">
+                  <AppTextarea :model-value="f.options.join('\n')" rows="3" :invalid="!!err(i, `fields.${k}.options`)" placeholder="Endorse&#10;Review&#10;Event" @update:model-value="(v) => (f.options = v.split('\n'))" />
+                </AppField>
+                <AppField v-else-if="f.type !== 'date'" label="Contoh isian (opsional)"><AppInput v-model="f.placeholder" maxlength="80" /></AppField>
+                <AppCheckbox v-model="f.required">Wajib dijawab</AppCheckbox>
+              </li>
+            </ol>
+            <AppButton v-if="b.data.fields.length < MAX_FIELDS" variant="secondary" class="w-fit" @click="addField(b)"><Plus class="size-5" /> Tambah pertanyaan</AppButton>
+          </div>
+
+          <AppField label="Pesan setelah terkirim (opsional)"><AppInput v-model="b.data.success" maxlength="200" :placeholder="FORM_SUCCESS" /></AppField>
+          <AppSegmented v-model="b.data.style" label="Gaya tombol" :options="[{ value: 'primary', label: 'Menonjol' }, { value: 'secondary', label: 'Biasa' }]" />
         </template>
 
         <template v-else-if="b.type === 'save_contact'">

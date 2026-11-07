@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Public\CardResolverController;
 use App\Http\Controllers\Public\PublicCardController;
+use App\Http\Controllers\Public\PublicFormController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -20,6 +21,7 @@ Route::middleware('throttle:tap')->where(['token' => '[0-9A-Za-z]{10}'])->group(
 
 Route::controller(PublicCardController::class)->where(['token' => '[0-9A-Za-z]{10}'])->group(function () {
     Route::post('/api/c/{token}/connect', 'connect')->middleware('throttle:connect')->name('card.connect');
+    Route::post('/api/c/{token}/forms/{block}', [PublicFormController::class, 'submit'])->where('block', '[0-9A-Z]{26}')->middleware('throttle:bio-form')->name('card.form');
     Route::post('/api/shortcode', 'shortCode')->middleware('throttle:shortcode')->name('shortcode');
     Route::get('/@{handle}', 'handleRedirect')->where('handle', '[a-z0-9_.]{3,30}')->middleware('throttle:tap')->name('handle.redirect');
     Route::get('/api/handle/{handle}', 'handle')->where('handle', '[a-z0-9_.]{3,30}')->name('handle');

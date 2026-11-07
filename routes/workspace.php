@@ -115,6 +115,7 @@ Route::middleware('auth')->prefix('api')->name('api.')->group(function () {
     Route::patch('/events/{event}', [EventController::class, 'update'])->name('events.update');
     Route::delete('/events/{event}', [EventController::class, 'destroy'])->name('events.destroy');
     Route::post('/events/{event}/activate', [EventController::class, 'activate'])->name('events.activate');
+    Route::put('/events/{event}/cards', [EventController::class, 'cards'])->name('events.cards');
     Route::get('/pipeline/stages', [ConnectionController::class, 'stages'])->name('stages');
 
     Route::get('/analytics/cards', [AnalyticsController::class, 'cards'])->name('analytics.cards');

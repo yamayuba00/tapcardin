@@ -47,7 +47,7 @@ export function delta(current, previous) {
 export const SOURCE_LABELS = {
   nfc: 'NFC', qr: 'QR', dynamic_qr: 'QR aman', code: 'Kode', link: 'Tautan', app: 'Aplikasi',
   exchange_form: 'Tukar Kontak', scan_tapcard: 'Scan TapCard', scan_external: 'Scan kartu lain',
-  manual: 'Manual', import: 'Impor', event_checkin: 'Check-in', saved_from_profile: 'Dari profil',
+  manual: 'Manual', import: 'Impor', event_checkin: 'Check-in', saved_from_profile: 'Dari profil', bio_form: 'Formulir bio',
 }
 export const sourceLabel = (s) => SOURCE_LABELS[s] ?? s
 

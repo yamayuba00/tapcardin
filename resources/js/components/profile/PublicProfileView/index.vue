@@ -106,7 +106,7 @@ const nameCls = computed(() => [
           <a v-else-if="b.type === 'save_contact'" :href="profile.vcard_url || undefined" :class="primaryBtn" :aria-disabled="preview || undefined">
             <UserPlus class="size-5 flex-none" /> <span class="[overflow-wrap:anywhere]">{{ b.label }}</span>
           </a>
-          <BioBlock v-else-if="b.type !== 'contacts'" :block="b" :theme="t" :corner="corner" :preview="preview" />
+          <BioBlock v-else-if="b.type !== 'contacts'" :block="b" :theme="t" :corner="corner" :preview="preview" :owner="profile.display_name" />
         </template>
 
         <button class="cursor-pointer" v-if="profile.exchange" type="button" :class="secondaryBtn" @click="exchanging = true"><Users class="size-5" /> Tukar Kontak</button>

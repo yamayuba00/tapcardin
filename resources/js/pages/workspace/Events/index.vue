@@ -23,7 +23,7 @@ const active = computed(() => list.meta.value?.active ?? null)
 const STATUS = { live: ['ok', 'Berlangsung'], upcoming: ['info', 'Akan datang'], past: ['muted', 'Selesai'] }
 const COLUMNS = [
   { key: 'name', label: 'Event', sortable: true }, { key: 'starts_at', label: 'Waktu', sortable: true },
-  { key: 'status', label: 'Status' }, { key: 'connections', label: 'Koneksi', sortable: true, align: 'right' },
+  { key: 'status', label: 'Status' }, { key: 'cards', label: 'Kartu', align: 'right' }, { key: 'connections', label: 'Koneksi', sortable: true, align: 'right' },
 ]
 
 const creating = ref(false)
@@ -75,6 +75,7 @@ async function stop() {
     </template>
     <template #cell-starts_at="{ row: e }"><span class="font-mono text-sm">{{ dateTime(e.starts_at) }}</span><span class="block font-mono text-xs text-muted">s.d. {{ dateTime(e.ends_at) }}</span></template>
     <template #cell-status="{ row: e }"><AppBadge :tone="STATUS[e.status][0]">{{ STATUS[e.status][1] }}</AppBadge></template>
+    <template #cell-cards="{ row: e }"><span class="num">{{ e.cards_count ?? 0 }}</span></template>
     <template #cell-connections="{ row: e }"><span class="num">{{ e.connections_count }}</span></template>
   </DataTable>
 

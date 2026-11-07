@@ -163,6 +163,6 @@ class LeadDashboardController extends WorkspaceController
 
     private const SOURCE_LABELS = [
         'exchange_form' => 'Tukar Kontak', 'scan_tapcard' => 'Scan TapCard', 'scan_external' => 'Scan kartu lain',
-        'manual' => 'Input manual', 'import' => 'Impor CSV', 'event_checkin' => 'Check-in event', 'saved_from_profile' => 'Simpan dari profil',
+        'manual' => 'Input manual', 'import' => 'Impor CSV', 'event_checkin' => 'Check-in event', 'saved_from_profile' => 'Simpan dari profil', 'bio_form' => 'Formulir bio link',
     ];
 }

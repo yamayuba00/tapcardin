@@ -29,6 +29,8 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('tap', fn (Request $r) => Limit::perMinute(60)->by($ip($r).'|'.$r->route('token')));
         RateLimiter::for('vcard', fn (Request $r) => Limit::perMinute(30)->by($ip($r)));
         RateLimiter::for('connect', fn (Request $r) => Limit::perMinutes(10, 5)->by($ip($r)));
+        // formulir bio: lebih longgar (salah isi pertanyaan wajib ikut terhitung), per IP + kartu
+        RateLimiter::for('bio-form', fn (Request $r) => Limit::perMinutes(10, 10)->by($ip($r).'|'.$r->route('token')));
         RateLimiter::for('shortcode', fn (Request $r) => Limit::perMinute(20)->by($ip($r)));
         RateLimiter::for('activate', fn (Request $r) => [
             // dinormalisasi agar variasi penulisan kode pendek tidak menghindari batas

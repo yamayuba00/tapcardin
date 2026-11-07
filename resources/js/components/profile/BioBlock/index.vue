@@ -1,15 +1,18 @@
 <script setup>
 // Satu blok bio link versi publik (lihat App\Support\Bio\BioBlocks::present). Blok "contacts" dirender oleh
 // PublicProfileView karena memakai daftar kontak profil. Video hanya dari penyedia yang diizinkan server (CSP frame-src).
-import { computed } from 'vue'
-import { ArrowUpRight } from 'lucide-vue-next'
+import { computed, ref } from 'vue'
+import { ArrowUpRight, ClipboardList } from 'lucide-vue-next'
+import BioFormSheet from '@/components/profile/BioFormSheet/index.vue'
 
 const props = defineProps({
   block: { type: Object, required: true },
   theme: { type: Object, required: true },
   corner: { type: String, default: 'rounded-md' },
   preview: Boolean,
+  owner: { type: String, default: '' }, // nama pemilik (teks persetujuan formulir)
 })
+const formOpen = ref(false)
 
 const external = computed(() => /^https?:/i.test(props.block.url ?? ''))
 const buttonCls = computed(() => [
@@ -18,7 +21,7 @@ const buttonCls = computed(() => [
   props.block.style === 'secondary'
     ? 'border border-line-strong bg-surface text-fg hover:bg-surface-2'
     : props.theme.button === 'solid' ? 'bg-accent text-accent-ink hover:opacity-90' : 'border-2 border-accent text-accent-text hover:bg-surface-2',
-  props.preview ? 'pointer-events-none' : '',
+  props.preview && props.block.type === 'button' ? 'pointer-events-none' : '',
 ])
 const frameStyle = computed(() => (props.block.ratio ? { aspectRatio: props.block.ratio } : { height: `${props.block.height}px` }))
 const PROVIDER = { youtube: 'YouTube', vimeo: 'Vimeo', tiktok: 'TikTok', spotify: 'Spotify' }
@@ -35,6 +38,14 @@ const PROVIDER = { youtube: 'YouTube', vimeo: 'Vimeo', tiktok: 'TikTok', spotify
     <span class="[overflow-wrap:anywhere]">{{ block.label }}</span>
     <ArrowUpRight v-if="external" class="size-5 flex-none" aria-hidden="true" />
   </a>
+
+  <!-- formulir: tombol membuka lembar isian (di preview editor tetap bisa dicoba, tanpa mengirim) -->
+  <template v-else-if="block.type === 'form'">
+    <button type="button" :class="['cursor-pointer', buttonCls]" @click="formOpen = true">
+      <ClipboardList class="size-5 flex-none" aria-hidden="true" /><span class="[overflow-wrap:anywhere]">{{ block.label }}</span>
+    </button>
+    <BioFormSheet v-if="formOpen" :block="block" :owner="owner" :preview="preview" @close="formOpen = false" />
+  </template>
 
   <section v-else-if="block.type === 'text'" :class="['grid gap-2', block.align === 'center' ? 'text-center' : '']">
     <h2 v-if="block.title" class="text-xl leading-tight font-bold [overflow-wrap:anywhere]">{{ block.title }}</h2>

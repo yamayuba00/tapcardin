@@ -65,8 +65,11 @@ final class PublicProfile
                     'image' => $type['action'] === 'image' ? Storage::disk('public')->url($f['value']) : null,
                 ];
             }, $view->fields))),
-            'blocks' => $view->blocks === null ? null
-                : array_map(fn ($b) => BioBlocks::present($b['id'], $b['type'], $b['data']), $view->blocks),
+            'blocks' => $view->blocks === null ? null : array_map(fn ($b) => BioBlocks::present($b['id'], $b['type'], $b['data']) + ($b['type'] === 'form' ? [
+                // alamat kirim & waktu render terenkripsi (anti-bot) per formulir
+                'url' => $preview ? null : config('tapcard.resolver_url')."/api/c/{$view->token}/forms/{$b['id']}",
+                't' => $preview ? null : Crypt::encryptString((string) time()),
+            ] : []), $view->blocks),
             'vcard_url' => $preview ? null : "$base/vcard",
             'exchange' => $p['show_exchange_form'] ? [
                 'url' => $preview ? null : config('tapcard.resolver_url')."/api/c/{$view->token}/connect",

@@ -132,6 +132,23 @@ const activityText = (a) => (a.type === 'stage_changed'
         </div>
       </AppPanel>
 
+      <AppPanel v-if="c.forms?.length" title="Jawaban formulir" class="md:col-span-2">
+        <div class="grid gap-4">
+          <article v-for="f in c.forms" :key="f.id" class="grid gap-3 rounded-md border border-line p-4">
+            <header class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+              <h3 class="font-semibold">{{ f.title }}</h3>
+              <span class="text-sm text-muted">{{ dateTime(f.created_at) }}<template v-if="f.card"> · {{ f.card.label }}</template><template v-if="f.event"> · {{ f.event }}</template></span>
+            </header>
+            <dl class="grid gap-x-4 gap-y-2 text-sm sm:grid-cols-[minmax(120px,200px)_minmax(0,1fr)]">
+              <template v-for="(a, i) in f.answers" :key="i">
+                <dt class="text-muted">{{ a.label }}</dt>
+                <dd class="whitespace-pre-line break-words">{{ Array.isArray(a.value) ? a.value.join(', ') : a.value }}</dd>
+              </template>
+            </dl>
+          </article>
+        </div>
+      </AppPanel>
+
       <AppPanel title="Timeline">
         <form class="mb-4 grid gap-2" @submit.prevent="addNote">
           <AppTextarea v-model="note" placeholder="Tulis catatan…" aria-label="Catatan baru" />

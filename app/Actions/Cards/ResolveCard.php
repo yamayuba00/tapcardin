@@ -2,12 +2,11 @@
 
 namespace App\Actions\Cards;
 
+use App\Actions\Events\EventForCard;
 use App\Http\Resources\PublicProfile;
 use App\Jobs\RecordTap;
 use App\Jobs\TapContext;
 use App\Models\Event;
-use App\Models\TenantMember;
-use App\Tenancy\TenantScope;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -68,18 +67,10 @@ final class ResolveCard
         ] : null;
     }
 
-    /** "Bertemu di {Event}" bila Mode Event pemegang aktif & event mengizinkan tampil di profil (AFD F-10). */
+    /** "Bertemu di {Event}" bila kartu sedang di event (di-assign / Mode Event) & event mengizinkan tampil di profil (AFD F-10). */
     private function activeEvent(CardView $view): ?string
     {
-        if (! $view->holderUserId || ! $view->tenantId) {
-            return null;
-        }
-        $member = TenantMember::withoutGlobalScope(TenantScope::class)
-            ->where(['tenant_id' => $view->tenantId, 'user_id' => $view->holderUserId])->first();
-        if (! $member?->active_event_id || ! $member->active_event_until?->isFuture()) {
-            return null;
-        }
-        $event = Event::withoutGlobalScope(TenantScope::class)->find($member->active_event_id);
+        $event = EventForCard::at($view->tenantId, $view->cardId, $view->holderUserId, now());
 
         return ($event?->settings['show_on_profile'] ?? false) ? $event->name : null;
     }

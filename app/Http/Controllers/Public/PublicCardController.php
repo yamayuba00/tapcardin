@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Public;
 
 use App\Actions\Cards\CardView;
 use App\Actions\Cards\ShareQr;
+use App\Actions\Events\EventForCard;
 use App\Actions\Leads\CreateConnection;
 use App\Enums\LeadSource;
 use App\Exceptions\ApiError;
@@ -14,7 +15,6 @@ use App\Models\ProductEvent;
 use App\Models\ProfileField;
 use App\Models\Tap;
 use App\Models\Tenant;
-use App\Models\TenantMember;
 use App\Models\User;
 use App\Support\Contacts\ContactTypes;
 use App\Support\Contacts\ContactValue;
@@ -45,7 +45,7 @@ class PublicCardController extends Controller
      */
     public function vcard(Request $request, string $token): Response|RedirectResponse
     {
-        $view = $this->activeView($token);
+        $view = self::activeView($token);
         $p = $view->profile;
         $fresh = ! $request->boolean('file');
         if ($fresh && self::opensAndroidIntent((string) $request->userAgent())) {
@@ -90,7 +90,7 @@ class PublicCardController extends Controller
     /** POST /api/c/{token}/connect — Tukar Kontak → lead (AFD F-08, BSD §8.4 contoh). */
     public function connect(Request $request, string $token, CurrentTenant $current, CreateConnection $create): JsonResponse
     {
-        $view = $this->activeView($token);
+        $view = self::activeView($token);
         abort_unless($view->profile['show_exchange_form'] ?? false, 404);
 
         $data = $request->validate([
@@ -115,14 +115,13 @@ class PublicCardController extends Controller
         }
 
         // Spam → sukses palsu tanpa menyimpan agar bot tidak belajar (AFD F-08).
-        if (! empty($data['website']) || $this->tooFast($data['t'] ?? null)) {
+        if (! empty($data['website']) || self::tooFast($data['t'] ?? null)) {
             return response()->json(['data' => ['status' => 'sent']], 201);
         }
 
         $tenant = Tenant::findOrFail($view->tenantId);
         $current->run($tenant, function () use ($create, $data, $view, $tenant) {
-            $member = TenantMember::where('user_id', $view->holderUserId)->first();
-            $eventId = $member?->active_event_until?->isFuture() ? $member->active_event_id : null;
+            $eventId = EventForCard::at($tenant->id, $view->cardId, $view->holderUserId, now())?->id;
             try {
                 $create->handle([
                     'name' => $data['name'],
@@ -145,7 +144,7 @@ class PublicCardController extends Controller
     /** GET /c/{token}/l/{field} — redirect tautan + hitung klik. */
     public function link(string $token, string $field): RedirectResponse
     {
-        $view = $this->activeView($token);
+        $view = self::activeView($token);
         $f = collect($view->fields)->firstWhere('id', $field);
         abort_if($f === null, 404);
 
@@ -210,7 +209,8 @@ class PublicCardController extends Controller
         return $user ? Card::forHandle($user)?->card_token : null;
     }
 
-    private function activeView(string $token): CardView
+    /** Kartu aktif dengan profil (resolver publik); dipakai juga oleh PublicFormController. */
+    public static function activeView(string $token): CardView
     {
         $view = CardView::cached($token);
         abort_if($view === null || $view->status !== 'active' || $view->profile === null || $view->tenantSuspended, 404);
@@ -218,7 +218,6 @@ class PublicCardController extends Controller
         return $view;
     }
 
-    /** Tandai tap terakhir pengunjung ini sebagai "simpan kontak" (metrik PRD §6). */
     /** Peramban Android yang menangani URL intent: (WebView aplikasi lain seperti Instagram/Facebook tidak). */
     public static function opensAndroidIntent(string $ua): bool
     {
@@ -258,6 +257,7 @@ class PublicCardController extends Controller
         return $intent.'end';
     }
 
+    /** Tandai tap terakhir pengunjung ini sebagai "simpan kontak" (metrik PRD §6). */
     private function markSavedContact(Request $request, CardView $view): void
     {
         $visitor = Hasher::visitor($request->ip(), $request->userAgent(), now('Asia/Jakarta')->toDateString());
@@ -270,7 +270,8 @@ class PublicCardController extends Controller
         ProductEvent::record('vcard_downloaded', $view->tenantId, null, ['card' => $view->token]);
     }
 
-    private function tooFast(?string $t): bool
+    /** Kiriman < 2 detik setelah form dirender dianggap bot (TRD §11). */
+    public static function tooFast(?string $t): bool
     {
         try {
             return $t === null || (time() - (int) Crypt::decryptString($t)) < 2;

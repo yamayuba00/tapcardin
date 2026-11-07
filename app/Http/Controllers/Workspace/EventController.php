@@ -2,14 +2,19 @@
 
 namespace App\Http\Controllers\Workspace;
 
+use App\Models\Card;
 use App\Models\Connection;
 use App\Models\Event;
+use App\Models\EventCard;
 use App\Models\ProductEvent;
 use App\Models\Tap;
 use App\Models\TenantMember;
 use App\Support\Http\Table;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 /**
  * U-09 / AFD F-10 — Mode Event. Selama "Saya sedang di event ini" aktif, setiap tap & koneksi
@@ -20,7 +25,7 @@ class EventController extends WorkspaceController
     public function index(Request $request): JsonResponse
     {
         $this->access()->authorize('events.manage.*');
-        $q = Event::query()->withCount('connections')
+        $q = Event::query()->withCount(['connections', 'cards'])
             ->when($request->query('when') === 'upcoming', fn ($w) => $w->where('ends_at', '>=', now()))
             ->when($request->query('when') === 'past', fn ($w) => $w->where('ends_at', '<', now()));
         $active = $this->member()?->active_event_until?->isFuture() ? $this->member()->active_event_id : null;
@@ -36,12 +41,19 @@ class EventController extends WorkspaceController
     public function store(Request $request): JsonResponse
     {
         $this->access()->authorize('events.manage.*');
-        $event = Event::create($this->validated($request) + ['created_by' => $this->user()->id]);
+        $event = DB::transaction(function () use ($request) {
+            $event = Event::create($this->validated($request) + ['created_by' => $this->user()->id]);
+            if ($request->has('cards')) {
+                $this->syncCards($request, $event); // kartu bisa langsung dipilih saat membuat event
+            }
+
+            return $event;
+        });
         if ($request->boolean('activate')) {
             $this->setActive($event);
         }
 
-        return response()->json(['data' => self::present($event->loadCount('connections'), $request->boolean('activate') ? $event->id : null)], 201);
+        return response()->json(['data' => self::present($event->loadCount(['connections', 'cards']), $request->boolean('activate') ? $event->id : null)], 201);
     }
 
     /** Ringkasan setelah/selama event (AFD F-10 langkah 4). */
@@ -55,7 +67,12 @@ class EventController extends WorkspaceController
             ->selectRaw('lead_stages.name as label, count(*) as value')->groupBy('lead_stages.name', 'lead_stages.sort')->orderBy('lead_stages.sort')->get();
         $active = $this->member()?->active_event_until?->isFuture() ? $this->member()->active_event_id : null;
 
-        return response()->json(['data' => self::present($event->loadCount('connections'), $active) + [
+        $assigned = EventCard::where('event_id', $event->id)->with('card')->get()->pluck('card')->filter();
+
+        return response()->json(['data' => self::present($event->loadCount(['connections', 'cards']), $active) + [
+            'cards' => $assigned->map(fn (Card $c) => self::card($c))->values(),
+            // kartu yang boleh di-assign: milik sendiri, atau semua kartu workspace bila punya izin lihat semua
+            'available_cards' => $this->assignable()->get()->map(fn (Card $c) => self::card($c)),
             'summary' => [
                 'taps' => (int) $taps->taps, 'visitors' => (int) $taps->visitors, 'saved' => (int) $taps->saved,
                 'connections' => (clone $leads)->count(),
@@ -82,6 +99,48 @@ class EventController extends WorkspaceController
         $event->delete();
 
         return response()->json(null, 204);
+    }
+
+    /** PUT /api/events/{id}/cards — kartu yang dibawa ke event (ganti seluruh daftar). */
+    public function cards(Request $request, Event $event): JsonResponse
+    {
+        $this->access()->authorize('events.manage.*');
+        $this->syncCards($request, $event);
+
+        return $this->show($event);
+    }
+
+    private function syncCards(Request $request, Event $event): void
+    {
+        $data = $request->validate(['cards' => ['present', 'array', 'max:200'], 'cards.*' => ['string', 'size:10']]);
+        $ids = $this->assignable()->whereIn('card_token', $data['cards'])->pluck('id');
+        if ($ids->count() !== count(array_unique($data['cards']))) {
+            throw ValidationException::withMessages(['cards' => 'Ada kartu yang tidak ditemukan atau bukan milik Anda.']);
+        }
+        DB::transaction(function () use ($event, $ids) {
+            EventCard::where('event_id', $event->id)->whereNotIn('card_id', $ids)->delete();
+            $have = EventCard::where('event_id', $event->id)->pluck('card_id');
+            foreach ($ids->diff($have) as $id) {
+                EventCard::create(['event_id' => $event->id, 'card_id' => $id, 'assigned_by' => $this->user()->id]);
+            }
+        });
+        // "Bertemu di {Event}" di profil kartu ikut berubah
+        Card::whereIn('id', $ids)->pluck('card_token')->each(function ($t) {
+            Cache::forget("card:$t");
+        });
+    }
+
+    /** Kartu aktif/dijeda yang boleh dibawa ke event oleh pengguna ini. */
+    private function assignable()
+    {
+        $q = Card::query()->whereIn('status', ['active', 'paused'])->orderByRaw("form = 'digital'")->orderBy('label');
+
+        return $this->access()->has('cards.view.all') ? $q : $q->where('holder_user_id', $this->user()->id);
+    }
+
+    public static function card(Card $c): array
+    {
+        return ['token' => $c->card_token, 'label' => $c->label ?: 'Kartu '.$c->formattedShortCode(), 'short_code' => $c->formattedShortCode(), 'form' => $c->form, 'status' => $c->status->value];
     }
 
     /** POST /api/events/{id}/activate — "Saya sedang di event ini" sampai `ends_at`. */
@@ -141,6 +200,7 @@ class EventController extends WorkspaceController
             'ends_at' => $e->ends_at->toIso8601String(),
             'show_on_profile' => (bool) ($e->settings['show_on_profile'] ?? false),
             'connections_count' => $e->connections_count ?? null,
+            'cards_count' => $e->cards_count ?? null,
             'is_active' => $activeId === $e->id,
             'status' => $e->ends_at->isPast() ? 'past' : ($e->starts_at->isFuture() ? 'upcoming' : 'live'),
         ];

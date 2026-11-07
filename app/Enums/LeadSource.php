@@ -11,4 +11,5 @@ enum LeadSource: string
     case Import = 'import';
     case EventCheckin = 'event_checkin';
     case SavedFromProfile = 'saved_from_profile';
+    case BioForm = 'bio_form';
 }

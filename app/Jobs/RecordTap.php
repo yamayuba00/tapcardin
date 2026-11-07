@@ -2,11 +2,11 @@
 
 namespace App\Jobs;
 
+use App\Actions\Events\EventForCard;
 use App\Enums\CardStatus;
 use App\Models\Card;
 use App\Models\Tap;
 use App\Models\TeamMember;
-use App\Models\TenantMember;
 use App\Support\Notify;
 use App\Tenancy\TenantAwareJob;
 use Illuminate\Bus\Queueable;
@@ -39,10 +39,8 @@ class RecordTap implements ShouldQueue
         }
         $at = Carbon::parse($this->ctx->at);
 
-        $member = $card->holder_user_id
-            ? TenantMember::where('user_id', $card->holder_user_id)->first()
-            : null;
-        $eventId = $member && $member->active_event_until?->isAfter($at) ? $member->active_event_id : null;
+        // event kartu (di-assign & sedang berlangsung) atau Mode Event pemegang
+        $eventId = EventForCard::at($this->tenantId, $card->id, $card->holder_user_id, $at)?->id;
         $teamId = $card->holder_user_id
             ? TeamMember::where('user_id', $card->holder_user_id)->orderBy('created_at')->value('team_id')
             : null;

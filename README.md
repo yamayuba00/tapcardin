@@ -20,9 +20,10 @@ sebelum kartu fisiknya tiba.
   45 jenis kontak (WhatsApp, sosial media, toko online, rekening bank, QRIS, e-wallet), **Simpan Kontak** (vCard).
   Halaman disusun dari **blok** (simpan kontak, tombol, teks, video YouTube/TikTok/Vimeo/Spotify, pemisah, kontak) dan
   satu kartu bisa punya **3 bio link** (mis. Kerja / Pameran / Personal) — hanya satu yang aktif saat kartu di-tap.
+  Blok **Formulir**: pertanyaan dibuat pemilik (teks, pilihan, tanggal, angka, dll.); jawaban masuk ke Koneksi.
 - **Tukar Kontak & koneksi** — lawan bicara mengirim kontaknya lewat formulir dengan persetujuan tercatat; koneksi
   punya tahap pipeline, catatan, tag, pengingat follow-up, impor/ekspor CSV, dan dashboard lead yang bisa diatur.
-- **Mode Event & Mode Reader** — tandai koneksi per acara; baca kartu orang lain lewat NFC, kamera QR, atau kode.
+- **Event, Mode Event & Mode Reader** — bawa kartu ke event (tap, Tukar Kontak & formulir dari kartu itu otomatis tercatat ke event selama berlangsung) atau tandai lewat Mode Event; baca kartu orang lain lewat NFC, kamera QR, atau kode.
 - **Analitik** — jumlah tap, pengunjung unik, simpan kontak, sumber (NFC / QR / tautan), kota, tautan terpopuler.
 - **Notifikasi realtime** & aplikasi yang bisa **dipasang di layar utama** (PWA) dengan pintasan "Bagikan kartu".
 - **Panduan awal** — checklist kelengkapan bio, @nama, berbagi kartu, dan kartu fisik di Beranda.

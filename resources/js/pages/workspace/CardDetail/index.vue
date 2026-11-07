@@ -4,7 +4,7 @@
 // Kartu fisik: pemegang mengatur kode akun 6 angka agar kartu bisa dipakai masuk (kartu NFC + kode akun).
 import { ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { Check, CircleAlert, Copy, Eye, KeyRound, Nfc, Pause, Pencil, Play, QrCode, RefreshCw, Share2, Smartphone } from 'lucide-vue-next'
+import { CalendarDays, Check, CircleAlert, Copy, Eye, KeyRound, Nfc, Pause, Pencil, Play, QrCode, RefreshCw, Share2, Smartphone } from 'lucide-vue-next'
 import AppBadge from '@/components/ui/AppBadge/index.vue'
 import AppButton from '@/components/ui/AppButton/index.vue'
 import AppField from '@/components/ui/AppField/index.vue'
@@ -150,6 +150,23 @@ async function copy() {
         </div>
       </AppPanel>
     </div>
+
+    <AppPanel title="Event kartu ini">
+      <template #actions><AppButton variant="ghost" to="/events">Kelola event</AppButton></template>
+      <ul v-if="card.events?.length" class="grid gap-1">
+        <li v-for="ev in card.events" :key="ev.id">
+          <RouterLink :to="`/events/${ev.id}`" class="flex min-h-12 items-center gap-3 rounded-sm px-1 no-underline hover:bg-surface-2">
+            <CalendarDays class="size-5 flex-none text-accent-text" aria-hidden="true" />
+            <span class="grid min-w-0 flex-1">
+              <span class="truncate font-medium text-fg">{{ ev.name }}</span>
+              <span class="text-sm text-muted">{{ dateTime(ev.starts_at) }}{{ ev.location ? ` · ${ev.location}` : '' }}</span>
+            </span>
+            <AppBadge :tone="{ live: 'ok', upcoming: 'info', past: 'muted' }[ev.status]">{{ { live: 'Berlangsung', upcoming: 'Akan datang', past: 'Selesai' }[ev.status] }}</AppBadge>
+          </RouterLink>
+        </li>
+      </ul>
+      <p v-else class="text-sm text-muted">Belum dibawa ke event. Pilih kartu ini di halaman event agar tap & koneksi selama event tercatat otomatis.</p>
+    </AppPanel>
 
     <AppPanel v-if="card.login_key" title="Masuk dengan kartu ini">
       <div class="grid gap-4">

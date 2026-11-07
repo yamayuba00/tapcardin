@@ -2,6 +2,7 @@
 
 namespace App\Support\Bio;
 
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -11,7 +12,16 @@ use Illuminate\Validation\ValidationException;
  */
 final class BioBlocks
 {
-    public const TYPES = ['save_contact', 'contacts', 'button', 'text', 'video', 'divider'];
+    public const TYPES = ['save_contact', 'contacts', 'button', 'text', 'video', 'divider', 'form'];
+
+    /** Jenis isian formulir (tanpa unggah file/gambar). */
+    public const FIELD_TYPES = ['text', 'textarea', 'email', 'phone', 'number', 'select', 'multi', 'date'];
+
+    public const MAX_FIELDS = 12;
+
+    public const MAX_OPTIONS = 20;
+
+    public const FORM_SUCCESS = 'Terima kasih! Pesan Anda sudah terkirim.';
 
     /** Jenis yang cukup satu per halaman. */
     public const SINGLE = ['save_contact' => 'Simpan kontak', 'contacts' => 'Kontak & tautan'];
@@ -64,7 +74,63 @@ final class BioBlocks
                 return ['url' => mb_substr($url, 0, 500)] + $v;
             })(),
             'divider' => ['style' => $pick('style', ['line', 'space'])],
+            'form' => self::form($data, $key),
         };
+    }
+
+    /**
+     * Formulir buatan pemilik: teks tombol, judul, keterangan, pesan terima kasih, kontak wajib (nama + WhatsApp/email),
+     * dan maks. 12 pertanyaan. ID pertanyaan stabil (dipakai sebagai kunci jawaban); yang baru diberi ID acak.
+     */
+    private static function form(array $data, string $key): array
+    {
+        $fail = fn (string $field, string $msg) => throw ValidationException::withMessages(["$key.$field" => $msg]);
+        $str = fn (mixed $v, int $max) => mb_substr(trim((string) $v), 0, $max);
+        $label = $str($data['label'] ?? '', 40);
+        if ($label === '') {
+            $fail('label', 'Isi teks tombol formulir.');
+        }
+        $fields = array_values(array_filter((array) ($data['fields'] ?? []), 'is_array'));
+        if (count($fields) > self::MAX_FIELDS) {
+            $fail('fields', 'Maksimal '.self::MAX_FIELDS.' pertanyaan per formulir.');
+        }
+        $out = [];
+        $ids = [];
+        foreach ($fields as $i => $f) {
+            $type = in_array($f['type'] ?? null, self::FIELD_TYPES, true) ? $f['type'] : $fail("fields.$i.type", 'Jenis isian tidak dikenal.');
+            $q = $str($f['label'] ?? '', 80);
+            if ($q === '') {
+                $fail("fields.$i.label", 'Isi pertanyaannya.');
+            }
+            $id = preg_match('/^[a-z0-9]{6,12}$/', (string) ($f['id'] ?? '')) && ! isset($ids[$f['id']]) ? $f['id'] : strtolower(Str::random(8));
+            $ids[$id] = true;
+            $field = ['id' => $id, 'type' => $type, 'label' => $q, 'required' => (bool) ($f['required'] ?? false)];
+            if (in_array($type, ['select', 'multi'], true)) {
+                $opts = array_values(array_unique(array_filter(array_map(fn ($o) => $str($o, 60), (array) ($f['options'] ?? [])), fn ($o) => $o !== '')));
+                if (count($opts) < 2) {
+                    $fail("fields.$i.options", 'Isi minimal 2 pilihan (satu per baris).');
+                }
+                if (count($opts) > self::MAX_OPTIONS) {
+                    $fail("fields.$i.options", 'Maksimal '.self::MAX_OPTIONS.' pilihan.');
+                }
+                $field['options'] = $opts;
+            }
+            $hint = $str($f['placeholder'] ?? '', 80);
+            if ($hint !== '' && ! in_array($type, ['select', 'multi', 'date'], true)) {
+                $field['placeholder'] = $hint;
+            }
+            $out[] = $field;
+        }
+
+        return [
+            'label' => $label,
+            'style' => in_array($data['style'] ?? null, ['primary', 'secondary'], true) ? $data['style'] : 'primary',
+            'title' => $str($data['title'] ?? '', 80) ?: $label,
+            'description' => $str($data['description'] ?? '', 300),
+            'success' => $str($data['success'] ?? '', 200) ?: self::FORM_SUCCESS,
+            'contact' => in_array($data['contact'] ?? null, ['both', 'whatsapp', 'email'], true) ? $data['contact'] : 'both',
+            'fields' => $out,
+        ];
     }
 
     /** Isi halaman bio baru: tombol simpan kontak di atas, lalu daftar kontak. */

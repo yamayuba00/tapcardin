@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { blockPayload, embedOf, newBlock, parseVideo, presentBlock } from '../bioBlocks.js'
+import { blockPayload, editableData, embedOf, newBlock, newField, parseVideo, presentBlock } from '../bioBlocks.js'
 
 test('parseVideo mengenali penyedia yang sama dengan server', () => {
   const cases = {
@@ -55,4 +55,31 @@ test('blockPayload membuang kunci lokal', () => {
   const t = { ...newBlock('text'), id: '01ABC' }
   assert.deepEqual(blockPayload(t), { id: '01ABC', type: 'text', is_visible: true, data: { title: '', body: '', align: 'left' } })
   assert.equal(blockPayload(newBlock('text')).id, undefined)
+})
+
+test('formulir: pratinjau memakai judul bawaan, pertanyaan kosong & pilihan kosong dibuang', () => {
+  const f = newBlock('form')
+  assert.equal(presentBlock(f), null, 'tanpa teks tombol belum tampil')
+  f.data.label = 'Ajak Kolaborasi'
+  const q = newField('select')
+  q.label = 'Jenis'
+  q.options = ['Endorse', ' ', 'Review']
+  f.data.fields = [q, newField('text')]
+  const p = presentBlock(f)
+  assert.equal(p.title, 'Ajak Kolaborasi')
+  assert.equal(p.success, 'Terima kasih! Pesan Anda sudah terkirim.')
+  assert.deepEqual(p.fields.map((x) => x.label), ['Jenis'])
+  assert.deepEqual(p.fields[0].options, ['Endorse', 'Review'])
+  const payload = blockPayload(f).data.fields
+  assert.deepEqual(payload[0].options, ['Endorse', 'Review'])
+  assert.equal(payload[1].options, undefined)
+  assert.equal(payload[0].id, undefined, 'ID baru diberi server')
+})
+
+test('editableData melengkapi pertanyaan formulir dari server', () => {
+  const d = editableData('form', { label: 'X', fields: [{ id: 'abc123', type: 'text', label: 'Nama brand', required: true }] })
+  assert.deepEqual(d.fields[0], { key: 'abc123', placeholder: '', id: 'abc123', type: 'text', label: 'Nama brand', required: true, options: [] })
+  assert.equal(d.success, '')
+  const payload = blockPayload({ id: 'B1', type: 'form', is_visible: true, data: d }).data.fields[0]
+  assert.equal(payload.id, 'abc123', 'ID lama dipertahankan agar jawaban tetap terpetakan')
 })
