@@ -166,21 +166,21 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
   <EditorShell v-else :busy="saving">
     <template #top>
       <AppButton variant="ghost" icon aria-label="Kembali ke daftar desain" title="Kembali ke daftar desain" to="/designs"><ArrowLeft class="size-5" /></AppButton>
-      <AppInput v-model="design.name" maxlength="120" aria-label="Nama desain" title="Nama desain (klik untuk mengubah)" class="!min-h-10 max-w-52" @change="dirty = true" />
-      <AppSegmented :model-value="active" label="Sisi kartu" :options="[{ value: 'front', label: 'Depan' }, { value: 'back', label: 'Belakang' }]" @update:model-value="ed.switchSide" />
+      <AppInput v-model="design.name" maxlength="120" aria-label="Nama desain" title="Nama desain (klik untuk mengubah)" class="!min-h-10 max-w-52 max-sm:min-w-0 max-sm:max-w-none max-sm:flex-1" @change="dirty = true" />
+      <AppSegmented class="max-sm:order-1" :model-value="active" label="Sisi kartu" :options="[{ value: 'front', label: 'Depan' }, { value: 'back', label: 'Belakang' }]" @update:model-value="ed.switchSide" />
       <span class="mx-1 hidden h-6 w-px bg-line md:block" aria-hidden="true"></span>
-      <div class="flex items-center">
+      <div class="flex items-center max-sm:order-1">
         <AppButton variant="ghost" icon aria-label="Urungkan" title="Urungkan (Ctrl+Z)" :disabled="!ed.canUndo.value" @click="ed.undo"><Undo2 class="size-5" /></AppButton>
         <AppButton variant="ghost" icon aria-label="Ulangi" title="Ulangi (Ctrl+Y)" :disabled="!ed.canRedo.value" @click="ed.redo"><Redo2 class="size-5" /></AppButton>
       </div>
-      <div class="flex items-center">
+      <div class="flex items-center max-sm:hidden">
         <ZoomControl ref="zoomer" v-model="zoom" />
         <AppButton variant="ghost" icon :aria-pressed="grid > 0" aria-label="Tampilkan grid 5 mm" title="Grid 5 mm" :class="grid ? '!text-accent-text' : '!text-muted'" @click="grid = grid ? 0 : 5"><Grid3x3 class="size-5" /></AppButton>
         <AppButton variant="ghost" icon :aria-pressed="snap" aria-label="Tempel ke garis bantu" title="Tempel ke garis bantu (tahan Alt saat menggeser untuk bebas)" :class="snap ? '!text-accent-text' : '!text-muted'" @click="snap = !snap"><Magnet class="size-5" /></AppButton>
       </div>
       <div class="ml-auto flex items-center gap-2">
-        <SaveStatus :dirty="dirty" :saving="saving" />
-        <AppButton variant="secondary" class="hidden lg:inline-flex" title="Lihat hasil cetak & unduh PNG" @click="previewing = true"><Printer class="size-5" /> Pratinjau cetak</AppButton>
+        <SaveStatus :dirty="dirty" :saving="saving" class="max-sm:hidden" />
+        <AppButton variant="secondary" class="max-lg:!hidden" title="Lihat hasil cetak & unduh PNG" @click="previewing = true"><Printer class="size-5" /> Pratinjau cetak</AppButton>
         <AppMenu :items="menu" />
         <AppButton :loading="saving" title="Simpan (Ctrl+S)" @click="ed.save()">Simpan</AppButton>
       </div>
@@ -191,14 +191,14 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
     </template>
 
     <template #canvas>
-      <div class="sticky top-0 z-10 flex min-h-14 items-center justify-center p-2">
+      <div class="sticky top-0 z-10 flex min-h-14 items-center justify-center p-2 max-sm:min-h-0">
         <ArrangeBar
           v-if="selection.length && ed.editable.value.length"
           :count="selection.length" :grouped="grouped" :locked="anyLocked" :other-side="otherSide" :pair-label="paired ? 'lanyard' : null"
           @align="ed.align" @distribute="ed.distribute" @group="ed.group" @ungroup="ed.ungroup" @z="ed.zOrder" @lock="ed.toggleLock()"
           @other-side="ed.copyToOtherSide" @to-pair="copyToPair" @duplicate="ed.duplicate" @remove="ed.remove"
         />
-        <p v-else class="rounded-full bg-surface px-3 py-1 text-xs text-muted">Klik elemen untuk mengedit · Shift+klik atau seret area untuk memilih beberapa sekaligus</p>
+        <p v-else class="rounded-full bg-surface px-3 py-1 text-xs text-muted max-sm:hidden">Klik elemen untuk mengedit · Shift+klik atau seret area untuk memilih beberapa sekaligus</p>
       </div>
       <div class="grid min-h-[calc(100%-56px)] place-items-center gap-4 px-4 pb-10 sm:px-10">
         <div :class="zoom === 'fit' ? 'w-full' : 'max-w-none'" :style="canvasStyle">
@@ -210,7 +210,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         </div>
         <div class="grid max-w-2xl justify-items-center gap-2">
           <CanvasLegend :lanyard="design.lanyard" />
-          <p class="text-center text-xs text-muted">
+          <p class="hidden text-center text-xs text-muted sm:block">
             Pintasan: <kbd>T</kbd> teks · <kbd>R</kbd> kotak · <kbd>O</kbd> elips · <kbd>L</kbd> garis · panah geser 0,5 mm (Shift 2 mm) ·
             <kbd>Ctrl+D</kbd> duplikat · <kbd>Ctrl+G</kbd> kelompokkan · <kbd>+</kbd> <kbd>−</kbd> <kbd>0</kbd> zoom
           </p>

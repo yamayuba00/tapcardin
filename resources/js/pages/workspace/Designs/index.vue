@@ -80,9 +80,11 @@ const open = (d) => ({ lanyard: `/lanyards/${d.id}`, merch: `/merch/${d.id}` })[
 
 <template>
   <PageHeader eyebrow="Design Studio" title="Desain kartu, lanyard & merchandise">
-    <AppButton variant="secondary" :disabled="!catalog" @click="choosingMerch = true"><Plus class="size-5" /> Merchandise baru</AppButton>
-    <AppButton variant="secondary" :loading="busy && tab === 'lanyard'" :disabled="!catalog" @click="createLanyard"><Plus class="size-5" /> Lanyard baru</AppButton>
-    <AppButton :disabled="!catalog" @click="picking = true"><Plus class="size-5" /> Kartu baru</AppButton>
+    <!-- ponsel: satu tombol sesuai tab aktif; desktop: ketiganya -->
+    <AppButton class="sm:!hidden" :loading="busy" :disabled="!catalog" @click="startEmpty"><Plus class="size-5" /> {{ { card: 'Kartu', lanyard: 'Lanyard', merch: 'Merchandise' }[tab] }} baru</AppButton>
+    <AppButton variant="secondary" class="max-sm:!hidden" :disabled="!catalog" @click="choosingMerch = true"><Plus class="size-5" /> Merchandise baru</AppButton>
+    <AppButton variant="secondary" class="max-sm:!hidden" :loading="busy && tab === 'lanyard'" :disabled="!catalog" @click="createLanyard"><Plus class="size-5" /> Lanyard baru</AppButton>
+    <AppButton class="max-sm:!hidden" :disabled="!catalog" @click="picking = true"><Plus class="size-5" /> Kartu baru</AppButton>
   </PageHeader>
   <div class="flex flex-wrap items-center justify-between gap-3">
     <AppSegmented v-model="tab" label="Jenis desain" :options="[{ value: 'card', label: `Kartu (${counts.card})` }, { value: 'lanyard', label: `Lanyard (${counts.lanyard})` }, { value: 'merch', label: `Merchandise (${counts.merch})` }]" />

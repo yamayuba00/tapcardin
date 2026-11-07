@@ -106,25 +106,26 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
   <EditorShell v-else :busy="saving">
     <template #top>
       <AppButton variant="ghost" icon aria-label="Kembali ke daftar desain" title="Kembali ke daftar desain" :to="{ path: '/designs', query: { tab: 'merch' } }"><ArrowLeft class="size-5" /></AppButton>
-      <AppInput v-model="design.name" maxlength="120" :aria-label="`Nama desain ${spec.name}`" title="Nama desain (klik untuk mengubah)" class="!min-h-10 max-w-52" @change="dirty = true" />
+      <AppInput v-model="design.name" maxlength="120" :aria-label="`Nama desain ${spec.name}`" title="Nama desain (klik untuk mengubah)" class="!min-h-10 max-w-52 max-sm:min-w-0 max-sm:max-w-none max-sm:flex-1" @change="dirty = true" />
       <AppSegmented
+        class="max-sm:order-1"
         v-if="twoSided" :model-value="active" label="Sisi produk"
         :options="[{ value: 'front', label: 'Depan' }, { value: 'back', label: 'Belakang' }]" @update:model-value="ed.switchSide"
       />
       <span class="mx-1 hidden h-6 w-px bg-line md:block" aria-hidden="true"></span>
-      <div class="flex items-center">
+      <div class="flex items-center max-sm:order-1">
         <AppButton variant="ghost" icon aria-label="Urungkan" title="Urungkan (Ctrl+Z)" :disabled="!ed.canUndo.value" @click="ed.undo"><Undo2 class="size-5" /></AppButton>
         <AppButton variant="ghost" icon aria-label="Ulangi" title="Ulangi (Ctrl+Y)" :disabled="!ed.canRedo.value" @click="ed.redo"><Redo2 class="size-5" /></AppButton>
       </div>
-      <div class="flex items-center">
+      <div class="flex items-center max-sm:hidden">
         <ZoomControl ref="zoomer" v-model="zoom" :levels="[1, 1.5, 2, 3]" />
         <AppButton variant="ghost" icon :aria-pressed="grid > 0" aria-label="Tampilkan grid 10 mm" title="Grid 10 mm" :class="grid ? '!text-accent-text' : '!text-muted'" @click="grid = grid ? 0 : 10"><Grid3x3 class="size-5" /></AppButton>
         <AppButton variant="ghost" icon :aria-pressed="snap" aria-label="Tempel ke garis bantu" title="Tempel ke garis bantu (tahan Alt saat menggeser untuk bebas)" :class="snap ? '!text-accent-text' : '!text-muted'" @click="snap = !snap"><Magnet class="size-5" /></AppButton>
       </div>
       <span class="hidden rounded-full bg-surface-2 px-2.5 py-1 font-mono text-xs text-muted xl:inline">{{ spec.name }} · area cetak {{ spec.print_w_mm / 10 }} × {{ spec.print_h_mm / 10 }} cm · {{ spec.print_sides }} sisi</span>
       <div class="ml-auto flex items-center gap-2">
-        <AppBadge tone="info" class="hidden sm:inline-flex">Cetak segera hadir</AppBadge>
-        <SaveStatus :dirty="dirty" :saving="saving" />
+        <AppBadge tone="info" class="max-sm:!hidden">Cetak segera hadir</AppBadge>
+        <SaveStatus :dirty="dirty" :saving="saving" class="max-sm:hidden" />
         <AppMenu :items="menu" />
         <AppButton :loading="saving" title="Simpan (Ctrl+S)" @click="ed.save()">Simpan</AppButton>
       </div>
@@ -135,14 +136,14 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
     </template>
 
     <template #canvas>
-      <div class="sticky top-0 z-10 flex min-h-14 items-center justify-center p-2">
+      <div class="sticky top-0 z-10 flex min-h-14 items-center justify-center p-2 max-sm:min-h-0">
         <ArrangeBar
           v-if="selection.length && ed.editable.value.length"
           :count="selection.length" :grouped="grouped" :locked="anyLocked" :other-side="twoSided ? (active === 'front' ? 'belakang' : 'depan') : null" :pair-label="null"
           @align="ed.align" @distribute="ed.distribute" @group="ed.group" @ungroup="ed.ungroup" @z="ed.zOrder" @lock="ed.toggleLock()"
           @other-side="ed.copyToOtherSide" @duplicate="ed.duplicate" @remove="ed.remove"
         />
-        <p v-else class="rounded-full bg-surface px-3 py-1 text-xs text-muted">Anda mendesain <b class="text-fg">area cetak {{ spec.name?.toLowerCase() }}</b>{{ twoSided ? ` · sisi ${active === 'front' ? 'depan' : 'belakang'}` : '' }}. Klik elemen untuk mengedit.</p>
+        <p v-else class="rounded-full bg-surface px-3 py-1 text-xs text-muted max-sm:hidden">Anda mendesain <b class="text-fg">area cetak {{ spec.name?.toLowerCase() }}</b>{{ twoSided ? ` · sisi ${active === 'front' ? 'depan' : 'belakang'}` : '' }}. Klik elemen untuk mengedit.</p>
       </div>
       <div class="grid gap-8 px-4 pt-4 pb-10 sm:px-10 xl:grid-cols-[minmax(0,1fr)_340px] xl:items-start">
         <div class="grid gap-3">

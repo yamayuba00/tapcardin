@@ -38,22 +38,23 @@ function remove(i) {
 </script>
 
 <template>
-  <div class="grid gap-4">
+  <div class="grid grid-cols-1 gap-4">
     <p v-if="!blocks.length" class="rounded-md border border-dashed border-line-strong p-5 text-center text-sm text-muted">
       Belum ada blok. Tambahkan dari pilihan di bawah — misalnya tombol "Ajak kolaborasi" atau video terbaru Anda.
     </p>
 
-    <ol class="grid gap-3">
-      <li v-for="(b, i) in blocks" :key="b.id || b.key" :class="['grid gap-4 rounded-md border bg-surface p-4', b.is_visible ? 'border-line' : 'border-dashed border-line-strong']">
-        <div class="flex items-center gap-2">
+    <ol class="grid grid-cols-1 gap-3">
+      <li v-for="(b, i) in blocks" :key="b.id || b.key" :class="['grid grid-cols-1 gap-4 rounded-md border bg-surface p-3 sm:p-4', b.is_visible ? 'border-line' : 'border-dashed border-line-strong']">
+        <!-- ponsel: tombol ikon 36 px agar nama blok tetap terbaca -->
+        <div class="flex items-center gap-1 sm:gap-2 [&>.app-icon]:!min-h-9 [&>.app-icon]:!w-9 sm:[&>.app-icon]:!min-h-11 sm:[&>.app-icon]:!w-11">
           <component :is="ICON[b.type]" class="size-5 flex-none text-accent-text" aria-hidden="true" />
           <span class="min-w-0 flex-1 truncate font-semibold">{{ META[b.type].label }}<span v-if="!b.is_visible" class="font-normal text-muted"> · disembunyikan</span></span>
-          <AppButton variant="ghost" icon :disabled="i === 0" :aria-label="`Naikkan blok ${i + 1}`" @click="move(i, -1)"><ArrowUp class="size-5" /></AppButton>
-          <AppButton variant="ghost" icon :disabled="i === blocks.length - 1" :aria-label="`Turunkan blok ${i + 1}`" @click="move(i, 1)"><ArrowDown class="size-5" /></AppButton>
-          <AppButton variant="ghost" icon :aria-label="b.is_visible ? 'Sembunyikan blok' : 'Tampilkan blok'" :aria-pressed="!b.is_visible" @click="b.is_visible = !b.is_visible">
+          <AppButton variant="ghost" icon class="app-icon" :disabled="i === 0" :aria-label="`Naikkan blok ${i + 1}`" @click="move(i, -1)"><ArrowUp class="size-5" /></AppButton>
+          <AppButton variant="ghost" icon class="app-icon" :disabled="i === blocks.length - 1" :aria-label="`Turunkan blok ${i + 1}`" @click="move(i, 1)"><ArrowDown class="size-5" /></AppButton>
+          <AppButton variant="ghost" icon class="app-icon" :aria-label="b.is_visible ? 'Sembunyikan blok' : 'Tampilkan blok'" :aria-pressed="!b.is_visible" @click="b.is_visible = !b.is_visible">
             <component :is="b.is_visible ? Eye : EyeOff" class="size-5" />
           </AppButton>
-          <AppButton variant="ghost" icon aria-label="Hapus blok" @click="remove(i)"><Trash2 class="size-5 text-danger" /></AppButton>
+          <AppButton variant="ghost" icon class="app-icon" aria-label="Hapus blok" @click="remove(i)"><Trash2 class="size-5 text-danger" /></AppButton>
         </div>
         <p v-if="err(i, 'type')" class="text-sm text-danger" role="alert">{{ err(i, 'type') }}</p>
 
@@ -103,7 +104,7 @@ function remove(i) {
           @click="add(t.type)"
         >
           <span class="flex items-center gap-2 font-semibold"><Plus class="size-4" aria-hidden="true" /><component :is="ICON[t.type]" class="size-4 text-accent-text" aria-hidden="true" /> {{ t.label }}</span>
-          <span class="text-sm text-muted">{{ taken.has(t.type) ? 'Sudah ada di halaman ini' : t.hint }}</span>
+          <span :class="['text-sm text-muted', taken.has(t.type) ? '' : 'hidden sm:block']">{{ taken.has(t.type) ? 'Sudah ada' : t.hint }}</span>
         </button>
       </div>
       <p v-if="full" class="text-sm text-muted">Maksimal {{ MAX_BLOCKS }} blok per bio link.</p>

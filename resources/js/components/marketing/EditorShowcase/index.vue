@@ -81,7 +81,7 @@ const tabOn = (on) => (on ? 'border-accent bg-surface-2 text-fg' : 'border-line 
       <div class="flex flex-wrap items-center gap-3 border-b border-line px-4 py-2.5">
         <component :is="mode === 'card' ? CreditCard : Ruler" class="size-5 text-accent-text" aria-hidden="true" />
         <span class="min-w-0 truncate text-sm font-semibold">{{ mode === 'card' ? `Kartu Rina — ${tpl.name}` : `Lanyard — ${vars.company}` }}</span>
-        <AppBadge tone="ok" class="hidden sm:inline-flex"><BadgeCheck class="size-3.5" /> Siap cetak</AppBadge>
+        <AppBadge tone="ok" class="max-sm:!hidden"><BadgeCheck class="size-3.5" /> Siap cetak</AppBadge>
         <div class="ml-auto flex items-center gap-2">
           <AppSegmented v-if="mode === 'card'" v-model="side" label="Sisi kartu" :options="[{ value: 'front', label: 'Depan' }, { value: 'back', label: 'Belakang' }]" />
           <AppSegmented v-else :model-value="sides" label="Sisi cetak" :options="[{ value: 1, label: '1 sisi' }, { value: 2, label: '2 sisi' }]" @update:model-value="(v) => (sides = Number(v))" />

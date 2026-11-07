@@ -5,7 +5,7 @@
 // Paket dengan batas koneksi: sisanya tetap tersimpan tapi disembunyikan sampai upgrade.
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Blocks, ChartColumn, Download, FileUp, Lock, Plus, ScanLine } from 'lucide-vue-next'
+import { Blocks, ChartColumn, Download, FileUp, Lock, Plus, ScanLine, SlidersHorizontal } from 'lucide-vue-next'
 import AppButton from '@/components/ui/AppButton/index.vue'
 import AppEmpty from '@/components/ui/AppEmpty/index.vue'
 import AppField from '@/components/ui/AppField/index.vue'
@@ -66,6 +66,9 @@ const menu = computed(() => [
   auth.can('billing.view') && { label: 'Kirim ke CRM — segera hadir', icon: Blocks, onSelect: () => router.push('/addons') },
 ].filter(Boolean))
 const filtered = computed(() => Object.values(filters).some(Boolean))
+// ponsel: filter dilipat di balik tombol "Filter" (angka = filter aktif selain pencarian)
+const showFilters = ref(false)
+const activeFilters = computed(() => Object.entries(filters).filter(([k, v]) => k !== 'q' && v).length)
 const exportHref = computed(() => `${leadsApi.exportUrl}?${toQuery(filters)}`)
 
 let t
@@ -103,8 +106,9 @@ const overdue = (iso) => iso && new Date(iso) < new Date()
     <!-- satu tindakan utama, dua sekunder bergaya sama, sisanya di menu "Lainnya" -->
     <div class="flex flex-wrap items-center gap-2">
       <AppButton v-if="auth.can('leads.edit.*')" @click="adding = true"><Plus class="size-5" /> Tambah</AppButton>
-      <AppButton v-if="auth.can('leads.edit.*')" variant="secondary" to="/scan"><ScanLine class="size-5" /> Scan kartu</AppButton>
-      <AppButton variant="secondary" to="/connections/dashboard"><ChartColumn class="size-5" /> Dashboard</AppButton>
+      <!-- ponsel: tombol sekunder cukup ikon agar semua muat satu baris -->
+      <AppButton v-if="auth.can('leads.edit.*')" variant="secondary" to="/scan" aria-label="Scan kartu" class="max-sm:w-11 max-sm:!px-0"><ScanLine class="size-5" /> <span class="hidden sm:inline">Scan kartu</span></AppButton>
+      <AppButton variant="secondary" to="/connections/dashboard" aria-label="Dashboard" class="max-sm:w-11 max-sm:!px-0"><ChartColumn class="size-5" /> <span class="hidden sm:inline">Dashboard</span></AppButton>
       <AppMenu v-if="menu.length" :items="menu" label="Tindakan lain" />
     </div>
   </PageHeader>
@@ -118,20 +122,27 @@ const overdue = (iso) => iso && new Date(iso) < new Date()
     <AppButton v-if="auth.can('billing.view')" variant="secondary" to="/billing">Upgrade ke Pro</AppButton>
   </div>
 
-  <!-- Ponsel: pencarian selebar layar, filter 2 kolom. Desktop: berderet membungkus. -->
-  <div class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-    <AppInput v-model="filters.q" type="search" placeholder="Cari nama, perusahaan, email, nomor" aria-label="Cari" class="col-span-2 sm:max-w-xs" />
-    <AppSelect v-model="stageSel" multiple placeholder="Semua tahap" :options="stages.map((s) => ({ value: s.id, label: s.name }))" aria-label="Tahap" class="sm:!w-auto sm:min-w-44" />
-    <AppSelect v-model="sourceSel" multiple placeholder="Semua sumber" :options="LEAD_SOURCES" aria-label="Sumber" class="sm:!w-auto sm:min-w-44" />
-    <AppSelect v-if="tags.length" v-model="tagSel" multiple searchable placeholder="Semua tag" :options="tags.map((t) => ({ value: t.value, label: t.value, description: `${t.count} ${label.toLowerCase()}` }))" aria-label="Tag" class="sm:!w-auto sm:min-w-44" />
-    <AppSelect v-model="filters.due" clearable placeholder="Semua follow-up" :options="DUE" aria-label="Follow-up" class="sm:!w-auto sm:min-w-44" />
-    <AppSelect v-if="events.length" v-model="filters.event" clearable placeholder="Semua event" :options="events.map((e) => ({ value: e.id, label: e.name, description: e.location }))" aria-label="Event" class="sm:!w-auto sm:min-w-44" />
-    <AppSelect
-      v-if="cards.length > 1" v-model="filters.card" clearable placeholder="Semua kartu" aria-label="Kartu" class="sm:!w-auto sm:min-w-44"
-      :options="cards.map((c) => ({ value: c.token, label: c.label || `Kartu ${c.short_code}`, description: c.form === 'digital' ? 'Digital' : c.short_code }))"
-    />
+  <!-- Ponsel: pencarian + tombol Filter; pilihan filter 2 kolom saat dibuka. Desktop: semuanya berderet membungkus. -->
+  <div class="grid gap-2 sm:flex sm:flex-wrap">
+    <div class="flex gap-2 sm:contents">
+      <AppInput v-model="filters.q" type="search" placeholder="Cari nama, perusahaan, email, nomor" aria-label="Cari" class="min-w-0 flex-1 sm:max-w-xs" />
+      <AppButton variant="secondary" class="flex-none sm:!hidden" :aria-expanded="showFilters" aria-controls="lead-filters" @click="showFilters = !showFilters">
+        <SlidersHorizontal class="size-5" /> Filter<span v-if="activeFilters" class="grid size-5 place-items-center rounded-full bg-accent text-xs text-accent-ink">{{ activeFilters }}</span>
+      </AppButton>
+    </div>
+    <div id="lead-filters" :class="['grid-cols-2 gap-2 sm:contents', showFilters ? 'grid' : 'hidden']">
+      <AppSelect v-model="stageSel" multiple placeholder="Semua tahap" :options="stages.map((s) => ({ value: s.id, label: s.name }))" aria-label="Tahap" class="sm:!w-auto sm:min-w-44" />
+      <AppSelect v-model="sourceSel" multiple placeholder="Semua sumber" :options="LEAD_SOURCES" aria-label="Sumber" class="sm:!w-auto sm:min-w-44" />
+      <AppSelect v-if="tags.length" v-model="tagSel" multiple searchable placeholder="Semua tag" :options="tags.map((t) => ({ value: t.value, label: t.value, description: `${t.count} ${label.toLowerCase()}` }))" aria-label="Tag" class="sm:!w-auto sm:min-w-44" />
+      <AppSelect v-model="filters.due" clearable placeholder="Semua follow-up" :options="DUE" aria-label="Follow-up" class="sm:!w-auto sm:min-w-44" />
+      <AppSelect v-if="events.length" v-model="filters.event" clearable placeholder="Semua event" :options="events.map((e) => ({ value: e.id, label: e.name, description: e.location }))" aria-label="Event" class="sm:!w-auto sm:min-w-44" />
+      <AppSelect
+        v-if="cards.length > 1" v-model="filters.card" clearable placeholder="Semua kartu" aria-label="Kartu" class="sm:!w-auto sm:min-w-44"
+        :options="cards.map((c) => ({ value: c.token, label: c.label || `Kartu ${c.short_code}`, description: c.form === 'digital' ? 'Digital' : c.short_code }))"
+      />
+    </div>
   </div>
-  <RefreshStatus :last-at="auto.lastAt.value" :refreshing="auto.refreshing.value" :every="auto.every" class="justify-end" @refresh="auto.refresh" />
+  <RefreshStatus :last-at="auto.lastAt.value" :refreshing="auto.refreshing.value" :every="auto.every" class="sm:justify-end" @refresh="auto.refresh" />
 
   <AppEmpty
     v-if="list.rows.value && !list.rows.value.length && !filtered"

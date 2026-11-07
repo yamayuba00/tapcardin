@@ -45,7 +45,7 @@ const snooze = (r) => act(() => remindersApi.update(r.id, { due_at: new Date(Mat
 
 <template>
   <AppPanel title="Follow-up">
-    <div class="grid gap-4">
+    <div class="grid grid-cols-1 gap-4">
       <ul v-if="reminders.length" class="grid gap-2">
         <li v-for="r in reminders" :key="r.id" :class="['flex flex-wrap items-center gap-3 rounded-md border px-3 py-2', r.overdue ? 'border-danger' : 'border-line']">
           <component :is="r.is_auto ? Sparkles : Clock" :class="['size-5 flex-none', r.overdue ? 'text-danger' : 'text-accent-text']" aria-hidden="true" />
@@ -62,11 +62,12 @@ const snooze = (r) => act(() => remindersApi.update(r.id, { due_at: new Date(Mat
       </ul>
       <p v-else class="text-sm text-muted">Belum ada jadwal follow-up.</p>
 
-      <div v-if="editable" class="grid gap-2">
+      <div v-if="editable" class="grid grid-cols-1 gap-2">
         <AppInput v-model="note" maxlength="200" placeholder="Catatan pengingat (opsional), mis. kirim penawaran" aria-label="Catatan pengingat" />
-        <div class="flex flex-wrap items-center gap-2">
-          <AppButton v-for="q in QUICK" :key="q.label" variant="secondary" :disabled="busy" @click="add(q.date)"><BellPlus class="size-5" /> {{ q.label }}</AppButton>
-          <form class="flex w-full min-w-0 gap-2 sm:w-auto" @submit.prevent="custom && add(new Date(custom))">
+        <!-- ponsel: tiga pilihan cepat sebaris, lalu tanggal sendiri selebar panel -->
+        <div class="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:items-center">
+          <AppButton v-for="q in QUICK" :key="q.label" variant="secondary" class="max-sm:!px-2 max-sm:text-sm" :disabled="busy" @click="add(q.date)"><BellPlus class="hidden size-5 sm:block" /> {{ q.label }}</AppButton>
+          <form class="col-span-3 flex min-w-0 gap-2 sm:w-auto" @submit.prevent="custom && add(new Date(custom))">
             <AppInput v-model="custom" type="datetime-local" :min="minLocal" aria-label="Waktu pengingat" class="min-w-0 flex-1 sm:!w-auto sm:flex-none" />
             <AppButton type="submit" variant="ghost" :disabled="busy || !custom">Jadwalkan</AppButton>
           </form>
