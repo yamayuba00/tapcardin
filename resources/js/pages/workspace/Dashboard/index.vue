@@ -23,6 +23,9 @@ const auth = useAuthStore()
 const notifications = useNotificationStore()
 const { data, error, reload } = useAsync(() => dashboardApi.summary())
 const now = ref(new Date())
+const RECENT = 5 // aktivitas yang tampil sebelum "Tampilkan semua"
+const allRecent = ref(false)
+const recent = computed(() => (allRecent.value ? data.value.recent : data.value.recent.slice(0, RECENT)))
 let timer
 let unsubscribe
 
@@ -87,7 +90,7 @@ const empty = computed(() => data.value && data.value.kpi.taps_30 === 0 && data.
       <AppButton to="/cards">Lihat kartu</AppButton>
     </AppEmpty>
 
-    <div v-else class="grid gap-4 md:grid-cols-2">
+    <div v-else class="grid gap-4 md:grid-cols-2 md:items-start">
       <AppPanel title="Tap 30 hari">
         <template #actions><span class="text-sm text-muted">{{ num(data.kpi.taps_30) }} total</span></template>
         <MiniChart :series="data.series" label="Tap per hari selama 30 hari" />
@@ -95,7 +98,7 @@ const empty = computed(() => data.value && data.value.kpi.taps_30 === 0 && data.
       <AppPanel title="Aktivitas terbaru">
         <template #actions><AppButton variant="ghost" to="/connections">{{ auth.contactLabel }}</AppButton></template>
         <ul>
-          <li v-for="(r, i) in data.recent" :key="i" class="flex min-h-14 items-center gap-3 border-b border-line py-3 last:border-b-0">
+          <li v-for="(r, i) in recent" :key="i" class="flex min-h-14 items-center gap-3 border-b border-line py-3 last:border-b-0">
             <span class="grid size-10 flex-none place-items-center rounded-full bg-surface-2 text-muted">
               <component :is="r.type === 'tap' ? Nfc : Users" class="size-5" aria-hidden="true" />
             </span>
@@ -107,6 +110,9 @@ const empty = computed(() => data.value && data.value.kpi.taps_30 === 0 && data.
           </li>
           <li v-if="!data.recent.length" class="py-3 text-muted">Belum ada aktivitas.</li>
         </ul>
+        <AppButton v-if="data.recent.length > RECENT" variant="ghost" block class="mt-2" @click="allRecent = !allRecent">
+          {{ allRecent ? 'Tampilkan lebih sedikit' : `Tampilkan ${data.recent.length - RECENT} lainnya` }}
+        </AppButton>
       </AppPanel>
     </div>
 
