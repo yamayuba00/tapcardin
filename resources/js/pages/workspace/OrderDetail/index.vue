@@ -3,7 +3,7 @@
 // Setelah kembali dari halaman bayar (?paid=1), status pembayaran ditanyakan ke gateway beberapa saat.
 import { onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Clock, CreditCard, Receipt, Truck, X } from 'lucide-vue-next'
+import { Clock, QrCode, Receipt, Truck, X } from 'lucide-vue-next'
 import AppBadge from '@/components/ui/AppBadge/index.vue'
 import AppButton from '@/components/ui/AppButton/index.vue'
 import AppModal from '@/components/ui/AppModal/index.vue'
@@ -58,7 +58,7 @@ async function cancel() {
       <template #meta><AppBadge :tone="ORDER_STATUS[o.status]?.tone">{{ o.status_label }}</AppBadge></template>
       <template v-if="o.status === 'pending_payment'">
         <AppButton variant="ghost" @click="confirmCancel = true"><X class="size-5" /> Batalkan</AppButton>
-        <AppButton :loading="busy" @click="pay"><CreditCard class="size-5" /> Bayar {{ rupiah(o.total) }}</AppButton>
+        <AppButton :loading="busy" @click="pay"><QrCode class="size-5" /> Bayar {{ rupiah(o.total) }} dengan QRIS</AppButton>
       </template>
       <AppButton v-if="o.invoice" variant="secondary" :to="`/billing/invoices/${o.invoice.id}`"><Receipt class="size-5" /> {{ o.status === 'pending_payment' ? 'Invoice' : 'Kuitansi' }}</AppButton>
     </PageHeader>
@@ -75,6 +75,7 @@ async function cancel() {
           <dl class="grid gap-1 border-t border-line pt-3 text-sm">
             <div class="flex justify-between"><dt class="text-muted">Subtotal</dt><dd class="font-mono">{{ rupiah(o.subtotal) }}</dd></div>
             <div class="flex justify-between"><dt class="text-muted">{{ o.shipping.method ?? 'Pengiriman' }}</dt><dd class="font-mono">{{ o.shipping_fee ? rupiah(o.shipping_fee) : 'Gratis' }}</dd></div>
+            <div v-if="o.discount" class="flex justify-between text-ok"><dt>Promo {{ o.promo }}</dt><dd class="font-mono">−{{ rupiah(o.discount) }}</dd></div>
             <div class="flex justify-between text-base font-semibold"><dt>Total</dt><dd class="font-display text-xl">{{ rupiah(o.total) }}</dd></div>
           </dl>
         </div>
@@ -87,7 +88,7 @@ async function cancel() {
             <p class="flex items-center gap-2 font-medium"><Truck class="size-4" /> {{ o.shipping.method }}<span v-if="o.shipping.eta" class="font-normal text-muted">· {{ o.shipping.eta }}</span></p>
             <template v-if="o.shipping.needs_address">
               <p>{{ o.shipping.recipient_name }} · {{ o.shipping.recipient_phone }}</p>
-              <p class="text-muted">{{ o.shipping.address_line }}, {{ o.shipping.city }}{{ o.shipping.province ? `, ${o.shipping.province}` : '' }} {{ o.shipping.postal_code }}</p>
+              <p class="text-muted">{{ o.shipping.address_line }}{{ o.shipping.district ? `, Kec. ${o.shipping.district}` : '' }}, {{ o.shipping.city }}{{ o.shipping.province ? `, ${o.shipping.province}` : '' }} {{ o.shipping.postal_code }}</p>
             </template>
             <p v-if="o.shipping.tracking_number" class="rounded-md bg-surface-2 px-3 py-2">Resi {{ o.shipping.courier }} <span class="font-mono font-semibold">{{ o.shipping.tracking_number }}</span></p>
             <p v-if="o.shipping.notes" class="text-muted">Catatan: {{ o.shipping.notes }}</p>

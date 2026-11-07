@@ -145,6 +145,16 @@ export const ordersApi = {
   pay: (id) => http.post(`/api/orders/${id}/pay`),
   check: (id) => http.post(`/api/orders/${id}/check`),
   cancel: (id) => http.post(`/api/orders/${id}/cancel`),
+  /** Ringkasan harga final (subtotal, ongkir, promo, total) dari server. */
+  quote: (body) => http.post('/api/orders/quote', body),
+}
+
+/** Keranjang cetak (kartu, ID badge, lanyard). */
+export const cartApi = {
+  list: () => http.get('/api/cart'),
+  add: (body) => http.post('/api/cart', body),
+  update: (id, body) => http.patch(`/api/cart/${id}`, body),
+  remove: (id) => http.del(`/api/cart/${id}`),
 }
 
 export const billingApi = {

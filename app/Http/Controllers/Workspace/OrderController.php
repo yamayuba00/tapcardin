@@ -11,17 +11,19 @@ use App\Models\Invoice;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\ShippingMethod;
+use App\Models\Voucher;
 use App\Services\Payment\PaymentService;
 use App\Support\Audit;
 use App\Support\Design\LanyardPricing;
 use App\Support\Http\Table;
+use App\Support\Indonesia;
 use App\Support\Qr\QrEncoder;
 use App\Support\Qr\SvgRenderer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
-/** Pesan kartu fisik & lanyard dari desain sendiri: katalog, buat pesanan + bayar, lacak status, batal sebelum dibayar. */
+/** Pesan kartu, ID badge & lanyard dari desain sendiri: katalog, keranjang → ringkasan harga (promo) → pesanan + bayar QRIS, lacak status, batal sebelum dibayar. */
 class OrderController extends WorkspaceController
 {
     /** GET /api/orders/catalog — produk kartu, harga lanyard, metode kirim, dan desain milik pengguna (dengan status siap cetak). */
@@ -30,9 +32,11 @@ class OrderController extends WorkspaceController
         $this->access()->authorize('orders.create');
         $qr = QrEncoder::encode(config('tapcard.resolver_url').'/c/XXXXXXXXXX?src=qr');
         $designs = Design::where('user_id', $this->user()->id)->where('is_template', false)->whereIn('kind', ['card', 'lanyard']) // merch: segera hadir
-            ->with(['brandKit', 'lanyardWidth', 'lanyardHardware'])
+            ->with(['brandKit', 'lanyardWidth', 'lanyardHardware', 'pairedLanyard'])
             ->latest('updated_at')->get()->map(fn (Design $d) => [
                 'id' => $d->public_id, 'kind' => $d->kind, 'name' => $d->name, 'orientation' => $d->orientation, 'ready' => $d->validated_at !== null,
+                // kartu berlubang lanyard (potret = ID badge) & punya lanyard pasangan siap cetak (bisa dipesan sebagai paket)
+                'has_slot' => (bool) $d->lanyard, 'paired_lanyard' => $d->kind === 'card' && $d->pairedLanyard && $d->pairedLanyard->validated_at !== null,
                 'front' => $d->front_json, 'back' => $d->back_json, 'kit' => $d->brandKit?->toKit(),
                 'lanyard' => $d->kind === 'lanyard' ? ['width_mm' => $d->lanyardWidth?->width_mm, 'hardware' => $d->lanyardHardware?->key, 'print_sides' => (int) $d->print_sides] : null,
             ]);
@@ -40,6 +44,7 @@ class OrderController extends WorkspaceController
         return response()->json(['data' => [
             'card_products' => CardProduct::where('is_active', true)->orderBy('sort')->get()->map(fn (CardProduct $p) => [
                 'key' => $p->key, 'name' => $p->name, 'description' => $p->description, 'price' => $p->price, 'min_qty' => $p->min_qty, 'chip' => $p->chip_type->value,
+                'form_factor' => $p->form_factor,
             ]),
             'shipping' => ShippingMethod::where('is_active', true)->orderBy('sort')->get()->map(fn (ShippingMethod $m) => [
                 'key' => $m->key, 'name' => $m->name, 'eta' => $m->eta, 'price' => $m->price, 'needs_address' => $m->needs_address,
@@ -48,6 +53,11 @@ class OrderController extends WorkspaceController
             'designs' => $designs,
             'qr' => ['modules' => $qr->size, 'path' => SvgRenderer::path($qr)],
             'payment' => PaymentService::info(),
+            'provinces' => Indonesia::PROVINCES,
+            // isi otomatis formulir dengan alamat pesanan terakhir pengguna ini
+            'last_address' => ($last = Order::where('user_id', $this->user()->id)->whereNotNull('address_line')->latest('id')->first()) ? $last->only([
+                'recipient_name', 'recipient_phone', 'province', 'city', 'district', 'address_line', 'postal_code',
+            ]) : null,
         ]]);
     }
 
@@ -66,7 +76,7 @@ class OrderController extends WorkspaceController
     {
         $this->access()->authorize('orders.create');
         $data = $request->validate([
-            'items' => ['required', 'array', 'min:1', 'max:10'],
+            'items' => ['required', 'array', 'min:1', 'max:20'],
             'items.*.kind' => ['required', Rule::in(['card', 'lanyard'])],
             'items.*.design' => ['required', 'string', 'size:26'],
             'items.*.product' => ['nullable', 'string', 'max:32', 'required_if:items.*.kind,card'],
@@ -75,14 +85,40 @@ class OrderController extends WorkspaceController
             'shipping.recipient_name' => ['nullable', 'string', 'max:120'],
             'shipping.recipient_phone' => ['nullable', 'string', 'max:32'],
             'shipping.address_line' => ['nullable', 'string', 'max:300'],
+            'shipping.district' => ['nullable', 'string', 'max:80'],
             'shipping.city' => ['nullable', 'string', 'max:80'],
             'shipping.province' => ['nullable', 'string', 'max:80'],
-            'shipping.postal_code' => ['nullable', 'string', 'max:10', 'regex:/^[0-9]{5}$/'],
+            'shipping.postal_code' => ['nullable', 'string', 'max:10'], // format dicek CreateOrder::validateAddress (semua kolom sekaligus)
             'shipping.notes' => ['nullable', 'string', 'max:300'],
-        ], ['shipping.postal_code.regex' => 'Kode pos terdiri dari 5 angka.']);
-        $r = $create->handle($this->tenant(), $this->user(), $data['items'], $data['shipping'], $request->getSchemeAndHttpHost());
+            'promo' => ['nullable', 'string', 'max:32'],
+            'cart' => ['sometimes', 'array', 'max:20'],
+            'cart.*' => ['string', 'size:26'],
+        ]);
+        $r = $create->handle($this->tenant(), $this->user(), $data['items'], $data['shipping'], $request->getSchemeAndHttpHost(), $data['promo'] ?? null, $data['cart'] ?? []);
 
         return response()->json(['data' => ['order' => self::detail($r['order']), 'payment_url' => $r['payment_url']]], 201);
+    }
+
+    /** POST /api/orders/quote — ringkasan harga final dari server (subtotal, ongkir, promo, total) sebelum membayar. */
+    public function quote(Request $request, CreateOrder $create): JsonResponse
+    {
+        $this->access()->authorize('orders.create');
+        $data = $request->validate([
+            'items' => ['required', 'array', 'min:1', 'max:20'],
+            'items.*.kind' => ['required', Rule::in(['card', 'lanyard'])],
+            'items.*.design' => ['required', 'string', 'size:26'],
+            'items.*.product' => ['nullable', 'string', 'max:32', 'required_if:items.*.kind,card'],
+            'items.*.quantity' => ['required', 'integer', 'min:1', 'max:5000'],
+            'method' => ['required', 'string', 'max:32'],
+            'promo' => ['nullable', 'string', 'max:32'],
+        ]);
+        $q = $create->quote($this->tenant(), $this->user(), $data['items'], $data['method'], $data['promo'] ?? null);
+
+        return response()->json(['data' => [
+            'subtotal' => $q['subtotal'], 'shipping' => $q['shipping'], 'discount' => $q['discount'], 'total' => $q['total'],
+            'promo' => $q['voucher'] ? ['code' => $q['voucher']->code, 'description' => $q['voucher']->description] : null,
+            'lines' => array_map(fn ($l) => ['label' => $l['label'], 'quantity' => $l['quantity'], 'unit_price' => $l['unit_price'], 'total' => $l['total']], $q['lines']),
+        ]]);
     }
 
     public function show(Order $order): JsonResponse
@@ -149,11 +185,12 @@ class OrderController extends WorkspaceController
         $inv = Invoice::withoutGlobalScopes()->where('order_id', $o->id)->latest('id')->first();
 
         return self::summary($o) + [
-            'subtotal' => $o->subtotal, 'shipping_fee' => $o->shipping_fee,
+            'subtotal' => $o->subtotal, 'shipping_fee' => $o->shipping_fee, 'discount' => $o->discount,
+            'promo' => $o->voucher_id ? Voucher::whereKey($o->voucher_id)->value('code') : null,
             'shipping' => [
                 'method' => $o->shippingMethod?->name, 'eta' => $o->shippingMethod?->eta, 'needs_address' => (bool) $o->shippingMethod?->needs_address,
                 'recipient_name' => $o->recipient_name, 'recipient_phone' => $o->recipient_phone, 'address_line' => $o->address_line,
-                'city' => $o->city, 'province' => $o->province, 'postal_code' => $o->postal_code, 'notes' => $o->notes,
+                'district' => $o->district, 'city' => $o->city, 'province' => $o->province, 'postal_code' => $o->postal_code, 'notes' => $o->notes,
                 'courier' => $o->courier, 'tracking_number' => $o->tracking_number,
             ],
             'items' => $o->items->map(fn (OrderItem $i) => [

@@ -1,9 +1,8 @@
 <script setup>
 // Halaman bayar SIMULASI (PAYMENT_DRIVER=simulator, hanya lokal/test): meniru halaman gateway agar alur
 // upgrade bisa dicoba tanpa uang sungguhan. "Bayar" mengirim event yang diproses sama persis seperti webhook asli.
-import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { FlaskConical, Landmark, QrCode, ShieldCheck, Wallet } from 'lucide-vue-next'
+import { FlaskConical, QrCode, ShieldCheck } from 'lucide-vue-next'
 import AppButton from '@/components/ui/AppButton/index.vue'
 import AppSkeleton from '@/components/ui/AppSkeleton/index.vue'
 import BrandLogo from '@/components/common/BrandLogo/index.vue'
@@ -17,16 +16,12 @@ const toast = useToastStore()
 const id = route.params.id
 const { data: inv } = useAsync(() => billingApi.invoice(id))
 const { busy, run } = useAction()
-const method = ref('BCA Virtual Account')
-const METHODS = [
-  { value: 'BCA Virtual Account', icon: Landmark, hint: 'Transfer dari m-BCA / KlikBCA / ATM' },
-  { value: 'QRIS', icon: QrCode, hint: 'Scan dari aplikasi e-wallet atau m-banking' },
-  { value: 'GoPay', icon: Wallet, hint: 'Bayar di aplikasi Gojek' },
-]
+// pembayaran hanya QRIS (sama dengan gateway produksi: PAYMENT_METHOD=QRIS)
+const method = 'QRIS'
 const rupiah = (n) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n ?? 0)
 
 async function submit(result) {
-  const res = await run(() => billingApi.simulate(id, result, method.value)).catch(() => null)
+  const res = await run(() => billingApi.simulate(id, result, method)).catch(() => null)
   if (!res) return
   // langganan → halaman invoice; pesanan kartu → halaman pesanan
   if (result === 'paid') router.replace(`${inv.value?.return_to ?? `/billing/invoices/${id}`}?paid=1`)
@@ -45,20 +40,21 @@ async function submit(result) {
         <span class="font-display text-[36px] font-bold">{{ rupiah(inv.total) }}</span>
       </div>
       <template v-if="inv.status === 'issued' || inv.status === 'overdue'">
-        <fieldset class="grid gap-2">
-          <legend class="label mb-2">Pilih metode</legend>
-          <label v-for="m in METHODS" :key="m.value" :class="['flex cursor-pointer items-center gap-3 rounded-md border p-3', method === m.value ? 'border-accent bg-surface-2' : 'border-line hover:bg-surface-2']">
-            <input v-model="method" type="radio" :value="m.value" class="sr-only" />
-            <component :is="m.icon" class="size-5 text-accent-text" />
-            <span class="grid"><span class="text-sm font-medium">{{ m.value }}</span><span class="text-xs text-muted">{{ m.hint }}</span></span>
-          </label>
-        </fieldset>
-        <AppButton size="lg" block :loading="busy" @click="submit('paid')">Bayar {{ rupiah(inv.total) }}</AppButton>
+        <div class="grid justify-items-center gap-3 rounded-md border border-line p-4 text-center">
+          <span class="flex items-center gap-2 text-sm font-semibold"><QrCode class="size-5 text-accent-text" /> QRIS</span>
+          <div class="grid size-44 place-items-center rounded-md bg-bone-0 text-ink-950" aria-hidden="true"><QrCode class="size-32" /></div>
+          <ol class="grid list-decimal gap-1 pl-5 text-left text-sm text-muted">
+            <li>Buka e-wallet (GoPay, OVO, DANA, ShopeePay) atau m-banking.</li>
+            <li>Pilih bayar / scan QRIS, arahkan ke kode di atas.</li>
+            <li>Pastikan nominal {{ rupiah(inv.total) }}, lalu bayar.</li>
+          </ol>
+        </div>
+        <AppButton size="lg" block :loading="busy" @click="submit('paid')">Simulasikan sudah bayar {{ rupiah(inv.total) }}</AppButton>
         <AppButton variant="ghost" block :disabled="busy" @click="submit('failed')">Simulasikan pembayaran gagal</AppButton>
       </template>
       <p v-else class="text-center text-muted">Tagihan ini sudah {{ inv.status === 'paid' ? 'lunas' : 'tidak berlaku' }}.</p>
       <AppButton variant="secondary" block :to="`/billing/invoices/${id}`">Kembali ke invoice</AppButton>
-      <p class="flex items-center justify-center gap-1 text-xs text-muted"><ShieldCheck class="size-4" /> Di produksi halaman ini diganti halaman bayar gateway (mis. QRIS).</p>
+      <p class="flex items-center justify-center gap-1 text-xs text-muted"><ShieldCheck class="size-4" /> Di produksi QRIS dibuat gateway dengan nominal pas dan lunas otomatis.</p>
     </section>
   </div>
 </template>

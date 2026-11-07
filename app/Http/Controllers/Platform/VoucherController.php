@@ -51,6 +51,7 @@ class VoucherController extends PlatformController
             'value' => [$s, 'integer', 'min:1', 'max:100000000'],
             'max_redemptions' => ['nullable', 'integer', 'min:1'],
             'plan_keys' => ['sometimes', 'array'],
+            'applies_to' => ['sometimes', Rule::in(['plan', 'order', 'any'])],
             'plan_keys.*' => [Rule::exists('plans', 'key')],
             'starts_at' => ['nullable', 'date'],
             'ends_at' => ['nullable', 'date', 'after:starts_at'],
@@ -71,7 +72,7 @@ class VoucherController extends PlatformController
     {
         return [
             'id' => $v->public_id, 'code' => $v->code, 'description' => $v->description, 'kind' => $v->kind, 'value' => $v->value,
-            'max_redemptions' => $v->max_redemptions, 'redeemed' => $v->redeemed_count, 'plan_keys' => $v->plan_keys ?? [],
+            'max_redemptions' => $v->max_redemptions, 'redeemed' => $v->redeemed_count, 'plan_keys' => $v->plan_keys ?? [], 'applies_to' => $v->applies_to,
             'starts_at' => self::dt($v->starts_at), 'ends_at' => self::dt($v->ends_at), 'is_active' => $v->is_active,
         ];
     }

@@ -86,7 +86,7 @@ final class CreateCheckout
     {
         $v = Voucher::where('code', strtoupper(trim($code)))->first();
         $error = match (true) {
-            ! $v || ! $v->is_active => 'Kode voucher tidak ditemukan.',
+            ! $v || ! $v->is_active || $v->applies_to === 'order' => 'Kode voucher tidak ditemukan.',
             ($v->starts_at && $v->starts_at->isFuture()) || ($v->ends_at && $v->ends_at->isPast()) => 'Voucher sudah tidak berlaku.',
             $v->max_redemptions && $v->redeemed_count >= $v->max_redemptions => 'Kuota voucher sudah habis.',
             $v->plan_keys && ! in_array($plan->key, $v->plan_keys, true) => "Voucher tidak berlaku untuk paket {$plan->name}.",

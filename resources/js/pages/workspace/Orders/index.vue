@@ -1,6 +1,6 @@
 <script setup>
 // Daftar pesanan kartu & lanyard milik pengguna (atau seluruh workspace untuk pengelola tagihan).
-import { Plus } from 'lucide-vue-next'
+import { ShoppingCart } from 'lucide-vue-next'
 import AppBadge from '@/components/ui/AppBadge/index.vue'
 import AppButton from '@/components/ui/AppButton/index.vue'
 import DataTable from '@/components/ui/DataTable/index.vue'
@@ -19,7 +19,7 @@ const COLUMNS = [
 
 <template>
   <PageHeader eyebrow="Kartu" title="Pesanan">
-    <AppButton to="/orders/new"><Plus class="size-5" /> Pesan kartu & lanyard</AppButton>
+    <AppButton to="/orders/new"><ShoppingCart class="size-5" /> Keranjang &amp; pesan</AppButton>
   </PageHeader>
   <DataTable
     :columns="COLUMNS" :rows="list.rows.value" :meta="list.meta.value" :sort="list.sort.value" :loading="list.loading.value"

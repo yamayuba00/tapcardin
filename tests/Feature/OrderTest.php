@@ -62,7 +62,7 @@ class OrderTest extends TestCase
                 ['kind' => 'card', 'design' => $d['card'], 'product' => 'pvc_ntag215', 'quantity' => 2],
                 ['kind' => 'lanyard', 'design' => $d['lanyard'], 'quantity' => 50],
             ],
-            'shipping' => ['method' => 'regular', 'recipient_name' => 'Rina', 'recipient_phone' => '08123', 'address_line' => 'Jl. Sudirman 1', 'city' => 'Jakarta', 'province' => 'DKI', 'postal_code' => '10210'],
+            'shipping' => ['method' => 'regular', 'recipient_name' => 'Rina', 'recipient_phone' => '081234567890', 'address_line' => 'Jl. Sudirman No. 1, RT 02/RW 03', 'district' => 'Tanah Abang', 'city' => 'Jakarta Pusat', 'province' => 'DKI Jakarta', 'postal_code' => '10210'],
         ]);
     }
 
@@ -155,7 +155,9 @@ class OrderTest extends TestCase
 
         $this->order($d, ['items' => [['kind' => 'lanyard', 'design' => $d['lanyard'], 'quantity' => 3]], 'shipping' => ['method' => 'pickup']])
             ->assertJsonPath('error.code', 'quantity_too_low');
-        $this->order($d, ['shipping' => ['method' => 'regular', 'recipient_name' => 'Rina']])->assertJsonPath('error.code', 'address_incomplete');
+        // alamat kurang / tidak wajar → galat per kolom
+        $res = $this->order($d, ['shipping' => ['method' => 'regular', 'recipient_name' => 'Rina', 'recipient_phone' => '123', 'province' => 'Atlantis', 'address_line' => 'Jl. A', 'postal_code' => '12']])->assertStatus(422);
+        $this->assertEqualsCanonicalizing(['shipping.recipient_phone', 'shipping.province', 'shipping.city', 'shipping.district', 'shipping.address_line', 'shipping.postal_code'], array_keys($res->json('error.fields')));
         $pickup = $this->order($d, ['items' => [['kind' => 'card', 'design' => $d['card'], 'product' => 'pvc_ntag215', 'quantity' => 1, 'unit_price' => 1]], 'shipping' => ['method' => 'pickup']])
             ->assertCreated()->json('data.order');
         $this->assertSame(65000, $pickup['total'], 'harga dari klien diabaikan; ambil sendiri tanpa ongkir');

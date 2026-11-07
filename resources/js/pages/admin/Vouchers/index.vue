@@ -39,14 +39,14 @@ function open(v) {
   errors.value = {}
   Object.assign(form, v
     ? { ...v, plan_keys: [...v.plan_keys], starts_at: toDate(v.starts_at), ends_at: toDate(v.ends_at), max_redemptions: v.max_redemptions ?? '' }
-    : { code: '', description: '', kind: 'percent', value: 10, max_redemptions: '', plan_keys: [], starts_at: '', ends_at: '', is_active: true })
+    : { code: '', description: '', kind: 'percent', value: 10, max_redemptions: '', applies_to: 'any', plan_keys: [], starts_at: '', ends_at: '', is_active: true })
   editing.value = v ?? 'new'
 }
 async function save() {
   errors.value = {}
   const body = {
     code: form.code, description: form.description || null, kind: form.kind, value: Number(form.value),
-    max_redemptions: form.max_redemptions === '' ? null : Number(form.max_redemptions), plan_keys: form.plan_keys,
+    max_redemptions: form.max_redemptions === '' ? null : Number(form.max_redemptions), applies_to: form.applies_to, plan_keys: form.applies_to === 'order' ? [] : form.plan_keys,
     starts_at: form.starts_at || null, ends_at: form.ends_at ? `${form.ends_at}T23:59:59+07:00` : null, is_active: form.is_active,
   }
   try {
@@ -70,7 +70,7 @@ async function save() {
     empty-text="Belum ada voucher." @sort="list.toggleSort" @page="list.goto" @per-page="list.setPerPage">
     <template #cell-code="{ row: v }"><span class="font-mono font-semibold">{{ v.code }}</span><span v-if="v.description" class="block text-xs text-muted">{{ v.description }}</span></template>
     <template #cell-value="{ row: v }"><span class="font-mono">{{ v.kind === 'percent' ? `${v.value}%` : rupiah(v.value) }}</span></template>
-    <template #cell-plans="{ row: v }">{{ v.plan_keys.length ? v.plan_keys.map(planName).join(', ') : 'Semua paket' }}</template>
+    <template #cell-plans="{ row: v }">{{ { plan: 'Paket', order: 'Pesanan cetak', any: 'Paket & pesanan' }[v.applies_to] }}<template v-if="v.applies_to !== 'order' && v.plan_keys.length"> · {{ v.plan_keys.map(planName).join(', ') }}</template></template>
     <template #cell-redeemed="{ row: v }"><span class="font-mono">{{ num(v.redeemed) }}{{ v.max_redemptions ? ` / ${num(v.max_redemptions)}` : '' }}</span></template>
     <template #cell-ends_at="{ row: v }">{{ v.ends_at ? date(v.ends_at) : 'Tanpa batas' }}</template>
     <template #cell-status="{ row: v }">
@@ -92,7 +92,11 @@ async function save() {
           <AppInput v-model="form.value" type="number" min="1" :max="form.kind === 'percent' ? 100 : undefined" required />
         </AppField>
       </div>
-      <AppField label="Berlaku untuk paket" hint="Kosong = semua paket berbayar">
+      <div class="grid gap-2">
+        <span class="label">Berlaku untuk</span>
+        <AppSegmented v-model="form.applies_to" label="Berlaku untuk" :options="[{ value: 'any', label: 'Paket & pesanan' }, { value: 'plan', label: 'Paket langganan' }, { value: 'order', label: 'Pesanan cetak' }]" />
+      </div>
+      <AppField v-if="form.applies_to !== 'order'" label="Paket yang boleh" hint="Kosong = semua paket berbayar">
         <AppSelect v-model="form.plan_keys" multiple :options="planOptions" placeholder="Semua paket" />
       </AppField>
       <div class="grid gap-4 sm:grid-cols-2">

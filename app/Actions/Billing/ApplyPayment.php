@@ -80,6 +80,7 @@ final class ApplyPayment
 
             if ($invoice->type === 'order') {
                 $this->orderPaid($invoice, $event, $wasVoid);
+                $this->redeem($invoice); // kode promo pesanan dihitung terpakai saat lunas
 
                 return 'paid';
             }
