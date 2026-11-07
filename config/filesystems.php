@@ -49,7 +49,7 @@ return [
             'endpoint' => env('AWS_ENDPOINT'),
             'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
             'root' => 'public',
-            'url' => rtrim((string) env('AWS_URL'), '/').'/public',
+            'url' => rtrim((string) env('AWS_URL'), '/'), // Laravel menambahkan root (public/) sendiri ke URL
             // bucket tidak menerima ACL per objek; akses baca diatur bucket policy untuk public/*
             'retain_visibility' => false,
             'throw' => false,

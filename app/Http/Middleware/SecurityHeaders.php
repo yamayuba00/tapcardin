@@ -26,7 +26,7 @@ class SecurityHeaders
         $base = config('tapcard.base_domain');
         $host = $request->getHost();
         $isScanPage = $host !== $base && ! str_starts_with($host, 'tap.');
-        $dev = app()->isLocal() ? ' http://localhost:5173 http://[::1]:5173 ws://localhost:5173 ws://[::1]:5173' : '';
+        $dev = app()->isLocal() ? ' http://localhost:5173 ws://localhost:5173' : '';
         // unggahan di S3: gambar dimuat dari host bucket, dan diambil (fetch) saat ekspor PNG desain
         $media = config('filesystems.disks.public.driver') === 's3' && ($u = parse_url((string) config('filesystems.disks.public.url'))) && isset($u['host'])
             ? ' '.$u['scheme'].'://'.$u['host'] : '';
