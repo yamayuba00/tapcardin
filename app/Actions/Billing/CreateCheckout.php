@@ -62,7 +62,7 @@ final class CreateCheckout
                 'type' => 'subscription', 'status' => 'issued', 'subscription_id' => $sub?->id, 'plan_id' => $plan->id, 'cycle' => $cycle,
                 'lines' => $lines, 'subtotal' => $amount, 'discount' => $discount, 'tax' => 0, 'total' => $amount - $discount, 'voucher_id' => $voucher?->id,
                 'billing_snapshot' => ['name' => $user->name, 'email' => $user->email, 'workspace' => $tenant->name, 'months' => $months],
-                'issued_at' => now(), 'due_at' => now()->addDay(),
+                'issued_at' => now(), 'due_at' => $expires = now()->addMinutes((int) config('payment.invoice_ttl_minutes')), 'expires_at' => $expires,
             ]);
             // nomor berurutan & unik dari id: INV/2026/10/000123
             $inv->update(['number' => sprintf('INV/%s/%06d', now('Asia/Jakarta')->format('Y/m'), $inv->id)]);

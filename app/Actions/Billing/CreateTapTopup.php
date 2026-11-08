@@ -38,7 +38,7 @@ final class CreateTapTopup
                 'lines' => [['code' => 'tap-topup-'.$taps, 'label' => $label, 'qty' => 1, 'amount' => $price]],
                 'subtotal' => $price, 'discount' => 0, 'tax' => 0, 'total' => $price,
                 'billing_snapshot' => ['name' => $user->name, 'email' => $user->email, 'card_id' => $card->id, 'taps' => $taps, 'label' => $label],
-                'issued_at' => now(), 'due_at' => now()->addDay(),
+                'issued_at' => now(), 'due_at' => $expires = now()->addMinutes((int) config('payment.invoice_ttl_minutes')), 'expires_at' => $expires,
             ]);
             $inv->update(['number' => sprintf('INV/%s/%06d', now('Asia/Jakarta')->format('Y/m'), $inv->id)]);
 

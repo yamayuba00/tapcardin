@@ -18,7 +18,7 @@ class Invoice extends Model
     {
         return [
             'lines' => 'array', 'billing_snapshot' => 'array',
-            'issued_at' => 'datetime', 'due_at' => 'datetime', 'paid_at' => 'datetime',
+            'issued_at' => 'datetime', 'due_at' => 'datetime', 'paid_at' => 'datetime', 'expires_at' => 'datetime',
         ];
     }
 
@@ -44,6 +44,7 @@ class Invoice extends Model
 
     public function isPayable(): bool
     {
-        return in_array($this->status, ['issued', 'overdue'], true);
+        // lewat batas waktu bayar = tidak berlaku walau tapcard:expire-invoices belum sempat membatalkannya
+        return in_array($this->status, ['issued', 'overdue'], true) && ! $this->expires_at?->isPast();
     }
 }

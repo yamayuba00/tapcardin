@@ -11,6 +11,9 @@
 |               webhook ber-tanda tangan dan/atau cek status ke API (server-to-server).
 */
 return [
+    // Batas waktu bayar invoice checkout / pesanan / tambahan tap. Lewat → dibatalkan otomatis (tapcard:expire-invoices).
+    'invoice_ttl_minutes' => (int) env('PAYMENT_INVOICE_TTL_MINUTES', 30),
+
     'driver' => env('PAYMENT_DRIVER', 'simulator'),
 
     'gateway' => [
@@ -29,7 +32,8 @@ return [
         // Metode bayar yang diminta ke gateway & teks yang ditampilkan ke pengguna
         'method' => env('PAYMENT_METHOD', 'QRIS'),
         'method_label' => env('PAYMENT_METHOD_LABEL', 'QRIS — semua e-wallet & mobile banking'),
-        'expires_hours' => (int) env('PAYMENT_EXPIRES_HOURS', 24),
+        // halaman bayar gateway (dalam jam, minimal 1) — invoice di sisi kami sendiri batal lebih dulu (invoice_ttl_minutes)
+        'expires_hours' => (int) env('PAYMENT_EXPIRES_HOURS', 1),
 
         // Webhook: signature (HMAC-SHA256 gaya Svix: header id/timestamp/signature, secret "whsec_…") | token | none.
         // none = isi webhook tidak dipercaya; status selalu dikonfirmasi ulang lewat API gateway.

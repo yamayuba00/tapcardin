@@ -78,7 +78,7 @@ class MeController extends WorkspaceController
             return null;
         }
         $c = config('tapcard.digital_card');
-        $open = Invoice::where('type', 'topup')->where('status', 'issued')->where('due_at', '>', now())
+        $open = Invoice::where('type', 'topup')->where('status', 'issued')->where('expires_at', '>', now())
             ->whereRaw("(billing_snapshot->>'card_id')::bigint = ?", [$card->id])->latest('id')->first();
 
         return [

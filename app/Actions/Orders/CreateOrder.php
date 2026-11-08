@@ -154,7 +154,7 @@ final class CreateOrder
             'voucher_id' => $order->voucher_id, 'tax' => 0, 'total' => $order->total,
             'billing_snapshot' => ['name' => $user->name, 'email' => $user->email, 'order' => $order->number,
                 'ship_to' => array_filter([$order->recipient_name, $order->address_line, $order->district, $order->city, $order->province, $order->postal_code])],
-            'issued_at' => now(), 'due_at' => now()->addDay(),
+            'issued_at' => now(), 'due_at' => $expires = now()->addMinutes((int) config('payment.invoice_ttl_minutes')), 'expires_at' => $expires,
         ]);
         $inv->update(['number' => sprintf('INV/%s/%06d', now('Asia/Jakarta')->format('Y/m'), $inv->id)]);
 

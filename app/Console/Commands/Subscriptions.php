@@ -26,10 +26,7 @@ class Subscriptions extends Command
 
     public function handle(): int
     {
-        $n = ['renewal' => 0, 'past_due' => 0, 'downgraded' => 0, 'void' => 0];
-
-        $n['void'] = Invoice::acrossTenants()->where('status', 'issued')->where('type', 'subscription')
-            ->whereNull('subscription_id')->where('due_at', '<', now())->update(['status' => 'void']);
+        $n = ['renewal' => 0, 'past_due' => 0, 'downgraded' => 0]; // invoice kedaluwarsa: tapcard:expire-invoices
 
         // invoice perpanjangan 7 hari sebelum periode berakhir
         Subscription::acrossTenants()->with('plan')->where('status', 'active')->where('cancel_at_period_end', false)

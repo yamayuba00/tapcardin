@@ -42,7 +42,8 @@ class BillingController extends WorkspaceController
         $sub = Subscription::where('tenant_id', $tenant->id)->with('plan')->first();
         $limits = PlanFeatures::effective($tenant)['limits'];
         $plans = Plan::where('tenant_type', $tenant->type->value)->where('is_public', true)->orderBy('sort')->get();
-        $open = Invoice::where('tenant_id', $tenant->id)->whereIn('status', ['issued', 'overdue'])->latest('id')->with('plan')->first();
+        $open = Invoice::where('tenant_id', $tenant->id)->whereIn('status', ['issued', 'overdue'])
+            ->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()))->latest('id')->with('plan')->first();
 
         return response()->json(['data' => [
             'plan' => self::presentPlan($tenant->plan),
