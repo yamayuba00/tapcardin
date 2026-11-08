@@ -100,7 +100,7 @@ terakhir disimpan untuk rollback. Migrasi TapCard hanya menambah tabel/kolom, ja
 | Nginx | [`nginx/tapcard.conf`](nginx/tapcard.conf) — satu server block untuk domain & semua subdomain, HTTP→HTTPS, aset ber-hash di-cache setahun, SSE notifikasi tanpa buffering, `ws.<domain>` diteruskan ke Reverb (WebSocket). Kompatibel Nginx 1.18–1.27 |
 | PHP-FPM | [`php/fpm-pools.conf`](php/fpm-pools.conf) — pool utama (jumlah worker dihitung dari RAM) + pool terpisah untuk notifikasi realtime; [`php/opcache-production.ini`](php/opcache-production.ini) |
 | Supervisor | [`supervisor/tapcard.conf`](supervisor/tapcard.conf) — 2 worker antrean (`taps`, `notify`, `leads`, `default`, `render`) + scheduler + `tapcard-reverb` (WebSocket realtime di 127.0.0.1:8080) |
-| Scheduler | pengingat follow-up & invoice kedaluwarsa (tiap menit), alarm & cek pembayaran (5 menit), statistik kartu (15 menit), pesanan belum dibayar: pengingat lalu batal setelah 3 hari (tiap jam), tagihan & masa tenggang langganan (01.00 WIB), backup (02.15 WIB), partisi & pembersihan data (harian) |
+| Scheduler | pengingat follow-up & invoice kedaluwarsa (tiap menit), uptime (10 detik), alarm & cek pembayaran (5 menit), statistik kartu (15 menit), pesanan belum dibayar: pengingat lalu batal setelah 3 hari (tiap jam), tagihan & masa tenggang langganan (01.00 WIB), backup (02.15 WIB), partisi & pembersihan data (harian) |
 | SSL | Certbot, perpanjang otomatis (timer sistem) + reload Nginx |
 | Keamanan | UFW: hanya SSH, 80, 443 terbuka · `.env` tidak terbaca publik · PHP selain `index.php` tidak dieksekusi |
 | Backup | `tapcard:backup` harian 02.15 WIB → S3 `backups/` (privat, 30 hari) bila `BACKUP_DISK` diisi. `DB_MODE=local` juga menyimpan salinan harian di `/var/backups/tapcard` (14 hari) |
@@ -136,6 +136,22 @@ langsung dikabari. Isi `ALERT_EMAILS=email1,email2` agar alarm tetap terkirim sa
 
 Alarm berjalan dari scheduler di server — bila VPS-nya sendiri mati, tidak ada yang mengirim. Tambahkan pemantau
 dari luar (mis. UptimeRobot gratis) ke `https://app.<domain>/up`.
+
+## Uptime & halaman status
+
+- **Panel → Uptime** (`https://panel.<domain>/uptime`): monitor HTTP/HTTPS (kode status + kata kunci) dan masa
+  berlaku SSL, dicek dari server ini setiap 30 detik–1 jam. Status, waktu respons, dan perubahan tampil realtime
+  (Reverb); gangguan juga muncul sebagai toast & notifikasi browser di halaman panel mana pun, dan dikirim lewat
+  email ke Pemilik Platform / `ALERT_EMAILS` (down, perhatian, pulih). Monitor bawaan: aplikasi, tap kartu, situs
+  utama, panel (`/up`, ikut mengecek database), dan sertifikat SSL.
+- **Halaman status publik** (`https://status.<domain>`): kondisi layanan, uptime 90 hari, info gangguan &
+  maintenance yang ditulis dari panel — tanpa URL internal atau pesan error. Diperbarui realtime.
+- DNS: `status.<domain>` ikut record `*`. Mode SSL `http`: sertifikat perlu nama `status.` — jalankan ulang
+  perintah certbot di bagian SSL dengan tambahan `-d status.<domain>` (mode `cloudflare`/wildcard sudah mencakup).
+- Riwayat cek disimpan 90 hari (`tapcard:prune`).
+
+Pemeriksa berjalan di server yang sama — bila VPS mati, tidak ada yang mengirim kabar. Pasang pemantau gratis dari
+luar (mis. UptimeRobot) ke `https://app.<domain>/up` sebagai jaring pengaman.
 
 ## Pembayaran (payment service)
 

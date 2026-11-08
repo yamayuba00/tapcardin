@@ -24,11 +24,12 @@ export function takeInitial(key) {
   return value
 }
 
-/** 'public' (tap.), 'admin' (panel. — panel pemilik), 'marketing' (domain utama), atau 'workspace' (app. & {slug}.) */
+/** 'public' (tap.), 'admin' (panel. — panel pemilik), 'status' (status. — halaman status), 'marketing' (domain utama), atau 'workspace' (app. & {slug}.) */
 export function hostContext(hostname = window.location.hostname, base = config.baseDomain) {
   if (hostname === base) return 'marketing'
   const sub = hostname.endsWith('.' + base) ? hostname.slice(0, -(base.length + 1)) : hostname.split('.')[0]
   if (sub === 'tap') return 'public'
+  if (sub === 'status') return 'status'
   if (sub === 'panel' || sub === 'admin' || (config.adminUrl && hostname === new URL(config.adminUrl).hostname)) return 'admin'
   return 'workspace'
 }

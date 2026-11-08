@@ -1,15 +1,12 @@
-// Realtime lewat Laravel Reverb (protokol Pusher) + Laravel Echo. Dimuat dinamis hanya di aplikasi yang login,
+// Realtime lewat Laravel Reverb (protokol Pusher) + Laravel Echo. Dimuat dinamis hanya di halaman yang memakainya,
 // jadi halaman publik (bio link) tidak ikut membawa pustaka WebSocket. Alamat & kunci dari config server (SpaController).
 
 /**
- * Hubungkan ke Reverb dan dengarkan channel privat pengguna.
+ * Buat koneksi Echo ke Reverb. Channel privat diotorisasi dengan sesi host saat ini (app., panel.) + token CSRF.
  * @param {{key:string, host:string, port:number, tls:boolean}} cfg
- * @param {string} userId public_id pengguna
- * @param {(payload: {id:number, type:string, tenant:?string, data:object}) => void} onNotification
- * @param {(state: string) => void} onState connecting | connected | unavailable | failed | disconnected
- * @returns {Promise<() => void>} pemutus koneksi
+ * @param {(state: string) => void} [onState] connecting | connected | unavailable | failed | disconnected
  */
-export async function connectRealtime(cfg, userId, onNotification, onState) {
+async function createEcho(cfg, onState) {
   const [{ default: Echo }, { default: Pusher }] = await Promise.all([import('laravel-echo'), import('pusher-js')])
   const csrf = () => {
     const xsrf = document.cookie.match(/(?:^|; )XSRF-TOKEN=([^;]+)/)
@@ -24,7 +21,6 @@ export async function connectRealtime(cfg, userId, onNotification, onState) {
     wssPort: cfg.port,
     forceTLS: cfg.tls,
     enabledTransports: ['ws', 'wss'],
-    // otorisasi channel privat memakai sesi app. (cookie) + token CSRF terbaru
     authorizer: (channel) => ({
       authorize: (socketId, callback) => {
         fetch('/api/broadcasting/auth', {
@@ -39,7 +35,38 @@ export async function connectRealtime(cfg, userId, onNotification, onState) {
       },
     }),
   })
-  echo.connector.pusher.connection.bind('state_change', ({ current }) => onState(current))
+  if (onState) echo.connector.pusher.connection.bind('state_change', ({ current }) => onState(current))
+  return echo
+}
+
+/**
+ * Hubungkan ke Reverb dan dengarkan channel privat pengguna.
+ * @param {(payload: {id:number, type:string, tenant:?string, data:object}) => void} onNotification
+ * @returns {Promise<() => void>} pemutus koneksi
+ */
+export async function connectRealtime(cfg, userId, onNotification, onState) {
+  const echo = await createEcho(cfg, onState)
   echo.private(`user.${userId}`).listen('.notification', onNotification)
+  return () => echo.disconnect()
+}
+
+/**
+ * Panel: setiap hasil cek uptime (channel privat staf `platform.uptime`).
+ * @param {(payload: {monitor: object, check: object, change: ?{from:string,to:string,reason:?string}}) => void} onChecked
+ * @returns {Promise<() => void>}
+ */
+export async function connectUptime(cfg, onChecked, onState) {
+  const echo = await createEcho(cfg, onState)
+  echo.private('platform.uptime').listen('.checked', onChecked)
+  return () => echo.disconnect()
+}
+
+/**
+ * Halaman status publik: sinyal "data berubah, muat ulang" (channel publik `status`, tanpa login).
+ * @returns {Promise<() => void>}
+ */
+export async function connectStatusPage(cfg, onUpdated, onState) {
+  const echo = await createEcho(cfg, onState)
+  echo.channel('status').listen('.updated', onUpdated)
   return () => echo.disconnect()
 }

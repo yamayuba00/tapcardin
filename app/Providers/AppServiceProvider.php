@@ -10,7 +10,10 @@ use App\Support\Hasher;
 use App\Tenancy\CurrentTenant;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Connection;
+use Illuminate\Foundation\Events\DiagnosingHealth;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
@@ -29,6 +32,9 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // GET /up gagal (500) bila database tidak terjangkau — dipakai pemantau uptime internal & eksternal
+        Event::listen(DiagnosingHealth::class, fn () => DB::select('select 1'));
+
         // TRD §11 — batas laju
         $ip = fn (Request $r) => Hasher::ip($r->ip());
         RateLimiter::for('tap', fn (Request $r) => Limit::perMinute(60)->by($ip($r).'|'.$r->route('token')));

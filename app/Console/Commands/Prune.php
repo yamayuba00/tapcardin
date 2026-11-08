@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Actions\Auth\DeleteAccount;
+use App\Support\Uptime\StatusPage;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -21,6 +22,7 @@ class Prune extends Command
             'sessions' => DB::table('sessions')->where('last_activity', '<', now()->subMinutes(config('session.lifetime'))->timestamp)->delete(),
             'cache' => DB::table('cache')->where('expiration', '<', time())->delete(),
             'notifications' => DB::table('notifications')->whereNotNull('read_at')->where('created_at', '<', now()->subDays(90))->delete(),
+            'monitor_checks (> 90 hari)' => DB::table('monitor_checks')->where('checked_at', '<', now()->subDays(StatusPage::DAYS))->delete(),
             'users (hard delete > 30 hari)' => $this->purgeUsers(),
         ];
         foreach ($counts as $table => $n) {

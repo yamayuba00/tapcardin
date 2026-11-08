@@ -6,9 +6,10 @@ import publicRoutes from './routes/public'
 import workspaceRoutes from './routes/workspace'
 import adminRoutes from './routes/admin'
 import marketingRoutes from './routes/marketing'
+import statusRoutes from './routes/status'
 
 // TRD §4.6 — satu SPA, kumpulan rute dipilih dari host.
-const routesByContext = { public: publicRoutes, workspace: workspaceRoutes, admin: adminRoutes, marketing: marketingRoutes }
+const routesByContext = { public: publicRoutes, workspace: workspaceRoutes, admin: adminRoutes, marketing: marketingRoutes, status: statusRoutes }
 
 export const router = createRouter({
   history: createWebHistory(),

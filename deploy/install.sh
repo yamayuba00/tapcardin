@@ -195,7 +195,7 @@ else
         --dns-cloudflare --dns-cloudflare-credentials /root/.secrets/cloudflare.ini --dns-cloudflare-propagation-seconds 30 \
         -d "$DOMAIN" -d "*.$DOMAIN" ;;
     http)
-      NAMES=(-d "$DOMAIN"); for s in www app tap panel ws; do getent ahosts "$s.$DOMAIN" >/dev/null && NAMES+=(-d "$s.$DOMAIN"); done
+      NAMES=(-d "$DOMAIN"); for s in www app tap panel ws status; do getent ahosts "$s.$DOMAIN" >/dev/null && NAMES+=(-d "$s.$DOMAIN"); done
       cat > /etc/nginx/sites-available/tapcard-acme.conf <<EOF
 server { listen 80 default_server; listen [::]:80 default_server; server_name _;
   location ^~ /.well-known/acme-challenge/ { root /var/www/letsencrypt; } location / { return 404; } }
@@ -297,6 +297,7 @@ cat <<EOF
    Aplikasi         https://app.$DOMAIN
    Panel pemilik    https://panel.$DOMAIN
    Resolver kartu   https://tap.$DOMAIN
+   Halaman status   https://status.$DOMAIN
 EOF
 if [[ -n $OWNER_PASSWORD ]]; then
 cat <<EOF

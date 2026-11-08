@@ -121,7 +121,7 @@ else
       ;;
     http)
       # blok port 80 yang ada menjadi default_server dan melayani /.well-known/acme-challenge/ untuk host apa pun
-      NAMES=(-d "$NEW"); for s in www app tap panel ws; do getent ahosts "$s.$NEW" >/dev/null && NAMES+=(-d "$s.$NEW"); done
+      NAMES=(-d "$NEW"); for s in www app tap panel ws status; do getent ahosts "$s.$NEW" >/dev/null && NAMES+=(-d "$s.$NEW"); done
       rm -rf "$LIVE"
       certbot certonly --non-interactive --agree-tos -m "$ADMIN_EMAIL" --cert-name "$NEW" --webroot -w /var/www/letsencrypt "${NAMES[@]}" \
         || die "Sertifikat gagal — pastikan DNS $NEW mengarah ke VPS ini & port 80 terbuka. Tidak ada yang diubah."

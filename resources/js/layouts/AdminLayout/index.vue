@@ -2,21 +2,27 @@
 // DBD §10.7 — pembeda panel pemilik: bilah atas 4 px --info + label "PANEL PEMILIK". Menu mengikuti izin staf.
 // App shell: tinggi layar penuh, sidebar & konten masing-masing scroll sendiri (sidebar tidak ikut tergulung).
 // Ponsel: navigasi sama dengan app. (MobileNav) — 3 tab utama sesuai izin staf + "Menu" berisi semua kelompok.
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import {
-  Activity, BadgeCheck, BadgePercent, Boxes, Building2, CircleCheck, CircleUser, ClipboardList, Cpu, CreditCard, Gem, Globe, House, LogOut, Megaphone, Moon, Package, ShieldCheck, ShoppingCart, Stamp, Users, Wallet,
+  Activity, BadgeCheck, HeartPulse, BadgePercent, Boxes, Building2, CircleCheck, CircleUser, ClipboardList, Cpu, CreditCard, Gem, Globe, House, LogOut, Megaphone, Moon, Package, ShieldCheck, ShoppingCart, Stamp, Users, Wallet,
 } from 'lucide-vue-next'
 import BrandLogo from '@/components/common/BrandLogo/index.vue'
 import InstallApp from '@/components/common/InstallApp/index.vue'
 import MobileNav from '@/components/common/MobileNav/index.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useTheme } from '@/composables/useTheme'
+import { useUptimeStore } from '@/stores/uptime'
 
 const route = useRoute()
 const auth = useAuthStore()
 const { toggle } = useTheme()
 const mainEl = ref(null)
+
+// gangguan uptime realtime di halaman panel mana pun (toast + notifikasi browser)
+const uptime = useUptimeStore()
+watch(() => auth.can('dashboard.ops'), (ok) => ok && uptime.start(), { immediate: true })
+onBeforeUnmount(() => uptime.stop())
 
 const groups = [
   { label: 'Operasional', items: [
@@ -45,6 +51,7 @@ const groups = [
     { key: 'staff', label: 'Staf & peran', icon: ShieldCheck, to: '/staff', perm: 'staff.manage' },
     { key: 'audit', label: 'Audit log', icon: ClipboardList, to: '/audit', perm: 'audit.view' },
     { key: 'system', label: 'Sistem', icon: Activity, to: '/system', perm: 'dashboard.ops' },
+    { key: 'uptime', label: 'Uptime', icon: HeartPulse, to: '/uptime', perm: 'dashboard.ops' },
   ] },
 ]
 const nav = computed(() => groups.map((g) => ({ ...g, items: g.items.filter((i) => auth.can(i.perm)) })).filter((g) => g.items.length))

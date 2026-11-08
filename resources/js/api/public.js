@@ -7,6 +7,8 @@ export const publicApi = {
   connect: (url, form) => http.post(url, form),
   shortCode: (code) => http.post('/api/shortcode', { code }),
   handle: (handle) => http.get(`/api/handle/${handle}`),
+  /** status. — ringkasan halaman status publik */
+  status: () => http.get('/api/status'),
 }
 
 /** Domain utama (situs marketing). */

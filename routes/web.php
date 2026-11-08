@@ -3,6 +3,7 @@
 use App\Http\Controllers\Marketing\ShowcaseController;
 use App\Http\Controllers\PaymentWebhookController;
 use App\Http\Controllers\SpaController;
+use App\Http\Controllers\StatusController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -12,10 +13,12 @@ use Illuminate\Support\Facades\Route;
 |   tap.{base}    resolver permanen (tercetak di chip & QR)
 |   panel.{base}  panel pemilik & produksi (sesi terpisah; subdomain diatur tapcard.panel_subdomain)
 |   app.{base}    workspace Personal + login pusat
+|   status.{base} halaman status publik (uptime & info gangguan)
 |   {slug}.{base} workspace Perusahaan
 */
 $base = config('tapcard.base_domain');
-$spa = fn () => Route::get('/{path?}', SpaController::class)->where('path', '^(?!api(/|$)).*');
+// `/up` (cek kesehatan untuk pemantau uptime) tidak boleh tertangkap SPA
+$spa = fn () => Route::get('/{path?}', SpaController::class)->where('path', '^(?!api(/|$)|up$).*');
 
 Route::domain('tap.'.$base)->group(function () use ($spa) {
     require base_path('routes/public.php');
@@ -36,8 +39,13 @@ Route::domain($panel.'.'.$base)->name('admin.')->group(function () use ($spa) {
     $spa()->name('spa');
 });
 
+Route::domain('status.'.$base)->name('status.')->group(function () use ($spa) {
+    Route::get('/api/status', StatusController::class)->middleware('throttle:120,1')->name('summary');
+    $spa()->name('spa');
+});
+
 Route::domain('{workspace}.'.$base)
-    ->where(['workspace' => '(?!(?:tap|admin|panel|www|ws)\.)[a-z0-9][a-z0-9-]{0,28}[a-z0-9]'])
+    ->where(['workspace' => '(?!(?:tap|admin|panel|www|ws|status)\.)[a-z0-9][a-z0-9-]{0,28}[a-z0-9]'])
     ->middleware('workspace')
     ->group(function () use ($spa) {
         require base_path('routes/workspace.php');

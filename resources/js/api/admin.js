@@ -109,5 +109,14 @@ export const adminApi = {
 
   audit: (params) => http.get('/api/audit', params),
   system: () => http.get('/api/system'),
+  uptime: () => http.get('/api/uptime'),
+  monitor: (id) => http.get(`/api/uptime/monitors/${id}`),
+  createMonitor: (body) => http.post('/api/uptime/monitors', body),
+  updateMonitor: (id, body) => http.patch(`/api/uptime/monitors/${id}`, body),
+  deleteMonitor: (id) => http.del(`/api/uptime/monitors/${id}`),
+  checkMonitor: (id) => http.post(`/api/uptime/monitors/${id}/check`),
+  createIncident: (body) => http.post('/api/uptime/incidents', body),
+  updateIncident: (id, body) => http.post(`/api/uptime/incidents/${id}/updates`, body),
+  deleteIncident: (id) => http.del(`/api/uptime/incidents/${id}`),
   saveSettings: (body) => http.put('/api/system/settings', body),
 }

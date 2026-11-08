@@ -35,7 +35,7 @@ class SpaController extends Controller
         $panel = str_starts_with($host, config('tapcard.panel_subdomain').'.');
         $pwa = match (true) {
             $panel => ['/manifest-panel.webmanifest', 'TC Panel', '/icons/panel-apple-touch-icon.png'],
-            $host === $base || (bool) preg_match('/^(tap|www|admin)\./', $host) => null,
+            $host === $base || (bool) preg_match('/^(tap|www|admin|status)\./', $host) => null,
             default => ['/manifest.webmanifest', 'TapCard', '/icons/apple-touch-icon.png'],
         };
 

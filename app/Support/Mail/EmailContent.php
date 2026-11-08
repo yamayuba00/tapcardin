@@ -20,7 +20,7 @@ final class EmailContent
     ];
 
     /** Selalu dikirim, tidak bisa dimatikan (tidak tampil di daftar preferensi). */
-    public const ALWAYS = ['account_deleted', 'password_reset', 'system_alert', 'system_recovered'];
+    public const ALWAYS = ['account_deleted', 'password_reset', 'system_alert', 'system_recovered', 'monitor_down', 'monitor_degraded', 'monitor_up'];
 
     /** `**tebal**` → <strong>, setelah teks di-escape (nama/catatan berasal dari pengguna). */
     public static function html(string $line): string
@@ -223,6 +223,34 @@ final class EmailContent
                 ],
                 'action' => ['label' => 'Buka Sistem di panel', 'url' => $d['url']],
                 'tone' => 'danger',
+            ],
+            'monitor_down' => [
+                'subject' => "[TapCard] DOWN: {$d['name']}",
+                'title' => "{$d['name']} tidak bisa diakses",
+                'lines' => array_values(array_filter([
+                    "Monitor **{$d['name']}** gagal dicek beberapa kali berturut-turut.",
+                    ! empty($d['reason']) ? "Penyebab: **{$d['reason']}**" : null,
+                    "Alamat: {$d['target']}",
+                ])),
+                'action' => ['label' => 'Buka Uptime di panel', 'url' => $d['url']],
+                'tone' => 'danger',
+            ],
+            'monitor_degraded' => [
+                'subject' => "[TapCard] Perlu perhatian: {$d['name']}",
+                'title' => "{$d['name']} perlu perhatian",
+                'lines' => array_values(array_filter([! empty($d['reason']) ? "**{$d['reason']}**." : null, "Alamat: {$d['target']}"])),
+                'action' => ['label' => 'Buka Uptime di panel', 'url' => $d['url']],
+                'tone' => 'warn',
+            ],
+            'monitor_up' => [
+                'subject' => "[TapCard] PULIH: {$d['name']}",
+                'title' => "{$d['name']} kembali normal",
+                'lines' => array_values(array_filter([
+                    "Monitor **{$d['name']}** sudah bisa diakses lagi.",
+                    ! empty($d['since']) ? 'Gangguan berlangsung sekitar **'.Carbon::parse($d['since'])->locale('id')->diffForHumans(now(), ['syntax' => Carbon::DIFF_ABSOLUTE, 'parts' => 2]).'**.' : null,
+                ])),
+                'action' => ['label' => 'Buka Uptime di panel', 'url' => $d['url']],
+                'tone' => 'ok',
             ],
             'system_recovered' => [
                 'subject' => '[TapCard] Sistem kembali normal',

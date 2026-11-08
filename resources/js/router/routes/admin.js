@@ -40,6 +40,7 @@ export default [
       { path: 'audit', name: 'audit', component: page('Audit'), meta: { title: 'Audit log', nav: 'audit', perm: 'audit.view' } },
       { path: 'account', name: 'account', component: page('Account'), meta: { title: 'Akun', nav: 'account' } },
       { path: 'system', name: 'system', component: page('System'), meta: { title: 'Sistem', nav: 'system', perm: 'dashboard.ops' } },
+      { path: 'uptime', name: 'uptime', component: page('Uptime'), meta: { title: 'Uptime', nav: 'uptime', perm: 'dashboard.ops' } },
     ],
   },
   { path: '/:pathMatch(.*)*', name: 'not-found', component: () => import('@/pages/public/NotFound/index.vue') },

@@ -21,6 +21,7 @@ use App\Http\Controllers\Platform\StaffController;
 use App\Http\Controllers\Platform\StationController;
 use App\Http\Controllers\Platform\SystemController;
 use App\Http\Controllers\Platform\TenantController;
+use App\Http\Controllers\Platform\UptimeController;
 use App\Http\Controllers\Platform\UserController;
 use App\Http\Controllers\Platform\VoucherController;
 use Illuminate\Support\Facades\Route;
@@ -149,5 +150,15 @@ Route::middleware(['auth', 'platform'])->prefix('api')->name('api.')->group(func
 
     Route::get('/audit', [AuditController::class, 'index'])->name('audit');
     Route::get('/system', [SystemController::class, 'show'])->name('system');
+
+    Route::get('/uptime', [UptimeController::class, 'index'])->name('uptime');
+    Route::post('/uptime/monitors', [UptimeController::class, 'store'])->name('uptime.store');
+    Route::get('/uptime/monitors/{monitor}', [UptimeController::class, 'show'])->name('uptime.show');
+    Route::patch('/uptime/monitors/{monitor}', [UptimeController::class, 'update'])->name('uptime.update');
+    Route::delete('/uptime/monitors/{monitor}', [UptimeController::class, 'destroy'])->name('uptime.destroy');
+    Route::post('/uptime/monitors/{monitor}/check', [UptimeController::class, 'check'])->middleware('throttle:20,1')->name('uptime.check');
+    Route::post('/uptime/incidents', [UptimeController::class, 'storeIncident'])->name('uptime.incidents.store');
+    Route::post('/uptime/incidents/{incident}/updates', [UptimeController::class, 'updateIncident'])->name('uptime.incidents.update');
+    Route::delete('/uptime/incidents/{incident}', [UptimeController::class, 'destroyIncident'])->name('uptime.incidents.destroy');
     Route::put('/system/settings', [SystemController::class, 'settings'])->name('system.settings');
 });

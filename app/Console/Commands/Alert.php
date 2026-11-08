@@ -2,12 +2,9 @@
 
 namespace App\Console\Commands;
 
-use App\Models\PlatformStaff;
-use App\Models\Role;
-use App\Support\Notify;
+use App\Support\PlatformAlerts;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
-use Throwable;
 
 /**
  * Alarm email ke pemilik platform dari hasil `tapcard:health` (tiap 5 menit).
@@ -61,37 +58,6 @@ class Alert extends Command
 
     private function send(string $type, array $data): bool
     {
-        $to = $this->recipients();
-        $data['url'] = $this->panelUrl().'/system';
-        foreach ($to as $email => $name) {
-            Notify::email($email, $name, $type, $data, now: true);
-        }
-
-        return $to !== [];
-    }
-
-    /** @return array<string,string> email => nama. ALERT_EMAILS dulu (tetap jalan walau database mati), lalu Pemilik Platform. */
-    private function recipients(): array
-    {
-        $list = array_fill_keys(config('tapcard.alert.emails'), 'Tim TapCard');
-        try {
-            PlatformStaff::with('user')->where('status', 'active')->where('role_id', Role::system('platform_owner')->id)->get()
-                ->each(function ($s) use (&$list) {
-                    if ($s->user && ! $s->user->trashed()) {
-                        $list[$s->user->email] = $s->user->name;
-                    }
-                });
-        } catch (Throwable) {
-            // database mati → hanya alamat dari ALERT_EMAILS
-        }
-
-        return $list;
-    }
-
-    private function panelUrl(): string
-    {
-        $u = parse_url((string) config('app.url'));
-
-        return ($u['scheme'] ?? 'https').'://'.config('tapcard.panel_subdomain').'.'.config('tapcard.base_domain').(isset($u['port']) ? ':'.$u['port'] : '');
+        return PlatformAlerts::email($type, $data + ['url' => PlatformAlerts::panelUrl('/system')]);
     }
 }
