@@ -26,7 +26,7 @@ class Subscriptions extends Command
 
     public function handle(): int
     {
-        $n = ['renewal' => 0, 'past_due' => 0, 'downgraded' => 0]; // invoice kedaluwarsa: tapcard:expire-invoices
+        $n = ['renewal' => 0, 'past_due' => 0, 'grace_ending' => 0, 'downgraded' => 0]; // invoice kedaluwarsa: tapcard:expire-invoices
 
         // invoice perpanjangan 7 hari sebelum periode berakhir
         Subscription::acrossTenants()->with('plan')->where('status', 'active')->where('cancel_at_period_end', false)
@@ -62,8 +62,16 @@ class Subscriptions extends Command
             $s->update(['status' => 'past_due', 'grace_until' => $s->current_period_end->copy()->addDays(self::GRACE_DAYS)]);
             Invoice::acrossTenants()->where('subscription_id', $s->id)->where('status', 'issued')->update(['status' => 'overdue']);
             Tenant::whereKey($s->tenant_id)->update(['status' => 'past_due']);
+            $this->notifyOwner($s, 'subscription_past_due');
             $n['past_due']++;
         });
+
+        // pengingat 3 hari sebelum masa tenggang habis (perintah ini jalan sekali sehari → terkirim sekali)
+        Subscription::acrossTenants()->with('plan')->where('status', 'past_due')
+            ->whereBetween('grace_until', [now()->addDays(2), now()->addDays(3)])->each(function (Subscription $s) use (&$n) {
+                $this->notifyOwner($s, 'grace_ending');
+                $n['grace_ending']++;
+            });
 
         // lewat masa tenggang
         Subscription::acrossTenants()->where('status', 'past_due')->where('grace_until', '<', now())->each(function (Subscription $s) use (&$n) {
@@ -74,6 +82,20 @@ class Subscriptions extends Command
         $this->info(json_encode($n));
 
         return self::SUCCESS;
+    }
+
+    /** Masa tenggang dimulai / hampir habis → pemilik workspace (in-app + email), dengan tautan ke tagihan yang terbuka. */
+    private function notifyOwner(Subscription $s, string $type): void
+    {
+        $owner = Tenant::find($s->tenant_id)?->owner_user_id;
+        if (! $owner) {
+            return;
+        }
+        $inv = Invoice::acrossTenants()->where('subscription_id', $s->id)->whereIn('status', ['issued', 'overdue'])->latest('id')->first();
+        Notify::user($owner, $s->tenant_id, $type, array_filter([
+            'plan' => $s->plan?->name, 'grace_until' => $s->grace_until?->toIso8601String(),
+            'id' => $inv?->public_id, 'number' => $inv?->number,
+        ]));
     }
 
     private function downgrade(Subscription $s, string $status): void

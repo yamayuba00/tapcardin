@@ -13,6 +13,7 @@ use App\Models\Profile;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Support\Audit;
+use App\Support\Notify;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
@@ -42,6 +43,7 @@ final class DeleteAccount
             throw new ApiError('owns_workspace', 'Anda masih pemilik workspace '.$owned->join(', ').'. Alihkan kepemilikan atau tutup workspace itu dulu.');
         }
 
+        [$email, $name] = [$user->email, $user->name]; // identitas dilepas di bawah — simpan untuk email konfirmasi
         DB::transaction(function () use ($user) {
             Card::acrossTenants()->where('holder_user_id', $user->id)->whereNotIn('status', [CardStatus::Revoked->value])->get()
                 ->each(function (Card $c) {
@@ -71,6 +73,7 @@ final class DeleteAccount
             ])->save();
             $user->delete();
         });
+        Notify::email($email, $name, 'account_deleted', ['purge_at' => now()->addDays(self::RETENTION_DAYS)->toIso8601String()]);
     }
 
     /** Tahap kedua — data pribadi akun yang dihapus > RETENTION_DAYS hari lalu. */

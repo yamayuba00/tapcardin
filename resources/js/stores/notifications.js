@@ -5,7 +5,7 @@ import { useToastStore } from './toast'
 import { config } from '@/config'
 import { connectRealtime } from '@/lib/realtime'
 
-const TYPES = ['tap', 'lead_new', 'lost_card_tapped', 'saved_back', 'reminder_due', 'import_done', 'invoice_paid', 'invoice_due', 'plan_changed', 'order_status', 'announcement', 'tap_quota']
+const TYPES = ['tap', 'lead_new', 'lost_card_tapped', 'saved_back', 'reminder_due', 'import_done', 'invoice_paid', 'invoice_due', 'plan_changed', 'order_status', 'announcement', 'tap_quota', 'subscription_past_due', 'grace_ending']
 
 const messages = {
   tap: (d) => `Seseorang membuka profil Anda${d.city ? ' · ' + d.city : ''}`,
@@ -19,6 +19,8 @@ const messages = {
     : `Kuota tap kartu digital tinggal sedikit (${d.used}/${d.quota}). Tambah tap di Pengaturan.`),
   invoice_due: (d) => `Tagihan perpanjangan ${d.number} sudah terbit`,
   plan_changed: (d) => `Paket workspace kini ${d.plan}`,
+  subscription_past_due: (d) => `Paket ${d.plan} masuk masa tenggang — bayar tagihan agar fitur tidak terkunci`,
+  grace_ending: (d) => `Masa tenggang paket ${d.plan} hampir berakhir — bayar sekarang agar tidak turun ke paket gratis`,
   order_status: (d) => `Pesanan ${d.number}: ${d.label}${d.tracking ? ' · resi ' + d.tracking : ''}`,
   announcement: (d) => `${d.title} — ${d.body}`,
   import_done: (d) => `Impor ${d.filename} selesai: ${d.created} baru, ${d.merged} digabung, ${d.failed} gagal`,

@@ -14,6 +14,7 @@ use App\Models\PlatformStaff;
 use App\Models\Profile;
 use App\Models\Tap;
 use App\Models\TenantMember;
+use App\Support\Mail\EmailContent;
 use App\Support\Phone;
 use App\Support\TapQuota;
 use App\Tenancy\TenantScope;
@@ -35,7 +36,10 @@ class MeController extends WorkspaceController
         'import_done' => 'Impor CSV selesai',
         'invoice_paid' => 'Pembayaran berhasil',
         'invoice_due' => 'Tagihan perpanjangan paket',
+        'subscription_past_due' => 'Paket masuk masa tenggang',
+        'grace_ending' => 'Masa tenggang hampir berakhir',
         'plan_changed' => 'Perubahan paket',
+        'order_status' => 'Status pesanan kartu',
         'tap_quota' => 'Kuota tap kartu digital hampir / sudah habis',
     ];
 
@@ -48,7 +52,7 @@ class MeController extends WorkspaceController
             'notification_types' => self::NOTIFICATION_TYPES,
             'prefs' => collect(self::NOTIFICATION_TYPES)->map(fn ($_, $k) => [
                 'inapp' => $u->wantsNotification($k, 'inapp'),
-                'email' => $u->wantsNotification($k, 'email', false),
+                'email' => $u->wantsNotification($k, 'email', EmailContent::defaultOn($k)),
             ]),
             'plan' => [
                 'name' => $this->tenant()->plan?->name,
