@@ -10,9 +10,9 @@ import { config } from '@/config'
 const LINKS = [
   { id: 'cara-kerja', label: 'Cara kerja' },
   { id: 'template', label: 'Template' },
-  { id: 'editor', label: 'Editor' },
   { id: 'bio-link', label: 'Bio link' },
   { id: 'fitur', label: 'Fitur' },
+  { id: 'perusahaan', label: 'Perusahaan' },
   { id: 'harga', label: 'Harga' },
   { id: 'faq', label: 'FAQ' },
 ]

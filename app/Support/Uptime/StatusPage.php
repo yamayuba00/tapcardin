@@ -10,7 +10,8 @@ use Illuminate\Support\Facades\DB;
 /**
  * Data halaman status publik (status.{base}): hanya monitor `is_public` dengan nama publiknya — tanpa URL, kode, atau
  * pesan error internal. Bar 90 hari per monitor (WIB), insiden aktif & maintenance terjadwal, riwayat 14 hari.
- * Di-cache 30 detik; dibuang saat status berubah / insiden diperbarui (lalu siaran realtime).
+ * Di-cache 30 detik sebagai array biasa (cache tidak meng-unserialize objek: serializable_classes = false);
+ * dibuang saat status berubah / insiden diperbarui (lalu siaran realtime).
  */
 final class StatusPage
 {
@@ -69,9 +70,9 @@ final class StatusPage
                 $statuses->contains('degraded') || $activeIncident !== null => 'minor',
                 default => 'operational',
             },
-            'monitors' => $rows,
-            'incidents' => $open->map(fn ($i) => self::presentIncident($i))->values(),
-            'history' => $history->map(fn ($i) => self::presentIncident($i))->values(),
+            'monitors' => $rows->all(),
+            'incidents' => $open->map(fn ($i) => self::presentIncident($i))->values()->all(),
+            'history' => $history->map(fn ($i) => self::presentIncident($i))->values()->all(),
             'updated_at' => now()->toIso8601String(),
         ];
     }
@@ -85,7 +86,7 @@ final class StatusPage
             'updates' => $i->updates->map(fn ($u) => [
                 'status' => $u->status, 'status_label' => Incident::STATUSES[$i->kind][$u->status] ?? $u->status,
                 'body' => $u->body, 'at' => $u->created_at->toIso8601String(),
-            ])->values(),
+            ])->values()->all(),
         ];
     }
 }

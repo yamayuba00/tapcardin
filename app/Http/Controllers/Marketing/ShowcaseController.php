@@ -3,7 +3,11 @@
 namespace App\Http\Controllers\Marketing;
 
 use App\Http\Controllers\Controller;
+use App\Models\CardProduct;
+use App\Models\LanyardWidth;
+use App\Models\MerchProduct;
 use App\Models\Plan;
+use App\Support\Bio\BioBlocks;
 use App\Support\Bio\BioTheme;
 use App\Support\Design\CardGeometry;
 use App\Support\Design\LanyardGeometry;
@@ -29,7 +33,7 @@ class ShowcaseController extends Controller
 
     public function __invoke(): JsonResponse
     {
-        $data = Cache::remember('showcase:v6', now()->addHour(), function () {
+        $data = Cache::remember('showcase:v7', now()->addHour(), function () {
             $qr = QrEncoder::encode(config('tapcard.resolver_url').'/c/XXXXXXXXXX?src=qr');
 
             return [
@@ -48,6 +52,25 @@ class ShowcaseController extends Controller
                         'cards' => $p->limits['cards_active'] ?? null, 'connections' => $p->limits['connections'] ?? null,
                         'analytics_days' => $p->limits['analytics_days'] ?? null,
                     ])->values()->all(),
+                // paket Tim & Perusahaan: harga per anggota / bulan, uji coba gratis
+                'company_plans' => Plan::where('is_public', true)->where('tenant_type', 'company')->orderBy('sort')->get()
+                    ->map(fn (Plan $p) => [
+                        'key' => $p->key, 'name' => $p->name, 'price_monthly' => $p->price_monthly, 'per_seat' => (bool) $p->per_seat,
+                        'trial_days' => $p->trial_days, 'members' => $p->limits['members'] ?? null,
+                        'cards_per_member' => $p->limits['cards_per_member'] ?? null, 'analytics_days' => $p->limits['analytics_days'] ?? null,
+                        'features' => array_keys(array_filter($p->features ?? [])),
+                    ])->values()->all(),
+                // paket kartu digital (terpisah dari paket workspace)
+                'digital_card' => [
+                    'tap_quota' => (int) config('tapcard.digital_card.tap_quota'), 'bio_pages' => (int) config('tapcard.digital_card.bio_pages'),
+                    'topup_taps' => (int) config('tapcard.digital_card.topup_taps'), 'topup_price' => (int) config('tapcard.digital_card.topup_price'),
+                ],
+                'physical_bio_pages' => BioBlocks::MAX_PAGES,
+                'card_products' => CardProduct::where('is_active', true)->orderBy('sort')->get()
+                    ->map(fn (CardProduct $c) => ['name' => $c->name, 'price' => $c->price, 'description' => $c->description, 'chip' => $c->chip_type?->value])->values()->all(),
+                'lanyard_from' => LanyardWidth::where('is_active', true)->min('price_single'),
+                'merch' => MerchProduct::where('is_active', true)->orderBy('sort')->get()
+                    ->map(fn (MerchProduct $m) => ['name' => $m->name, 'coming_soon' => $m->status === 'coming_soon'])->values()->all(),
             ];
         });
 

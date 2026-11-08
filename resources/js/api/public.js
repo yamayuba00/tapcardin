@@ -15,4 +15,6 @@ export const publicApi = {
 export const marketingApi = {
   /** Template kartu default, preset bio link, contoh profil, paket. */
   showcase: () => http.get('/api/showcase'),
+  /** status layanan langsung (sama dengan status.{base}) */
+  status: () => http.get('/api/status'),
 }

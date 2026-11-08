@@ -9,6 +9,8 @@ export const config = {
   appUrl: '',
   adminUrl: '',
   marketingUrl: '',
+  /** halaman status publik (status.{base}) */
+  statusUrl: '',
   googleEnabled: false,
   /** @type {null | {code: string, password: string, accounts: {email: string, name: string, staff: boolean}[]}} hanya di APP_ENV=local */
   devLogin: null,

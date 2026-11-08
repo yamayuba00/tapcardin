@@ -16,6 +16,9 @@ const year = new Date().getFullYear()
         <span class="label">Produk</span>
         <a href="#template" class="text-muted no-underline hover:text-fg">Template kartu</a>
         <a href="#bio-link" class="text-muted no-underline hover:text-fg">Bio link</a>
+        <a href="#kartu" class="text-muted no-underline hover:text-fg">Kartu digital & fisik</a>
+        <a href="#perusahaan" class="text-muted no-underline hover:text-fg">Untuk perusahaan</a>
+        <a href="#pesan" class="text-muted no-underline hover:text-fg">Pesan kartu & lanyard</a>
         <a href="#harga" class="text-muted no-underline hover:text-fg">Harga</a>
       </nav>
       <nav class="grid content-start gap-2 text-sm" aria-label="Akun">
@@ -24,6 +27,7 @@ const year = new Date().getFullYear()
         <a :href="`${config.appUrl}/login`" class="text-muted no-underline hover:text-fg">Daftar gratis</a>
         <a :href="`${config.resolverUrl}/k`" class="text-muted no-underline hover:text-fg">Masukkan kode kartu</a>
         <a href="#faq" class="text-muted no-underline hover:text-fg">Bantuan</a>
+        <a :href="config.statusUrl" class="text-muted no-underline hover:text-fg">Status layanan</a>
       </nav>
     </div>
     <p class="border-t border-line px-4 py-6 text-center text-xs text-muted">© {{ year }} TapCard. Dibuat di Indonesia.</p>

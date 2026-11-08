@@ -49,6 +49,7 @@ class SpaController extends Controller
                 'appUrl' => "$scheme://app.$base$suffix",
                 'adminUrl' => "$scheme://".config('tapcard.panel_subdomain').".$base$suffix",
                 'marketingUrl' => "$scheme://$base$suffix",
+                'statusUrl' => "$scheme://status.$base$suffix",
                 'googleEnabled' => (bool) config('services.google.client_id'),
                 // Realtime (Reverb): alamat publik WebSocket untuk Echo; null → SSE/polling seperti sebelumnya
                 'realtime' => config('broadcasting.default') === 'reverb' && config('broadcasting.connections.reverb.key') ? [

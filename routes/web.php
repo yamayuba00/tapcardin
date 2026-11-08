@@ -54,6 +54,8 @@ Route::domain('{workspace}.'.$base)
 
 Route::domain($base)->group(function () use ($spa) {
     Route::get('/api/showcase', ShowcaseController::class)->middleware('throttle:60,1')->name('showcase');
+    // status layanan langsung untuk landing page (data sama dengan status.{base}, tanpa CORS)
+    Route::get('/api/status', StatusController::class)->middleware('throttle:120,1')->name('marketing.status');
     // notifikasi gateway pembayaran (CSRF dikecualikan untuk webhooks/*)
     Route::post('/webhooks/payment', PaymentWebhookController::class)->middleware('throttle:120,1')->name('webhooks.payment');
     $spa()->name('marketing');

@@ -148,7 +148,10 @@ class UptimeTest extends TestCase
             ->assertCreated()->json('data.id');
         $this->panel('POST', '/uptime/incidents', ['kind' => 'maintenance', 'title' => 'Pemeliharaan', 'impact' => 'minor', 'status' => 'resolved', 'body' => 'x'])->assertStatus(422);
 
-        $res = $this->getJson($this->host('status', '/api/status'))->assertOk();
+        $this->getJson($this->host('status', '/api/status'))->assertOk();
+        // permintaan kedua dari cache: tetap array (cache tidak meng-unserialize objek)
+        $res = $this->getJson($this->host('status', '/api/status'))->assertOk()->assertJsonPath('data.monitors.0.days.0.uptime', null);
+        $this->getJson('http://localhost/api/status')->assertOk()->assertJsonPath('data.monitors.0.name', 'Layanan API');
         $this->assertSame('major', $res->json('data.overall'));
         $this->assertSame(['Layanan API'], array_column($res->json('data.monitors'), 'name'), 'hanya monitor publik, nama publik');
         $this->assertCount(90, $res->json('data.monitors.0.days'));
