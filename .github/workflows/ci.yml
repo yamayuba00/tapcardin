@@ -74,3 +74,9 @@ jobs:
 
       - name: Tes PHP
         run: vendor/bin/phpunit
+
+      # 01.30 WIB = tanggal WIB sudah berganti, tanggal UTC belum → menangkap bug zona waktu
+      - name: Tes PHP (jam rawan 01.30 WIB)
+        run: vendor/bin/phpunit
+        env:
+          TEST_CLOCK: '2026-11-08T01:30:00+07:00'

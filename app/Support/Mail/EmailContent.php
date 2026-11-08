@@ -16,7 +16,7 @@ final class EmailContent
      */
     public const DEFAULT_ON = [
         'invoice_due' => true, 'invoice_paid' => true, 'plan_changed' => true, 'subscription_past_due' => true,
-        'grace_ending' => true, 'order_status' => true, 'tap_quota' => true, 'lost_card_tapped' => true,
+        'grace_ending' => true, 'order_status' => true, 'order_unpaid' => true, 'tap_quota' => true, 'lost_card_tapped' => true,
     ];
 
     /** Selalu dikirim, tidak bisa dimatikan (tidak tampil di daftar preferensi). */
@@ -114,6 +114,16 @@ final class EmailContent
                 ])),
                 'action' => ['label' => 'Lihat pesanan', 'path' => '/orders/'.($d['id'] ?? '')],
                 'tone' => ($d['status'] ?? '') === 'cancelled' ? 'warn' : 'default',
+            ],
+            'order_unpaid' => [
+                'subject' => "Pesanan {$d['number']} belum dibayar",
+                'title' => 'Pesanan Anda menunggu pembayaran',
+                'lines' => [
+                    "Pesanan **{$d['number']}** sebesar **{$rp($d['total'] ?? 0)}** belum dibayar.",
+                    "Bila belum dibayar sampai **{$date($d['cancel_at'] ?? null)}**, pesanan dibatalkan otomatis. Anda tetap bisa memesan lagi kapan saja.",
+                ],
+                'action' => ['label' => 'Bayar pesanan', 'path' => '/orders/'.($d['id'] ?? '')],
+                'tone' => 'warn',
             ],
             'tap_quota' => ($d['level'] ?? 0) >= 100 ? [
                 'subject' => 'Kuota tap kartu digital habis',

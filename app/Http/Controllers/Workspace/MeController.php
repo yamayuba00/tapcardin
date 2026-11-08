@@ -40,6 +40,7 @@ class MeController extends WorkspaceController
         'grace_ending' => 'Masa tenggang hampir berakhir',
         'plan_changed' => 'Perubahan paket',
         'order_status' => 'Status pesanan kartu',
+        'order_unpaid' => 'Pengingat pesanan belum dibayar',
         'tap_quota' => 'Kuota tap kartu digital hampir / sudah habis',
     ];
 

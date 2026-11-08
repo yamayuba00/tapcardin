@@ -55,6 +55,11 @@ return [
         'db_port' => env('BACKUP_DB_PORT'),
     ],
 
+    // Pesanan "menunggu pembayaran" dibatalkan otomatis setelah N hari (pengingat sehari sebelumnya).
+    'orders' => [
+        'unpaid_cancel_days' => max(2, (int) env('ORDER_UNPAID_CANCEL_DAYS', 3)),
+    ],
+
     // Paket kartu digital — terpisah dari paket workspace (kartu fisik). Kuota tap berlaku kumulatif (tidak di-reset
     // tiap bulan): habis → profil tidak bisa dibuka sampai pemilik membeli tambahan. Tap yang dihitung = tap unik
     // (lihat tap_dedupe_minutes), bot tidak dihitung. Kartu fisik tanpa kuota tap.

@@ -4,10 +4,12 @@ namespace App\Providers;
 
 use App\Authz\Access;
 use App\Authz\PlatformAccess;
+use App\Database\PostgresConnection;
 use App\Support\Crockford;
 use App\Support\Hasher;
 use App\Tenancy\CurrentTenant;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Database\Connection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
@@ -20,6 +22,9 @@ class AppServiceProvider extends ServiceProvider
         $this->app->scoped(CurrentTenant::class);
         $this->app->scoped(Access::class);
         $this->app->scoped(PlatformAccess::class);
+
+        // tanggal ke Postgres selalu membawa offset zona waktu (lihat App\Database\PostgresConnection)
+        Connection::resolverFor('pgsql', fn ($pdo, $database, $prefix, $config) => new PostgresConnection($pdo, $database, $prefix, $config));
     }
 
     public function boot(): void

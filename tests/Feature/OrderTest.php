@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\CardStatus;
+use App\Mail\NotificationMail;
 use App\Models\Batch;
 use App\Models\Card;
 use App\Models\Design;
@@ -15,7 +16,9 @@ use App\Models\Subscription;
 use App\Models\User;
 use App\Tenancy\TenantScope;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -64,6 +67,37 @@ class OrderTest extends TestCase
             ],
             'shipping' => ['method' => 'regular', 'recipient_name' => 'Rina', 'recipient_phone' => '081234567890', 'address_line' => 'Jl. Sudirman No. 1, RT 02/RW 03', 'district' => 'Tanah Abang', 'city' => 'Jakarta Pusat', 'province' => 'DKI Jakarta', 'postal_code' => '10210'],
         ]);
+    }
+
+    public function test_unpaid_order_gets_reminder_then_is_cancelled_after_three_days(): void
+    {
+        Mail::fake();
+        $rina = $this->makeUser();
+        $d = $this->designs($rina);
+        $id = $this->order($d)->assertCreated()->json('data.order.id');
+        $paid = $this->order($d)->json('data.order.id');
+        Order::withoutGlobalScopes()->where('public_id', $paid)->update(['status' => 'paid', 'paid_at' => now()]);
+        $order = fn () => Order::withoutGlobalScopes()->where('public_id', $id)->first();
+        $types = fn () => DB::table('notifications')->where('user_id', $rina->id)->whereIn('type', ['order_unpaid', 'order_status'])->orderBy('id')->pluck('type')->all();
+
+        $this->travel(47)->hours();
+        $this->artisan('tapcard:expire-orders');
+        $this->assertSame([], $types(), 'belum waktunya mengingatkan');
+
+        $this->travel(2)->hours();
+        $this->artisan('tapcard:expire-orders');
+        $this->artisan('tapcard:expire-orders');
+        $this->assertSame(['order_unpaid'], $types(), 'pengingat sekali saja');
+        $this->assertNotNull($order()->payment_reminded_at);
+        Mail::assertQueued(NotificationMail::class, fn ($m) => $m->type === 'order_unpaid' && $m->hasTo('rina@example.com'));
+
+        $this->travel(24)->hours();
+        $this->artisan('tapcard:expire-orders')->expectsOutputToContain('1 pesanan dibatalkan');
+        $this->assertSame(['cancelled', 'Tidak dibayar dalam 3 hari'], [$order()->status, $order()->cancel_reason]);
+        $this->assertSame(0, Invoice::withoutGlobalScopes()->where('order_id', $order()->id)->whereIn('status', ['issued', 'overdue'])->count());
+        $this->assertSame(['order_unpaid', 'order_status'], $types());
+        $this->assertSame('paid', Order::withoutGlobalScopes()->where('public_id', $paid)->value('status'), 'pesanan lunas tidak disentuh');
+        $this->assertDatabaseHas('audit_logs', ['action' => 'order.cancelled']);
     }
 
     public function test_full_flow_order_pay_produce_ship_and_activate(): void

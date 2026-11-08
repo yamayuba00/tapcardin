@@ -100,7 +100,7 @@ terakhir disimpan untuk rollback. Migrasi TapCard hanya menambah tabel/kolom, ja
 | Nginx | [`nginx/tapcard.conf`](nginx/tapcard.conf) — satu server block untuk domain & semua subdomain, HTTP→HTTPS, aset ber-hash di-cache setahun, SSE notifikasi tanpa buffering, `ws.<domain>` diteruskan ke Reverb (WebSocket). Kompatibel Nginx 1.18–1.27 |
 | PHP-FPM | [`php/fpm-pools.conf`](php/fpm-pools.conf) — pool utama (jumlah worker dihitung dari RAM) + pool terpisah untuk notifikasi realtime; [`php/opcache-production.ini`](php/opcache-production.ini) |
 | Supervisor | [`supervisor/tapcard.conf`](supervisor/tapcard.conf) — 2 worker antrean (`taps`, `notify`, `leads`, `default`, `render`) + scheduler + `tapcard-reverb` (WebSocket realtime di 127.0.0.1:8080) |
-| Scheduler | pengingat follow-up (tiap menit), statistik kartu (15 menit), tagihan & masa tenggang langganan (01.00 WIB), partisi & pembersihan data (harian) |
+| Scheduler | pengingat follow-up & invoice kedaluwarsa (tiap menit), alarm & cek pembayaran (5 menit), statistik kartu (15 menit), pesanan belum dibayar: pengingat lalu batal setelah 3 hari (tiap jam), tagihan & masa tenggang langganan (01.00 WIB), backup (02.15 WIB), partisi & pembersihan data (harian) |
 | SSL | Certbot, perpanjang otomatis (timer sistem) + reload Nginx |
 | Keamanan | UFW: hanya SSH, 80, 443 terbuka · `.env` tidak terbaca publik · PHP selain `index.php` tidak dieksekusi |
 | Backup | `tapcard:backup` harian 02.15 WIB → S3 `backups/` (privat, 30 hari) bila `BACKUP_DISK` diisi. `DB_MODE=local` juga menyimpan salinan harian di `/var/backups/tapcard` (14 hari) |

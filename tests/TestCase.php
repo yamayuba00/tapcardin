@@ -15,11 +15,24 @@ use App\Support\Crockford;
 use App\Tenancy\CurrentTenant;
 use App\Tenancy\TenantScope;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Hash;
 
 abstract class TestCase extends BaseTestCase
 {
     public const ACTIVATION_CODE = '7K2M9QXP';
+
+    /**
+     * TEST_CLOCK=2026-11-08T01:30:00+07:00 → semua tes berjalan pada jam itu. CI menjalankan seluruh tes sekali lagi di
+     * jam rawan (00.00–07.00 WIB: tanggal WIB sudah berganti, tanggal UTC belum) agar bug zona waktu ketahuan.
+     */
+    protected function setUp(): void
+    {
+        parent::setUp();
+        if ($clock = getenv('TEST_CLOCK')) {
+            $this->travelTo(Carbon::parse($clock));
+        }
+    }
 
     protected function host(string $sub, string $path = '/'): string
     {

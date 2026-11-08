@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Schedule;
 Schedule::command('tapcard:aggregate-stats')->everyFifteenMinutes()->withoutOverlapping();
 Schedule::command('tapcard:reminders')->everyMinute()->withoutOverlapping();
 Schedule::command('tapcard:expire-invoices')->everyMinute()->withoutOverlapping();
+Schedule::command('tapcard:expire-orders')->hourly()->withoutOverlapping();
 Schedule::command('tapcard:payments-reconcile')->everyFiveMinutes()->withoutOverlapping();
 Schedule::command('tapcard:subscriptions')->dailyAt('01:00')->timezone('Asia/Jakarta')->withoutOverlapping();
 Schedule::command('tapcard:aggregate-stats --days=2')->dailyAt('00:30')->timezone('Asia/Jakarta');
