@@ -1,0 +1,76 @@
+# Setiap push & pull request: format kode, aturan desain, build frontend, tes JS, dan seluruh tes PHP (PostgreSQL 16).
+# Merah = jangan deploy dulu. Hasil: tab Actions di GitHub.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: tapcard
+          POSTGRES_PASSWORD: secret
+          POSTGRES_DB: tapcard_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U tapcard -d tapcard_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_pgsql, pgsql, intl, gd, bcmath, mbstring, zip, redis
+          coverage: none
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Composer cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache/files
+          key: composer-${{ hashFiles('composer.lock') }}
+
+      - name: Pasang dependensi
+        run: |
+          composer install --no-interaction --no-progress --prefer-dist
+          npm ci
+
+      - name: Siapkan .env
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Format kode (Pint)
+        run: vendor/bin/pint --test
+
+      - name: Aturan desain & tombol
+        run: |
+          bash scripts/check-design.sh
+          python3 scripts/check-buttons.py
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Tes JS
+        run: npm test
+
+      - name: Tes PHP
+        run: vendor/bin/phpunit

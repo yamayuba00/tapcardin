@@ -5,6 +5,8 @@ const page = (name) => () => import(`@/pages/admin/${name}/index.vue`)
 
 export default [
   { path: '/login', name: 'login', component: () => import('@/pages/auth/Login/index.vue'), meta: { guest: true, title: 'Masuk panel pemilik' } },
+  { path: '/forgot-password', name: 'forgot-password', component: () => import('@/pages/auth/ForgotPassword/index.vue'), meta: { guest: true, title: 'Lupa password' } },
+  { path: '/reset-password', name: 'reset-password', component: () => import('@/pages/auth/ResetPassword/index.vue'), meta: { guest: true, title: 'Buat password baru' } },
   {
     path: '/',
     component: AdminLayout,

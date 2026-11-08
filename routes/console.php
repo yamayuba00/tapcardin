@@ -10,4 +10,6 @@ Schedule::command('tapcard:payments-reconcile')->everyFiveMinutes()->withoutOver
 Schedule::command('tapcard:subscriptions')->dailyAt('01:00')->timezone('Asia/Jakarta')->withoutOverlapping();
 Schedule::command('tapcard:aggregate-stats --days=2')->dailyAt('00:30')->timezone('Asia/Jakarta');
 Schedule::command('tapcard:partitions')->dailyAt('02:00')->timezone('Asia/Jakarta');
+Schedule::command('tapcard:alert')->everyFiveMinutes()->withoutOverlapping();
+Schedule::command('tapcard:backup')->dailyAt('02:15')->timezone('Asia/Jakarta')->withoutOverlapping()->when(fn () => (bool) config('tapcard.backup.disk'));
 Schedule::command('tapcard:prune')->dailyAt('03:30')->timezone('Asia/Jakarta');

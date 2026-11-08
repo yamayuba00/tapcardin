@@ -74,6 +74,8 @@ Installer aman dijalankan ulang (mis. setelah memperbaiki isian): langkah yang s
 | Log worker / scheduler | `/var/log/tapcard/queue.log`, `/var/log/tapcard/schedule.log` |
 | Uji email | `sudo -u www-data php /var/www/tapcard/current/artisan tapcard:mail-test email@anda.com` |
 | Cocokkan pembayaran dengan gateway (otomatis tiap 5 menit) | `sudo -u www-data php /var/www/tapcard/current/artisan tapcard:payments-reconcile` |
+| Cek kesehatan sistem (sama dengan panel → Sistem) | `sudo -u www-data php /var/www/tapcard/current/artisan tapcard:health` |
+| Backup database sekarang (otomatis 02.15 WIB) | `sudo -u www-data php /var/www/tapcard/current/artisan tapcard:backup` — lihat [Backup & alarm](#backup--alarm) |
 
 Rilis tanpa downtime: kode baru di-build di `releases/<waktu>`, dan `current` baru dipindah setelah dependensi, build aset,
 migrasi, dan cache berhasil. Rilis yang gagal di tengah jalan tidak menyentuh versi yang sedang berjalan. Lima rilis
@@ -101,8 +103,39 @@ terakhir disimpan untuk rollback. Migrasi TapCard hanya menambah tabel/kolom, ja
 | Scheduler | pengingat follow-up (tiap menit), statistik kartu (15 menit), tagihan & masa tenggang langganan (01.00 WIB), partisi & pembersihan data (harian) |
 | SSL | Certbot, perpanjang otomatis (timer sistem) + reload Nginx |
 | Keamanan | UFW: hanya SSH, 80, 443 terbuka · `.env` tidak terbaca publik · PHP selain `index.php` tidak dieksekusi |
-| Backup | `DB_MODE=local`: `pg_dump` harian ke `/var/backups/tapcard` (14 hari). Salin juga ke luar server. Database terkelola memakai backup penyedianya |
+| Backup | `tapcard:backup` harian 02.15 WIB → S3 `backups/` (privat, 30 hari) bila `BACKUP_DISK` diisi. `DB_MODE=local` juga menyimpan salinan harian di `/var/backups/tapcard` (14 hari) |
+| Alarm | `tapcard:alert` tiap 5 menit → email ke Pemilik Platform / `ALERT_EMAILS` bila `tapcard:health` gagal, pengingat tiap 6 jam, dan email "pulih" |
 | Log | rotasi mingguan untuk log worker & PHP-FPM; log Laravel harian (14 hari) |
+
+## Backup & alarm
+
+**Backup ke luar server.** Isi di `shared/.env` lalu rilis ulang:
+
+```env
+BACKUP_DISK=backups      # bucket S3 yang sama (AWS_*), folder backups/ — tidak terbaca publik
+BACKUP_KEEP_DAYS=30
+BACKUP_DB_PORT=          # isi port langsung PostgreSQL bila DB_PORT = PgBouncer (6432)
+```
+
+`pg_dump` harus versi ≥ versi server database. Cek versi server dengan
+`sudo -u www-data php /var/www/tapcard/current/artisan db:show`, versi klien dengan `pg_dump --version`. Bila klien lebih lama:
+
+```bash
+sudo apt-get install -y postgresql-common && sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+sudo apt-get install -y postgresql-client-17     # samakan dengan versi server
+```
+
+Uji sekali: `sudo -u www-data php /var/www/tapcard/current/artisan tapcard:backup`. Memulihkan: unduh file `.dump`
+dari bucket (folder `backups/`), lalu `pg_restore --clean --no-owner -d <database> tapcard-YYYYMMDD-HHMMSS.dump`.
+
+**Alarm email.** Aktif otomatis: tiap 5 menit `tapcard:alert` menjalankan pemeriksaan `tapcard:health` dan mengirim
+email ke semua staf Pemilik Platform bila ada yang gagal (database mati, antrean macet, job gagal, error server melonjak,
+disk hampir penuh, Redis penuh, backup > 26 jam). Masalah sesaat harus muncul 2x berturut-turut dulu; database mati
+langsung dikabari. Isi `ALERT_EMAILS=email1,email2` agar alarm tetap terkirim saat database mati. Saran kapasitas
+("pasang Redis") tidak memicu alarm.
+
+Alarm berjalan dari scheduler di server — bila VPS-nya sendiri mati, tidak ada yang mengirim. Tambahkan pemantau
+dari luar (mis. UptimeRobot gratis) ke `https://app.<domain>/up`.
 
 ## Pembayaran (payment service)
 

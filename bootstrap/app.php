@@ -6,6 +6,7 @@ use App\Http\Middleware\EnsurePlatformStaff;
 use App\Http\Middleware\ResolveWorkspace;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\UseAdminSession;
+use App\Support\ErrorRate;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
@@ -41,6 +42,8 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withExceptions(function (Exceptions $exceptions): void {
         // ApiError = error bisnis yang diharapkan (4xx, sudah dijawab ke klien) — bukan bug, jangan masuk log.
         $exceptions->dontReport(ApiError::class);
+        // error yang dilaporkan dihitung per menit → alarm email (tapcard:alert) bila melonjak
+        $exceptions->report(fn (Throwable $e) => ErrorRate::hit($e));
 
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),

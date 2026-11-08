@@ -38,6 +38,23 @@ return [
     // refresh/spam tidak menggelembungkan statistik & tidak mengirim notifikasi berulang. 0 = hitung semua.
     'tap_dedupe_minutes' => (int) env('TAP_DEDUPE_MINUTES', 30),
 
+    // Alarm email ke pemilik platform (tapcard:alert, tiap 5 menit) saat pemeriksaan tapcard:health gagal.
+    // Kosong = semua staf aktif berperan Pemilik Platform. Isi (dipisah koma) agar tetap terkirim walau database mati.
+    'alert' => [
+        'emails' => array_values(array_filter(array_map('trim', explode(',', (string) env('ALERT_EMAILS', ''))))),
+        'errors_15m' => (int) env('ALERT_ERRORS_15M', 10),  // error server dalam 15 menit sebelum dianggap masalah
+        'remind_hours' => (int) env('ALERT_REMIND_HOURS', 6),
+    ],
+
+    // Backup database harian ke disk `backups` (S3, folder backups/ — privat, di luar policy publik). Kosong = mati.
+    'backup' => [
+        'disk' => env('BACKUP_DISK'),
+        'keep_days' => (int) env('BACKUP_KEEP_DAYS', 30),
+        // pg_dump butuh koneksi langsung; isi bila DB_PORT mengarah ke PgBouncer (mis. 6432 → 5432)
+        'db_host' => env('BACKUP_DB_HOST'),
+        'db_port' => env('BACKUP_DB_PORT'),
+    ],
+
     // Paket kartu digital — terpisah dari paket workspace (kartu fisik). Kuota tap berlaku kumulatif (tidak di-reset
     // tiap bulan): habis → profil tidak bisa dibuka sampai pemilik membeli tambahan. Tap yang dihitung = tap unik
     // (lihat tap_dedupe_minutes), bot tidak dihitung. Kartu fisik tanpa kuota tap.

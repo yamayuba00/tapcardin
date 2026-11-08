@@ -2,7 +2,9 @@
 
 namespace App\Console\Commands;
 
+use App\Support\ErrorRate;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Redis;
@@ -33,7 +35,7 @@ class Health extends Command
         return collect($h['checks'])->every('ok') ? self::SUCCESS : self::FAILURE;
     }
 
-    /** @return array{checks: list<array{label:string,value:string,ok:bool,hint?:string}>, redis_recommended: bool} */
+    /** @return array{checks: list<array{label:string,value:string,ok:bool,hint?:string,advisory?:bool}>, redis_recommended: bool} */
     public static function collect(): array
     {
         $checks = [];
@@ -65,12 +67,13 @@ class Health extends Command
         $checks[] = ['label' => 'Job gagal 24 jam', 'value' => (string) $failed, 'ok' => $failed === 0];
 
         $taps = DB::table('taps')->where('created_at', '>=', now()->subDay())->count();
-        $checks[] = ['label' => 'Tap 24 jam', 'value' => number_format($taps, 0, ',', '.'), 'ok' => $taps < 50000] + $hint('> ±50.000/hari → pasang Redis');
+        // `advisory` = saran kapasitas, bukan kerusakan → tidak memicu alarm email (tapcard:alert)
+        $checks[] = ['label' => 'Tap 24 jam', 'value' => number_format($taps, 0, ',', '.'), 'ok' => $taps < 50000, 'advisory' => true] + $hint('> ±50.000/hari → pasang Redis');
 
         $online = 0;
         if (config('session.driver') === 'database') {
             $online = DB::table('sessions')->where('last_activity', '>=', time() - 300)->whereNotNull('user_id')->count();
-            $checks[] = ['label' => 'Pengguna online (5 menit)', 'value' => (string) $online, 'ok' => $online < 200] + $hint('> ±200 → pasang Redis');
+            $checks[] = ['label' => 'Pengguna online (5 menit)', 'value' => (string) $online, 'ok' => $online < 200, 'advisory' => true] + $hint('> ±200 → pasang Redis');
         }
 
         // ukuran tabel hanya untuk yang memang memakai database
@@ -94,6 +97,18 @@ class Health extends Command
             } catch (Throwable $e) {
                 $checks[] = ['label' => 'Koneksi Redis', 'value' => mb_substr($e->getMessage(), 0, 120), 'ok' => false];
             }
+        }
+
+        $errors = ErrorRate::lastMinutes(15);
+        $last = ErrorRate::last();
+        $checks[] = ['label' => 'Error server 15 menit', 'value' => $errors.($errors && $last ? " (terakhir: {$last['class']} — {$last['message']})" : ''),
+            'ok' => $errors < (int) config('tapcard.alert.errors_15m'), 'hint' => 'Lihat storage/logs/laravel.log'];
+
+        if (config('tapcard.backup.disk')) {
+            $b = rescue(fn () => Cache::get('backup:last'), null, report: false);
+            $age = $b ? (int) round((now()->timestamp - $b['at']) / 3600) : null;
+            $checks[] = ['label' => 'Backup database terakhir', 'value' => $b ? "$age jam lalu (".self::bytes($b['size']).')' : 'belum pernah',
+                'ok' => $age !== null && $age < 26, 'hint' => 'Jalankan php artisan tapcard:backup dan periksa errornya'];
         }
 
         $free = @disk_free_space(storage_path());

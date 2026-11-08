@@ -48,7 +48,7 @@ class NotificationMail extends Mailable implements ShouldQueue
         $c = EmailContent::for($this->type, $this->data) ?? ['subject' => 'Notifikasi TapCard', 'title' => 'Notifikasi TapCard', 'lines' => [], 'action' => null, 'tone' => 'default'];
         $c['type'] = $this->type;
         if ($c['action']) {
-            $c['action']['url'] = rtrim($this->baseUrl, '/').$c['action']['path'];
+            $c['action']['url'] ??= rtrim($this->baseUrl, '/').$c['action']['path']; // email panel memberi URL lengkap
         }
 
         return $c;

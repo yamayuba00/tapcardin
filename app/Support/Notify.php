@@ -43,13 +43,17 @@ final class Notify
         return $n;
     }
 
-    /** Email langsung ke alamat tertentu (mis. akun yang baru dihapus — barisnya sudah tidak punya email). */
-    public static function email(string $to, string $name, string $type, array $data, ?Tenant $tenant = null): void
+    /**
+     * Email langsung ke alamat tertentu (mis. akun yang baru dihapus — barisnya sudah tidak punya email).
+     * `$now` = kirim saat itu juga tanpa antrean (alarm sistem: antrean bisa ikut bermasalah).
+     */
+    public static function email(string $to, string $name, string $type, array $data, ?Tenant $tenant = null, bool $now = false): void
     {
         if (str_ends_with($to, '@invalid')) {
             return;
         }
-        rescue(fn () => Mail::to($to, $name)->queue(new NotificationMail($type, $data, $name, self::baseUrl($tenant))), report: true);
+        $mail = new NotificationMail($type, $data, $name, self::baseUrl($tenant));
+        rescue(fn () => $now ? Mail::to($to, $name)->sendNow($mail) : Mail::to($to, $name)->queue($mail), report: true);
     }
 
     /** Tautan di email membuka workspace yang benar: subdomain perusahaan, atau app. untuk workspace personal. */

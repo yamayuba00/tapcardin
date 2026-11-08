@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\AdminLoginController;
+use App\Http\Controllers\Auth\StaffPasswordResetController;
 use App\Http\Controllers\Platform\AnnouncementController;
 use App\Http\Controllers\Platform\ApprovalController;
 use App\Http\Controllers\Platform\AuditController;
@@ -30,6 +31,8 @@ use Illuminate\Support\Facades\Route;
 // Staf login dengan email + password (bukan OTP seperti pengguna workspace).
 Route::post('/api/auth/login', [AdminLoginController::class, 'login'])->name('login');
 Route::post('/api/auth/logout', [AdminLoginController::class, 'logout'])->name('logout');
+Route::post('/api/auth/forgot-password', [StaffPasswordResetController::class, 'forgot'])->middleware('throttle:5,1')->name('password.forgot');
+Route::post('/api/auth/reset-password', [StaffPasswordResetController::class, 'reset'])->middleware('throttle:10,1')->name('password.reset');
 
 Route::middleware(['auth', 'platform'])->prefix('api')->name('api.')->group(function () {
     Route::get('/me', MeController::class)->name('me');

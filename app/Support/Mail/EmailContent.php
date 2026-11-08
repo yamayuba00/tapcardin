@@ -20,7 +20,7 @@ final class EmailContent
     ];
 
     /** Selalu dikirim, tidak bisa dimatikan (tidak tampil di daftar preferensi). */
-    public const ALWAYS = ['account_deleted'];
+    public const ALWAYS = ['account_deleted', 'password_reset', 'system_alert', 'system_recovered'];
 
     /** `**tebal**` → <strong>, setelah teks di-escape (nama/catatan berasal dari pengguna). */
     public static function html(string $line): string
@@ -39,8 +39,8 @@ final class EmailContent
     }
 
     /**
-     * @return array{subject:string, title:string, lines:list<string>, action:?array{label:string,path:string}, tone:string}|null
-     *                                                                                                                            tone: default | ok | warn | danger
+     * @return array{subject:string, title:string, lines:list<string>, action:?array{label:string,path?:string,url?:string}, tone:string}|null
+     *                                                                                                                                         tone: default | ok | warn | danger
      */
     public static function for(string $type, array $d): ?array
     {
@@ -192,6 +192,34 @@ final class EmailContent
                 ],
                 'action' => null,
                 'tone' => 'danger',
+            ],
+            'password_reset' => [
+                'subject' => 'Buat password baru panel TapCard',
+                'title' => 'Permintaan reset password',
+                'lines' => [
+                    'Kami menerima permintaan untuk membuat password baru akun panel Anda.',
+                    "Tautan di bawah berlaku **{$d['minutes']} menit** dan hanya bisa dipakai sekali. Setelah password diganti, semua sesi panel yang masih terbuka akan berakhir.",
+                    'Bila Anda tidak meminta reset, abaikan email ini — password Anda tidak berubah.',
+                ],
+                'action' => ['label' => 'Buat password baru', 'url' => $d['url']],
+                'tone' => 'default',
+            ],
+            'system_alert' => [
+                'subject' => '[TapCard] Perlu perhatian: '.implode(', ', array_column($d['checks'], 'label')),
+                'title' => 'Ada yang perlu diperiksa di server',
+                'lines' => [
+                    ...array_map(fn ($c) => "**{$c['label']}**: {$c['value']}".(! empty($c['hint']) ? " — {$c['hint']}" : ''), $d['checks']),
+                    ($d['reminder'] ?? false) ? 'Pengingat: masalah ini masih berlangsung sejak pemberitahuan sebelumnya.' : 'Anda akan diberi tahu lagi bila belum pulih dalam beberapa jam, dan saat semuanya kembali normal.',
+                ],
+                'action' => ['label' => 'Buka Sistem di panel', 'url' => $d['url']],
+                'tone' => 'danger',
+            ],
+            'system_recovered' => [
+                'subject' => '[TapCard] Sistem kembali normal',
+                'title' => 'Semua pemeriksaan kembali normal',
+                'lines' => ['Masalah yang sebelumnya dilaporkan sudah pulih: **'.implode(', ', $d['labels']).'**.'],
+                'action' => ['label' => 'Buka Sistem di panel', 'url' => $d['url']],
+                'tone' => 'ok',
             ],
             default => null,
         };

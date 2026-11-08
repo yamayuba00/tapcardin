@@ -47,5 +47,6 @@ defineExpose({ fill })
       </div>
     </AppField>
     <AppButton type="submit" block :loading="busy">Masuk</AppButton>
+    <RouterLink to="/forgot-password" class="inline-flex min-h-11 items-center justify-self-center text-sm font-semibold text-accent-text underline">Lupa password?</RouterLink>
   </form>
 </template>

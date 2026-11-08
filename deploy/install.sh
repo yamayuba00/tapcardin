@@ -43,7 +43,7 @@ export DEBIAN_FRONTEND=noninteractive
 # ── 1. paket sistem ───────────────────────────────────────────────────────────────────────────
 step "Paket sistem"
 apt-get update -qq
-apt-get install -y -qq ca-certificates curl gnupg git unzip ufw supervisor nginx cron logrotate software-properties-common >/dev/null
+apt-get install -y -qq ca-certificates curl gnupg git unzip ufw supervisor nginx cron logrotate software-properties-common postgresql-client >/dev/null
 if ! apt-cache policy "php${PHP_VERSION}-fpm" | grep -q 'Candidate: [0-9]'; then
   add-apt-repository -y ppa:ondrej/php >/dev/null && apt-get update -qq
 fi
