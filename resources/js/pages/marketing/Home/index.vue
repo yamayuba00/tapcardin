@@ -38,6 +38,13 @@ onMounted(() => {
 onBeforeUnmount(() => clearInterval(timer))
 
 const digital = computed(() => show.value?.digital_card ?? { tap_quota: 1500, bio_pages: 1, topup_taps: 2000, topup_price: 70000 })
+// merchandise: tersedia disebut apa adanya, sisanya "segera hadir" (status diatur dari panel)
+const merch = computed(() => {
+  const all = show.value?.merch ?? []
+  const ready = all.filter((m) => !m.coming_soon).map((m) => m.name)
+  const soon = all.filter((m) => m.coming_soon).map((m) => m.name)
+  return [ready.length ? `${ready.join(', ')} — tersedia` : '', soon.length ? `${soon.join(', ')} — segera hadir` : ''].filter(Boolean).join('; ') || 'Kaos, tote bag, mug — segera hadir'
+})
 const cardFrom = computed(() => (show.value?.card_products?.length ? Math.min(...show.value.card_products.map((c) => c.price)) : null))
 
 const VALUES = [
@@ -293,7 +300,7 @@ const faq = computed(() => [
             <li class="flex gap-3"><Palette class="size-5 flex-none text-accent-text" aria-hidden="true" /><span><strong class="block">Lanyard serasi</strong><span class="text-muted">15/20/25 mm, mulai {{ rupiah(show?.lanyard_from) }} per pcs</span></span></li>
             <li class="flex gap-3"><Wallet class="size-5 flex-none text-accent-text" aria-hidden="true" /><span><strong class="block">Bayar QRIS</strong><span class="text-muted">Semua e-wallet & mobile banking, kode promo didukung</span></span></li>
             <li class="flex gap-3"><Truck class="size-5 flex-none text-accent-text" aria-hidden="true" /><span><strong class="block">Kirim atau ambil</strong><span class="text-muted">Reguler 3–5 hari, ekspres 1–2 hari kerja</span></span></li>
-            <li class="flex gap-3"><Blocks class="size-5 flex-none text-accent-text" aria-hidden="true" /><span><strong class="block">Merchandise</strong><span class="text-muted">{{ (show?.merch ?? []).map((m) => m.name).join(', ') || 'Kaos, tote bag, mug' }} — segera hadir</span></span></li>
+            <li class="flex gap-3"><Blocks class="size-5 flex-none text-accent-text" aria-hidden="true" /><span><strong class="block">Merchandise</strong><span class="text-muted">{{ merch }}</span></span></li>
           </ul>
         </div>
       </section>

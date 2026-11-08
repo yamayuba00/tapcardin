@@ -9,6 +9,7 @@ import { marketingApi } from '@/api/public'
 import { config } from '@/config'
 
 const data = ref(null)
+const failed = ref(false)
 const OVERALL = {
   operational: { icon: CircleCheck, text: 'Semua layanan berjalan normal', cls: 'text-ok' },
   minor: { icon: CircleAlert, text: 'Sebagian layanan sedang terganggu', cls: 'text-warn' },
@@ -25,7 +26,12 @@ const bars = (m) => m.days.slice(-30).map((d) => ({
 }))
 
 async function load() {
-  try { data.value = (await marketingApi.status()).data } catch { /* landing tetap tampil tanpa widget */ }
+  try {
+    data.value = (await marketingApi.status()).data
+    failed.value = false
+  } catch {
+    failed.value = true // landing tetap utuh; widget menunjuk ke halaman status
+  }
 }
 let timer = null
 onMounted(() => { load(); timer = setInterval(load, 60000) })
@@ -34,7 +40,11 @@ onBeforeUnmount(() => clearInterval(timer))
 
 <template>
   <div class="grid gap-4 rounded-lg border border-line bg-surface p-5 sm:p-6">
-    <AppSkeleton v-if="!data" class="!h-40" />
+    <p v-if="!data && failed" class="flex flex-wrap items-center justify-between gap-3 text-sm text-muted">
+      Status langsung belum bisa dimuat.
+      <a :href="config.statusUrl" class="inline-flex min-h-11 items-center gap-1.5 font-semibold text-accent-text underline">Buka halaman status <ExternalLink class="size-4" /></a>
+    </p>
+    <AppSkeleton v-else-if="!data" class="!h-40" />
     <template v-else>
       <div class="flex flex-wrap items-center justify-between gap-3">
         <p class="flex items-center gap-2 font-semibold" role="status">
