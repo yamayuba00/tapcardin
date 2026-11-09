@@ -38,7 +38,7 @@ class FieldActivationTest extends TestCase
     private function activate(Card $card, array $extra = [])
     {
         return $this->panel('POST', '/field/activate', [
-            'token' => $card->card_token, 'activation_code' => self::ACTIVATION_CODE,
+            'token' => $card->card_token,
             'name' => 'Sari Wulandari', 'email' => 'Sari@Example.com', 'whatsapp' => '0812 7777 8888',
             'title' => 'Pemilik', 'company' => 'Warung Sari', 'amount' => 75000, 'paid' => false,
             ...$extra,
@@ -79,15 +79,35 @@ class FieldActivationTest extends TestCase
         $this->assertAuthenticatedAs($customer);
     }
 
-    public function test_wrong_activation_code_creates_nothing_and_counts_attempts(): void
+    public function test_staff_needs_no_activation_code_but_cannot_give_away_a_card_reserved_for_an_order(): void
     {
         $this->actingAs($this->staff());
         $card = $this->makeCard();
+        $this->activate($card)->assertCreated(); // tanpa kode aktivasi
+        $this->assertSame(0, $card->fresh()->activation_attempts);
 
-        $this->activate($card, ['activation_code' => 'AAAAAAAA'])->assertStatus(422)->assertJsonPath('error.code', 'activation_code_invalid');
-        $this->assertDatabaseMissing('users', ['email' => 'sari@example.com']);
-        $this->assertSame(1, $card->fresh()->activation_attempts);
-        $this->assertSame(0, CardSale::count());
+        $buyer = $this->makeUser('pemesan@example.com', 'Pemesan');
+        $reserved = $this->makeCard(CardStatus::Unclaimed, null, $buyer);
+        $this->panel('GET', '/field/card?q='.$reserved->card_token)->assertJsonPath('data.reserved_for', 'pemesan@example.com');
+        $this->activate($reserved, ['email' => 'orang.lain@example.com'])->assertStatus(422)->assertJsonPath('error.code', 'card_reserved');
+        $this->assertSame(1, CardSale::count());
+        $this->activate($reserved, ['email' => 'pemesan@example.com'])->assertCreated()->assertJsonPath('data.customer.new_account', false);
+        $this->assertSame($buyer->id, $reserved->fresh()->holder_user_id);
+    }
+
+    public function test_qc_passed_batch_cards_offer_direct_activation(): void
+    {
+        $this->actingAs($this->staff());
+        $batchCard = $this->makeCard(CardStatus::Manufactured);
+        $other = $this->makeCard(CardStatus::Manufactured);
+        $other->update(['qc_passed_at' => null]); // belum lolos QC
+        $rows = collect($this->panel('GET', "/batches/{$batchCard->batch->public_id}/cards")->assertOk()->json('data'));
+        $this->assertTrue($rows->firstWhere('token', $batchCard->card_token)['activatable']);
+        $this->assertFalse(collect($this->panel('GET', "/batches/{$other->batch->public_id}/cards")->json('data'))->firstWhere('token', $other->card_token)['activatable']);
+
+        // aktivasi langsung dari stok lolos QC (belum "Kirim")
+        $this->activate($batchCard)->assertCreated();
+        $this->assertSame(CardStatus::Active, $batchCard->fresh()->status);
     }
 
     public function test_existing_customer_email_gets_the_card_in_their_account(): void

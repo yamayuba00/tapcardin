@@ -68,6 +68,9 @@ Route::middleware(['auth', 'platform'])->prefix('api')->name('api.')->group(func
     // Aktivasi di tempat (penjualan langsung)
     Route::get('/field/card', [FieldActivationController::class, 'lookup'])->middleware('throttle:60,1')->name('field.lookup');
     Route::post('/field/activate', [FieldActivationController::class, 'activate'])->middleware('throttle:20,1')->name('field.activate');
+    Route::post('/field/blank', [FieldActivationController::class, 'blank'])->middleware('throttle:30,1')->name('field.blank');
+    Route::post('/field/cards/{token}/encoded', [FieldActivationController::class, 'encoded'])->middleware('throttle:30,1')->name('field.encoded');
+    Route::get('/field/summary', [FieldActivationController::class, 'summary'])->name('field.summary');
 
     Route::get('/batches', [BatchController::class, 'index'])->name('batches');
     Route::post('/batches', [BatchController::class, 'store'])->name('batches.store');

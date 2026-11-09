@@ -5,6 +5,7 @@ import { useRouter } from 'vue-router'
 import { Plus } from 'lucide-vue-next'
 import AppBadge from '@/components/ui/AppBadge/index.vue'
 import AppButton from '@/components/ui/AppButton/index.vue'
+import AppCheckbox from '@/components/ui/AppCheckbox/index.vue'
 import AppField from '@/components/ui/AppField/index.vue'
 import AppInput from '@/components/ui/AppInput/index.vue'
 import AppPanel from '@/components/ui/AppPanel/index.vue'
@@ -26,7 +27,7 @@ const COLUMNS = [
 ]
 const STATUSES = [['draft', 'Draf'], ['tokens_generated', 'Token dibuat'], ['sent_to_print', 'Di percetakan'], ['printed', 'Tercetak'], ['encoding', 'Encode'], ['qc', 'QC'], ['completed', 'Selesai'], ['cancelled', 'Batal']].map(([value, label]) => ({ value, label }))
 const { busy, run } = useAction()
-const form = reactive({ chip_type: 'ntag213', quantity: 10, holder_email: '', vendor: '' })
+const form = reactive({ chip_type: 'ntag213', quantity: 10, holder_email: '', vendor: '', uniform: false })
 const errors = ref({})
 const CHIPS = ['ntag213', 'ntag215', 'ntag216'].map((c) => ({ value: c, label: c.toUpperCase() }))
 const tone = (s) => (s === 'completed' ? 'ok' : s === 'cancelled' ? 'muted' : 'info')
@@ -49,6 +50,10 @@ async function create() {
       <AppField label="Email pembeli (opsional)" :error="errors.holder_email?.[0]"><AppInput v-model="form.holder_email" type="email" placeholder="aktivasi tanpa kode" /></AppField>
       <AppField label="Vendor cetak"><AppInput v-model="form.vendor" /></AppField>
       <AppButton type="submit" :loading="busy" class="lg:mt-7"><Plus class="size-5" /> Buat batch</AppButton>
+      <div class="grid gap-1 sm:col-span-2 lg:col-span-5">
+        <AppCheckbox v-model="form.uniform">Desain seragam — untuk jualan langsung / door-to-door</AppCheckbox>
+        <p class="pl-8 text-sm text-muted">Semua kartu tampak sama (tanpa QR unik tercetak). Kartu langsung lolos QC saat di-encode, dan kartu polos bisa ditulis langsung di halaman Jual kartu. Tidak perlu bundle CSV vendor.</p>
+      </div>
     </form>
   </AppPanel>
 

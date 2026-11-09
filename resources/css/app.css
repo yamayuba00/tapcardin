@@ -31,6 +31,10 @@
   *, *::before, *::after { box-shadow: none !important; text-shadow: none !important; }
 }
 
+/* Menu ponsel terbuka: konten di belakang (yang scroll adalah <main>) tidak ikut bergeser.
+   Di luar @layer agar menang atas utilitas overflow-y-auto pada <main>. */
+html[data-sheet-open] main { overflow: hidden; }
+
 /* Label kapital bertracking (DBD §4.1 --t-label) */
 @utility label {
   font-family: var(--font-mono);

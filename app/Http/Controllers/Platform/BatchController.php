@@ -8,6 +8,7 @@ use App\Actions\Production\ShipBatch;
 use App\Enums\BatchStatus;
 use App\Enums\CardStatus;
 use App\Enums\ChipType;
+use App\Enums\TenantType;
 use App\Exceptions\ApiError;
 use App\Models\Batch;
 use App\Models\Card;
@@ -43,13 +44,16 @@ class BatchController extends PlatformController
     public function cards(Request $request, Batch $batch): JsonResponse
     {
         $this->can('production.manage');
-        $q = $batch->cards()->getQuery()->with(['holder', 'assignee', 'batch'])
+        $q = $batch->cards()->getQuery()->with(['holder', 'assignee', 'batch', 'tenant'])
             ->when($request->query('progress') === 'pending_encode', fn ($w) => $w->whereNull('encoded_at'))
             ->when($request->query('progress') === 'pending_qc', fn ($w) => $w->whereNotNull('encoded_at')->whereNull('qc_passed_at'))
             ->when($request->query('progress') === 'done', fn ($w) => $w->whereNotNull('qc_passed_at'));
 
         return Table::json(Table::paginate($q, $request, ['sequence' => 'sequence'] + CardController::SORTS, 'sequence', ['card_token', 'short_code'], 50),
-            fn (Card $c) => CardController::summary($c) + ['encoded' => $c->encoded_at !== null, 'qc' => $c->qc_passed_at !== null], $request);
+            fn (Card $c) => CardController::summary($c) + ['encoded' => $c->encoded_at !== null, 'qc' => $c->qc_passed_at !== null,
+                // lolos QC & belum dipakai → tombol Aktivasi (panel → Aktivasi kartu); kartu workspace perusahaan tidak
+                'activatable' => $c->qc_passed_at !== null && in_array($c->status, [CardStatus::Manufactured, CardStatus::Unclaimed], true)
+                    && ! $c->holder_user_id && (! $c->tenant_id || $c->tenant?->type === TenantType::Personal)], $request);
     }
 
     public function store(Request $request, CreateBatch $create): JsonResponse
@@ -60,13 +64,14 @@ class BatchController extends PlatformController
             'quantity' => ['required', 'integer', 'min:1', 'max:1000'],
             'holder_email' => ['nullable', 'email'],
             'vendor' => ['nullable', 'string', 'max:80'],
+            'uniform' => ['boolean'],
         ]);
         $holder = null;
         if (! empty($data['holder_email'])) {
             $holder = User::whereRaw('lower(email) = ?', [strtolower($data['holder_email'])])->first()
                 ?? throw ValidationException::withMessages(['holder_email' => 'Pengguna dengan email ini belum terdaftar. Minta mereka masuk sekali ke TapCard.']);
         }
-        $batch = $create->handle(ChipType::from($data['chip_type']), (int) $data['quantity'], $holder, $data['vendor'] ?? null);
+        $batch = $create->handle(ChipType::from($data['chip_type']), (int) $data['quantity'], $holder, $data['vendor'] ?? null, uniform: (bool) ($data['uniform'] ?? false));
 
         return $this->ok(self::summary($batch->load('holder')), 201);
     }
@@ -157,6 +162,7 @@ class BatchController extends PlatformController
             'quantity' => $b->quantity,
             'status' => $b->status->value,
             'status_label' => $b->status->label(),
+            'uniform' => (bool) $b->uniform,
             'holder' => $b->holder ? ['id' => $b->holder->public_id, 'email' => $b->holder->email] : null,
             'created_at' => self::dt($b->created_at),
         ];

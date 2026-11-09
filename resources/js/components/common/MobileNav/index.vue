@@ -1,7 +1,8 @@
 <script setup>
 // Navigasi ponsel bersama (app. & panel.): bilah bawah = tab utama + "Menu". "Menu" membuka lembar berisi semua
 // kelompok menu sidebar dalam ubin 3 kolom, lalu aksi akun (slot `actions`). Lembar berada di bawah bilah
-// (z-20 < z-30) sehingga tombol "Menu" tetap terlihat untuk menutupnya. Tertutup saat pindah halaman / Esc / ketuk luar.
+// (z-20 < z-30) sehingga tombol "Menu" tetap terlihat untuk menutupnya. Tertutup saat item diketuk (termasuk halaman
+// yang sedang dibuka), pindah halaman, Esc, atau ketuk luar. Selama terbuka, konten di belakang tidak ikut ter-scroll.
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { LayoutGrid, X } from 'lucide-vue-next'
@@ -18,10 +19,15 @@ const props = defineProps({
 const route = useRoute()
 const open = ref(false)
 watch(() => route.fullPath, () => (open.value = false))
+// kunci scroll konten di belakang lembar (yang scroll adalah <main>, bukan body)
+watch(open, (v) => document.documentElement.toggleAttribute('data-sheet-open', v))
 const inSheet = computed(() => !props.tabs.some((t) => t.key === props.active))
 const onEsc = (e) => { if (e.key === 'Escape') open.value = false }
 onMounted(() => document.addEventListener('keydown', onEsc))
-onBeforeUnmount(() => document.removeEventListener('keydown', onEsc))
+onBeforeUnmount(() => {
+  document.removeEventListener('keydown', onEsc)
+  document.documentElement.removeAttribute('data-sheet-open')
+})
 
 const tab = 'relative grid min-w-0 justify-items-center gap-1 px-1 pt-2.5 pb-2 text-[11px] font-medium text-muted no-underline aria-[current=page]:text-accent-text'
 const badge = 'h-5 min-w-5 rounded-full bg-accent px-1.5 text-center font-mono text-[11px] leading-5 font-semibold text-accent-ink'
@@ -42,7 +48,7 @@ const badge = 'h-5 min-w-5 rounded-full bg-accent px-1.5 text-center font-mono t
     <div class="fixed inset-0 z-20 bg-scrim lg:hidden" aria-hidden="true" @click="open = false"></div>
     <section
       id="mobile-menu" role="dialog" aria-modal="true" aria-label="Menu"
-      class="fixed inset-x-0 bottom-0 z-20 grid max-h-[85dvh] animate-rise gap-4 overflow-y-auto overscroll-contain rounded-t-lg border-t border-line-strong bg-surface px-4 pt-3 pb-[calc(76px+env(safe-area-inset-bottom))] lg:hidden"
+      class="fixed inset-x-0 bottom-0 z-20 grid max-h-[85dvh] animate-rise content-start gap-4 overflow-y-auto overscroll-contain rounded-t-lg border-t border-line-strong bg-surface px-4 pt-3 pb-[calc(76px+env(safe-area-inset-bottom))] lg:hidden"
     >
       <div class="flex items-center justify-between">
         <span class="flex min-w-0 items-center gap-3">
@@ -58,7 +64,7 @@ const badge = 'h-5 min-w-5 rounded-full bg-accent px-1.5 text-center font-mono t
         <p class="label !text-[10px]">{{ g.label }}</p>
         <div class="grid grid-cols-3 gap-2">
           <RouterLink
-            v-for="item in g.items" :key="item.key" :to="item.to" :aria-current="active === item.key ? 'page' : undefined"
+            v-for="item in g.items" :key="item.key" :to="item.to" :aria-current="active === item.key ? 'page' : undefined" @click="open = false"
             class="relative grid min-h-[72px] content-center justify-items-center gap-1.5 rounded-md border border-line px-1 py-2 text-center text-xs font-medium text-fg no-underline hover:bg-surface-2 aria-[current=page]:border-accent aria-[current=page]:text-accent-text"
           >
             <component :is="item.icon" class="size-[22px]" aria-hidden="true" />

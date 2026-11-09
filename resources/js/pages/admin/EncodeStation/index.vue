@@ -11,7 +11,7 @@ import StationScreen from '@/components/common/StationScreen/index.vue'
 import { adminApi } from '@/api/admin'
 import { useAsync } from '@/composables/useAsync'
 import { beep } from '@/lib/feedback'
-import { lock, nfcErrorMessage, nfcSupported, readOnce, writeUrl } from '@/lib/nfc'
+import { encodeUrl, nfcErrorMessage, nfcSupported } from '@/lib/nfc'
 
 const route = useRoute()
 const supported = nfcSupported()
@@ -47,51 +47,17 @@ async function report(uid) {
   setTimeout(() => next(), 1200)
 }
 
-const MAX_TRIES = 3
-const TAP_TIMEOUT_MS = 20000
-
-/** Batalkan proses NFC yang menggantung bila kartu tidak ditempel dalam waktu wajar. */
-function withTimeout(ctrl, ms = TAP_TIMEOUT_MS) {
-  const t = setTimeout(() => ctrl.abort(), ms)
-  return () => clearTimeout(t)
-}
-
-/**
- * Tulis URL. "IO error" berarti kartu bergeser di tengah penulisan, jadi diulang otomatis (sampai 3 kali)
- * selama pengguna menempelkan kartu lagi; galat lain (izin, chip terkunci, tidak didukung) langsung dilaporkan.
- */
-async function writeWithRetry() {
-  for (let attempt = 1; attempt <= MAX_TRIES; attempt++) {
-    const ctrl = new AbortController()
-    const done = withTimeout(ctrl)
-    abort = ctrl
-    try {
-      message.value = attempt === 1 ? 'Tempel kartu dan tahan…' : `Tempel ulang dan tahan (percobaan ${attempt}/${MAX_TRIES})…`
-      await writeUrl(card.value.url, { signal: ctrl.signal })
-      return
-    } catch (e) {
-      if (e?.name !== 'NetworkError' || attempt === MAX_TRIES) throw e
-      beep(false)
-    } finally {
-      done()
-    }
-  }
-}
-
 async function encode() {
   state.value = 'waiting'
   abort?.abort()
   try {
-    await writeWithRetry()
-    message.value = 'Memverifikasi… tahan kartu'
-    abort = new AbortController()
-    const done = withTimeout(abort)
-    let read
-    try { read = await readOnce({ signal: abort.signal }) } finally { done() }
-    if (read.url !== card.value.url) throw new Error('URL di chip tidak cocok. Ulangi tulis sebelum dikunci.')
-    if (lockAfter.value) await lock()
-    abort.abort()
-    await report(read.serialNumber)
+    const uid = await encodeUrl(card.value.url, {
+      lockAfter: lockAfter.value,
+      onStatus: (t) => (message.value = t),
+      onRetry: () => beep(false),
+      register: (c) => (abort = c),
+    })
+    await report(uid)
   } catch (e) {
     abort?.abort()
     state.value = 'fail'

@@ -31,6 +31,10 @@ export const adminApi = {
   /** aktivasi di tempat */
   fieldLookup: (q) => http.get('/api/field/card', { q }),
   fieldActivate: (body) => http.post('/api/field/activate', body),
+  /** Jual kartu: kartu polos → token berikutnya dari stok batch desain seragam (dicadangkan 2 menit) */
+  fieldBlank: () => http.post('/api/field/blank'),
+  fieldEncoded: (token, uid) => http.post(`/api/field/cards/${token}/encoded`, { uid }),
+  fieldSummary: () => http.get('/api/field/summary'),
   encoded: (token, uid) => http.post(`/api/cards/${token}/encoded`, { uid }),
   qc: (token, body) => http.post(`/api/cards/${token}/qc`, body),
   replacementBatch: (token) => http.post(`/api/cards/${token}/replacement-batch`),

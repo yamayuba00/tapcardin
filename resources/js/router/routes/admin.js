@@ -18,7 +18,7 @@ export default [
       { path: 'users', name: 'users', component: page('Users'), meta: { title: 'Pengguna', nav: 'users', perm: 'users.view' } },
       { path: 'users/:id', name: 'user-detail', component: page('UserDetail'), meta: { title: 'Pengguna', nav: 'users', perm: 'users.view' } },
       { path: 'cards', name: 'cards', component: page('Cards'), meta: { title: 'Kartu', nav: 'cards', perm: 'cards.view' } },
-      { path: 'aktivasi-kartu', name: 'card-activation', component: page('FieldActivation'), meta: { title: 'Aktivasi kartu', nav: 'field', perm: 'cards.manage' } },
+      { path: 'aktivasi-kartu', name: 'card-activation', component: page('FieldActivation'), meta: { title: 'Jual kartu', nav: 'field', perm: 'cards.manage' } },
       { path: 'field-activation', redirect: '/aktivasi-kartu' },
       { path: 'cards/:token', name: 'card-detail', component: page('CardDetail'), meta: { title: 'Kartu', nav: 'cards', perm: 'cards.view' } },
       { path: 'batches', name: 'batches', component: page('Batches'), meta: { title: 'Produksi', nav: 'batches', perm: 'production.manage' } },

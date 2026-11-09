@@ -22,6 +22,7 @@ class Batch extends Model
             'chip_type' => ChipType::class,
             'completed_at' => 'datetime',
             'tokens_started_at' => 'datetime',
+            'uniform' => 'boolean',
         ];
     }
 

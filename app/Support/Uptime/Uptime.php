@@ -26,21 +26,22 @@ final class Uptime
     public static function list(): array
     {
         $monitors = Monitor::orderBy('sort')->orderBy('id')->get();
+        $day = now()->subDay(); // batas waktu dari jam aplikasi (bukan now() database) — sama dengan jam saat cek dicatat
         $stats = collect(DB::select("
             select monitor_id,
-              count(*) filter (where checked_at >= now() - interval '24 hours') as n24,
-              count(*) filter (where checked_at >= now() - interval '24 hours' and status <> 'down') as up24,
+              count(*) filter (where checked_at >= :d1) as n24,
+              count(*) filter (where checked_at >= :d1b and status <> 'down') as up24,
               count(*) as n30, count(*) filter (where status <> 'down') as up30,
-              round(avg(response_ms) filter (where checked_at >= now() - interval '24 hours')) as avg24
-            from monitor_checks where checked_at >= now() - interval '30 days' group by monitor_id
-        "))->keyBy('monitor_id');
-        $spark = collect(DB::select("
+              round(avg(response_ms) filter (where checked_at >= :d1c)) as avg24
+            from monitor_checks where checked_at >= :d30 group by monitor_id
+        ", ['d1' => $day, 'd1b' => $day, 'd1c' => $day, 'd30' => now()->subDays(30)]))->keyBy('monitor_id');
+        $spark = collect(DB::select('
             select monitor_id, status, response_ms from (
               select monitor_id, status, response_ms, checked_at,
                 row_number() over (partition by monitor_id order by checked_at desc) as rn
-              from monitor_checks where checked_at >= now() - interval '1 day'
+              from monitor_checks where checked_at >= ?
             ) t where rn <= 40 order by monitor_id, checked_at
-        "))->groupBy('monitor_id');
+        ', [$day]))->groupBy('monitor_id');
 
         return $monitors->map(function (Monitor $m) use ($stats, $spark) {
             $s = $stats->get($m->id);

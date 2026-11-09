@@ -10,7 +10,11 @@ use App\Support\Audit;
 use App\Support\Hasher;
 use Illuminate\Support\Facades\Crypt;
 
-/** PR-03 — stasiun encode melapor setelah tulis → verifikasi → kunci berhasil (TRD §7.5). */
+/**
+ * PR-03 — stasiun encode melapor setelah tulis → verifikasi → kunci berhasil (TRD §7.5).
+ * Batch desain seragam: tidak ada QR unik tercetak untuk dicocokkan, dan URL chip sudah diverifikasi saat ditulis →
+ * langsung lolos QC (tanpa Stasiun QC).
+ */
 final class EncodeCard
 {
     public function handle(Card $card, string $uid): Card
@@ -28,13 +32,13 @@ final class EncodeCard
             throw new ApiError('uid_duplicate', "Chip ini sudah tercatat untuk kartu #{$owner->sequence}.");
         }
 
+        $batch = $card->batch;
         $card->forceFill([
             'chip_uid_hash' => $hash,
             'chip_uid_enc' => Crypt::encryptString($uid),
             'encoded_at' => now(),
-        ])->save();
+        ] + ($batch->uniform ? ['qc_passed_at' => now()] : []))->save();
 
-        $batch = $card->batch;
         if (in_array($batch->status, [BatchStatus::TokensGenerated, BatchStatus::SentToPrint, BatchStatus::Printed], true)) {
             $batch->update(['status' => BatchStatus::Encoding]);
         }

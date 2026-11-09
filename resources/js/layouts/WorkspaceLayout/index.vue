@@ -11,10 +11,12 @@ import {
 import BrandLogo from '@/components/common/BrandLogo/index.vue'
 import InstallApp from '@/components/common/InstallApp/index.vue'
 import MobileNav from '@/components/common/MobileNav/index.vue'
+import PullIndicator from '@/components/common/PullIndicator/index.vue'
 import { config } from '@/config'
 import { useAuthStore } from '@/stores/auth'
 import { useNotificationStore } from '@/stores/notifications'
 import { useTheme } from '@/composables/useTheme'
+import { usePullToRefresh } from '@/composables/usePullToRefresh'
 
 const route = useRoute()
 const auth = useAuthStore()
@@ -45,6 +47,13 @@ const active = computed(() => route.meta.nav)
 // konten di-scroll di <main>, bukan window → kembalikan ke atas saat pindah halaman
 const mainEl = ref(null)
 watch(() => route.path, () => mainEl.value?.scrollTo({ top: 0 }))
+
+// tarik ke bawah (ponsel/PWA) → halaman aktif dipasang ulang sehingga datanya dimuat ulang
+const refreshKey = ref(0)
+const { pull, refreshing, threshold } = usePullToRefresh(mainEl, async () => {
+  refreshKey.value++
+  await new Promise((r) => setTimeout(r, 600))
+})
 const fullscreen = computed(() => route.meta.fullscreen === true)
 
 // ponsel: 3 tab utama + "Menu" (kelompok berlabel; Beranda sudah jadi tab)
@@ -111,9 +120,10 @@ const link = 'group flex min-h-9 cursor-pointer items-center gap-3 rounded-lg px
       </div>
     </aside>
 
+    <PullIndicator :pull="pull" :refreshing="refreshing" :threshold="threshold" />
     <main ref="mainEl" class="min-h-0 min-w-0 overflow-y-auto overscroll-contain px-4 pt-6 print:overflow-visible print:p-0 pb-[calc(88px+env(safe-area-inset-bottom))] lg:px-8 lg:pt-8 lg:pb-12">
       <div class="grid w-full gap-6">
-        <RouterView />
+        <RouterView v-slot="{ Component }"><component :is="Component" :key="refreshKey" /></RouterView>
       </div>
     </main>
 

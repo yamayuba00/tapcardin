@@ -10,14 +10,23 @@ import {
 import BrandLogo from '@/components/common/BrandLogo/index.vue'
 import InstallApp from '@/components/common/InstallApp/index.vue'
 import MobileNav from '@/components/common/MobileNav/index.vue'
+import PullIndicator from '@/components/common/PullIndicator/index.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useTheme } from '@/composables/useTheme'
+import { usePullToRefresh } from '@/composables/usePullToRefresh'
 import { useUptimeStore } from '@/stores/uptime'
 
 const route = useRoute()
 const auth = useAuthStore()
 const { toggle } = useTheme()
 const mainEl = ref(null)
+
+// tarik ke bawah (ponsel/PWA) → halaman aktif dipasang ulang sehingga datanya dimuat ulang
+const refreshKey = ref(0)
+const { pull, refreshing, threshold } = usePullToRefresh(mainEl, async () => {
+  refreshKey.value++
+  await new Promise((r) => setTimeout(r, 600))
+})
 
 // gangguan uptime realtime di halaman panel mana pun (toast + notifikasi browser)
 const uptime = useUptimeStore()
@@ -31,7 +40,7 @@ const groups = [
     { key: 'domains', label: 'Domain kustom', icon: Globe, to: '/domains', perm: 'tenants.view' },
     { key: 'users', label: 'Pengguna', icon: Users, to: '/users', perm: 'users.view' },
     { key: 'cards', label: 'Kartu', icon: CreditCard, to: '/cards', perm: 'cards.view' },
-    { key: 'field', label: 'Aktivasi kartu', icon: BadgeCheck, to: '/aktivasi-kartu', perm: 'cards.manage' },
+    { key: 'field', label: 'Jual kartu', icon: BadgeCheck, to: '/aktivasi-kartu', perm: 'cards.manage' },
   ] },
   { label: 'Produksi', items: [
     { key: 'orders', label: 'Pesanan', icon: ShoppingCart, to: '/orders', perm: 'orders.view' },
@@ -57,7 +66,7 @@ const groups = [
 const nav = computed(() => groups.map((g) => ({ ...g, items: g.items.filter((i) => auth.can(i.perm)) })).filter((g) => g.items.length))
 // tab ponsel: 3 menu terpenting yang diizinkan peran staf ini (urutan prioritas), sisanya di "Menu"
 const PRIMARY = ['dashboard', 'field', 'encode', 'orders', 'cards', 'qc', 'finance', 'tenants', 'users']
-const SHORT = { dashboard: 'Dashboard', field: 'Aktivasi', encode: 'Encode', orders: 'Pesanan', cards: 'Kartu', qc: 'QC', finance: 'Keuangan', tenants: 'Workspace', users: 'Pengguna' }
+const SHORT = { dashboard: 'Dashboard', field: 'Jual', encode: 'Encode', orders: 'Pesanan', cards: 'Kartu', qc: 'QC', finance: 'Keuangan', tenants: 'Workspace', users: 'Pengguna' }
 const tabs = computed(() => {
   const all = nav.value.flatMap((g) => g.items)
   return PRIMARY.map((k) => all.find((i) => i.key === k)).filter(Boolean).slice(0, 3).map((i) => ({ ...i, label: SHORT[i.key] ?? i.label }))
@@ -93,9 +102,10 @@ const link = 'group flex min-h-10 items-center gap-3 rounded-lg px-3 text-[15px]
         </div>
       </aside>
 
+      <PullIndicator :pull="pull" :refreshing="refreshing" :threshold="threshold" />
       <main ref="mainEl" class="min-h-0 min-w-0 overflow-y-auto overscroll-contain px-4 pt-6 pb-[calc(88px+env(safe-area-inset-bottom))] print:overflow-visible print:p-0 lg:px-8 lg:py-8">
         <div class="grid w-full gap-6">
-          <RouterView />
+          <RouterView v-slot="{ Component }"><component :is="Component" :key="refreshKey" /></RouterView>
         </div>
       </main>
     </div>

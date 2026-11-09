@@ -20,11 +20,15 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Aktivasi di tempat (penjualan langsung / door to door) oleh staf panel:
- * kartu fisik + kode aktivasi tercetak → akun pelanggan dibuat (atau dipakai bila email sudah terdaftar),
+ * kartu fisik yang lolos QC → akun pelanggan dibuat (atau dipakai bila email sudah terdaftar),
  * kartu langsung aktif dengan bio awal dari isian form, kode akun 6 angka acak untuk masuk dengan kartu,
  * dan catatan penjualan (status bayar QRIS / manual ditandai staf).
  *
  * Kode akun hanya dikembalikan sekali (yang disimpan hanya hash) — diserahkan ke pelanggan, bisa diganti nanti.
+ *
+ * Tanpa kode aktivasi: kode itu melindungi kartu dari orang asing yang menemukannya; staf panel (cards.manage) memegang
+ * kartunya sendiri dan setiap aktivasi tercatat di audit atas namanya. Pemilik yang mengaktifkan sendiri lewat tap
+ * tetap memakai kode (ActivateCard). Kartu yang sudah dipesan pembeli online tidak bisa dialihkan ke orang lain.
  */
 final class FieldActivate
 {
@@ -40,7 +44,7 @@ final class FieldActivate
      * @param  array{amount?:int, status?:string, payment_method?:?string, note?:?string}  $sale
      * @return array{user: User, card: Card, code: string, created: bool, sale: CardSale}
      */
-    public function handle(string $token, string $activationCode, array $customer, array $sale, User $staff): array
+    public function handle(string $token, array $customer, array $sale, User $staff): array
     {
         $card = Card::acrossTenants()->where('card_token', $token)->first();
         if (! $card || $card->isDigital()) {
@@ -62,7 +66,10 @@ final class FieldActivate
             });
         }
 
-        $this->activate->checkCode($card, $activationCode); // di luar transaksi: percobaan salah tetap terhitung
+        $reserved = $card->assigned_user_id ? User::find($card->assigned_user_id) : null;
+        if ($reserved && strtolower($reserved->email) !== strtolower(trim($customer['email']))) {
+            throw new ApiError('card_reserved', "Kartu ini milik pesanan {$reserved->email}. Pakai kartu stok lain, atau isi email pemesannya.");
+        }
 
         return DB::transaction(function () use ($card, $customer, $sale, $staff) {
             $email = strtolower(trim($customer['email']));

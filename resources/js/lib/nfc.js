@@ -48,3 +48,51 @@ export async function lock() {
   // eslint-disable-next-line no-undef
   await new NDEFReader().makeReadOnly() // permanen, hanya dipanggil setelah verifikasi
 }
+
+const MAX_TRIES = 3
+const TAP_TIMEOUT_MS = 20000
+
+/** AbortController yang batal sendiri bila kartu tidak ditempel dalam waktu wajar. */
+function timed(ms = TAP_TIMEOUT_MS) {
+  const ctrl = new AbortController()
+  const t = setTimeout(() => ctrl.abort(), ms)
+  return { ctrl, done: () => clearTimeout(t) }
+}
+
+/**
+ * Encode satu kartu: tulis URL → baca ulang & cocokkan → (opsional) kunci permanen. "IO error" (kartu bergeser di
+ * tengah penulisan) diulang otomatis sampai 3 kali; galat lain langsung dilempar (pakai nfcErrorMessage).
+ * Dipakai Stasiun encode & Jual kartu (kartu polos ditulis di tempat).
+ * @param {string} url
+ * @param {{ lockAfter?: boolean, onStatus?: (text: string) => void, onRetry?: () => void, register?: (ctrl: AbortController) => void }} [opts]
+ * @returns {Promise<string>} nomor seri (UID) chip
+ */
+export async function encodeUrl(url, { lockAfter = true, onStatus = () => {}, onRetry = () => {}, register = () => {} } = {}) {
+  for (let attempt = 1; ; attempt++) {
+    const { ctrl, done } = timed()
+    register(ctrl)
+    try {
+      onStatus(attempt === 1 ? 'Tempel kartu dan tahan…' : `Tempel ulang dan tahan (percobaan ${attempt}/${MAX_TRIES})…`)
+      await writeUrl(url, { signal: ctrl.signal })
+      break
+    } catch (e) {
+      if (e?.name !== 'NetworkError' || attempt === MAX_TRIES) throw e
+      onRetry()
+    } finally {
+      done()
+    }
+  }
+  onStatus('Memverifikasi… tahan kartu')
+  const { ctrl, done } = timed()
+  register(ctrl)
+  let read
+  try {
+    read = await readOnce({ signal: ctrl.signal })
+  } finally {
+    done()
+  }
+  if (read.url !== url) throw new Error('URL di chip tidak cocok. Ulangi tulis sebelum dikunci.')
+  if (lockAfter) await lock()
+  ctrl.abort()
+  return read.serialNumber
+}

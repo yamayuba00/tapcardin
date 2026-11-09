@@ -15,9 +15,11 @@ import KpiCard from '@/components/common/KpiCard/index.vue'
 import PageHeader from '@/components/common/PageHeader/index.vue'
 import { adminApi } from '@/api/admin'
 import { useAction, useAsync } from '@/composables/useAsync'
+import { useAuthStore } from '@/stores/auth'
 import { usePagedList } from '@/composables/usePagedList'
 
 const route = useRoute()
+const auth = useAuthStore()
 const id = route.params.id
 const { data: b } = useAsync(() => adminApi.batch(id))
 const { busy, run } = useAction()
@@ -58,6 +60,7 @@ async function act(fn, message) {
         <div class="flex flex-wrap gap-2">
           <AppBadge tone="info">{{ b.status_label }}</AppBadge>
           <AppBadge tone="outline">{{ b.chip_type }}</AppBadge>
+          <AppBadge v-if="b.uniform" tone="ok">Desain seragam</AppBadge>
           <AppBadge tone="outline">{{ b.quantity }} kartu</AppBadge>
           <RouterLink v-if="b.order" :to="`/orders/${b.order.id}`" class="text-sm">Pesanan {{ b.order.number }}</RouterLink>
           <AppBadge v-if="b.holder" tone="outline">{{ b.holder.email }}</AppBadge>
@@ -77,14 +80,14 @@ async function act(fn, message) {
         <div class="flex flex-wrap gap-2">
           <AppButton v-if="b.status === 'draft' && !b.generation" :loading="busy" @click="act(() => adminApi.generateBatch(id), 'Token sedang dibuat di latar — halaman ini diperbarui otomatis.')">1 · Buat token & kode aktivasi</AppButton>
           <AppButton v-else-if="b.status === 'draft' && !b.generation.running" :loading="busy" @click="act(() => adminApi.generateBatch(id), 'Dilanjutkan dari kartu terakhir.')">Lanjutkan pembuatan token</AppButton>
-          <template v-if="b.has_bundle">
-            <AppButton variant="secondary" :href="adminApi.bundleUrl(id)"><Download class="size-5" /> Bundle vendor (CSV)</AppButton>
+          <template v-if="b.has_bundle && !b.uniform">
+            <AppButton variant="secondary" :href="adminApi.bundleUrl(id)" title="Hanya untuk vendor cetak — tidak diperlukan untuk encode, QC, atau aktivasi"><Download class="size-5" /> Bundle vendor cetak (CSV, opsional)</AppButton>
             <AppButton variant="secondary" :to="`/batches/${id}/print`"><QrCode class="size-5" /> Lembar QR</AppButton>
           </template>
           <AppButton v-if="nextStatus('sent_to_print')" variant="secondary" :loading="busy" @click="act(() => adminApi.batchStatus(id, 'sent_to_print'), 'Ditandai dikirim ke vendor')">Tandai dikirim ke vendor</AppButton>
           <AppButton v-if="nextStatus('printed')" variant="secondary" :loading="busy" @click="act(() => adminApi.batchStatus(id, 'printed'), 'Ditandai tercetak')">Tandai tercetak</AppButton>
           <AppButton v-if="b.counts.tokens && b.counts.encoded < b.counts.tokens" variant="secondary" :to="{ path: '/encode-station', query: { batch: id } }"><Cpu class="size-5" /> Stasiun encode</AppButton>
-          <AppButton v-if="b.counts.encoded && b.counts.qc < b.counts.encoded" variant="secondary" :to="{ path: '/qc', query: { batch: id } }"><CircleCheck class="size-5" /> QC</AppButton>
+          <AppButton v-if="b.counts.encoded && b.counts.qc < b.counts.encoded && !b.uniform" variant="secondary" :to="{ path: '/qc', query: { batch: id } }"><CircleCheck class="size-5" /> QC</AppButton>
         </div>
         <div v-if="b.status === 'draft' && b.generation" class="grid gap-2 rounded-md border border-line p-4" role="status">
           <AppMeter :label="b.generation.running ? 'Membuat token di latar…' : 'Pembuatan token berhenti'" :value="b.counts.tokens" :max="b.quantity">{{ b.counts.tokens }} / {{ b.quantity }}</AppMeter>
@@ -96,7 +99,10 @@ async function act(fn, message) {
           <AppInput v-model="tracking" placeholder="Nomor resi (opsional)" maxlength="60" class="max-w-xs" />
           <AppButton type="submit" :loading="busy"><Boxes class="size-5" /> Kirim {{ toShip }} kartu lolos QC</AppButton>
         </form>
-        <p v-if="toShip > 0" class="text-sm text-muted">Setelah dikirim, kartu berstatus "Belum diaktifkan" dan bisa diaktivasi pemiliknya.</p>
+        <p v-if="toShip > 0" class="text-sm text-muted">
+          Jual langsung? Kartu lolos QC bisa langsung diaktivasi untuk pelanggan dari tabel di bawah (tombol <b class="text-fg">Aktivasi</b>, filter "Lolos QC") — tanpa Kirim & tanpa kode aktivasi.
+          Kirim hanya untuk kartu yang diserahkan ke pemiliknya agar mereka mengaktivasi sendiri.
+        </p>
         <div v-if="nextStatus('cancelled')"><AppButton variant="ghost" :loading="busy" @click="act(() => adminApi.batchStatus(id, 'cancelled'), 'Batch dibatalkan')">Batalkan batch</AppButton></div>
       </div>
     </AppPanel>
@@ -107,7 +113,7 @@ async function act(fn, message) {
         <AppSelect v-model="cards.filters.progress" placeholder="Semua tahap" :options="PROGRESS" class="sm:!w-auto" aria-label="Tahap" />
         <AppButton type="submit" variant="secondary" class="col-span-2 sm:col-auto">Cari</AppButton>
       </form>
-      <CardsTable :list="cards" :show="['sequence', 'progress']" />
+      <CardsTable :list="cards" :show="auth.can('cards.manage') ? ['sequence', 'progress', 'activate'] : ['sequence', 'progress']" />
     </template>
   </template>
 </template>
