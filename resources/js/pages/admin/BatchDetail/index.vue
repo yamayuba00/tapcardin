@@ -1,11 +1,12 @@
 <script setup>
 // AFD F-04 — generate → bundle vendor → encode → QC → kirim.
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { Boxes, CircleCheck, Cpu, Download, QrCode } from 'lucide-vue-next'
 import AppBadge from '@/components/ui/AppBadge/index.vue'
 import AppButton from '@/components/ui/AppButton/index.vue'
 import AppInput from '@/components/ui/AppInput/index.vue'
+import AppMeter from '@/components/ui/AppMeter/index.vue'
 import AppPanel from '@/components/ui/AppPanel/index.vue'
 import AppSelect from '@/components/ui/AppSelect/index.vue'
 import AppSkeleton from '@/components/ui/AppSkeleton/index.vue'
@@ -26,6 +27,19 @@ const PROGRESS = [{ value: 'pending_encode', label: 'Belum di-encode' }, { value
 
 const toShip = computed(() => (b.value ? b.value.counts.qc - b.value.counts.shipped : 0))
 const nextStatus = (v) => b.value?.next_statuses.some((s) => s.value === v)
+
+// pembuatan token berjalan di latar: muat ulang tiap 3 detik sampai selesai / gagal
+let poll = null
+watch(() => b.value?.generation?.running, (running) => {
+  clearInterval(poll)
+  if (running) {
+    poll = setInterval(async () => {
+      b.value = (await adminApi.batch(id)).data
+      if (!b.value.generation?.running) cards.reload()
+    }, 3000)
+  }
+})
+onBeforeUnmount(() => clearInterval(poll))
 
 async function act(fn, message) {
   const res = await run(fn, message).catch(() => null)
@@ -61,7 +75,8 @@ async function act(fn, message) {
     <AppPanel title="Langkah produksi">
       <div class="grid gap-4">
         <div class="flex flex-wrap gap-2">
-          <AppButton v-if="b.status === 'draft'" :loading="busy" @click="act(() => adminApi.generateBatch(id), 'Token, kode pendek, dan kode aktivasi dibuat.')">1 · Buat token & kode aktivasi</AppButton>
+          <AppButton v-if="b.status === 'draft' && !b.generation" :loading="busy" @click="act(() => adminApi.generateBatch(id), 'Token sedang dibuat di latar — halaman ini diperbarui otomatis.')">1 · Buat token & kode aktivasi</AppButton>
+          <AppButton v-else-if="b.status === 'draft' && !b.generation.running" :loading="busy" @click="act(() => adminApi.generateBatch(id), 'Dilanjutkan dari kartu terakhir.')">Lanjutkan pembuatan token</AppButton>
           <template v-if="b.has_bundle">
             <AppButton variant="secondary" :href="adminApi.bundleUrl(id)"><Download class="size-5" /> Bundle vendor (CSV)</AppButton>
             <AppButton variant="secondary" :to="`/batches/${id}/print`"><QrCode class="size-5" /> Lembar QR</AppButton>
@@ -70,6 +85,12 @@ async function act(fn, message) {
           <AppButton v-if="nextStatus('printed')" variant="secondary" :loading="busy" @click="act(() => adminApi.batchStatus(id, 'printed'), 'Ditandai tercetak')">Tandai tercetak</AppButton>
           <AppButton v-if="b.counts.tokens && b.counts.encoded < b.counts.tokens" variant="secondary" :to="{ path: '/encode-station', query: { batch: id } }"><Cpu class="size-5" /> Stasiun encode</AppButton>
           <AppButton v-if="b.counts.encoded && b.counts.qc < b.counts.encoded" variant="secondary" :to="{ path: '/qc', query: { batch: id } }"><CircleCheck class="size-5" /> QC</AppButton>
+        </div>
+        <div v-if="b.status === 'draft' && b.generation" class="grid gap-2 rounded-md border border-line p-4" role="status">
+          <AppMeter :label="b.generation.running ? 'Membuat token di latar…' : 'Pembuatan token berhenti'" :value="b.counts.tokens" :max="b.quantity">{{ b.counts.tokens }} / {{ b.quantity }}</AppMeter>
+          <p v-if="b.generation.error" class="text-sm text-danger">{{ b.generation.error }}</p>
+          <p v-else-if="b.generation.stalled" class="text-sm text-warn">Tidak ada kemajuan selama 15 menit — periksa worker antrean (<span class="font-mono">supervisorctl status</span>), lalu klik Lanjutkan.</p>
+          <p v-else class="text-sm text-muted">Dibuat per 50 kartu. Halaman boleh ditutup; prosesnya tetap berjalan.</p>
         </div>
         <form v-if="toShip > 0" class="flex flex-wrap gap-2" @submit.prevent="act(() => adminApi.shipBatch(id, tracking || null), `${toShip} kartu dikirim dan siap diaktivasi.`)">
           <AppInput v-model="tracking" placeholder="Nomor resi (opsional)" maxlength="60" class="max-w-xs" />

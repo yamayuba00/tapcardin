@@ -21,6 +21,7 @@ class Batch extends Model
             'status' => BatchStatus::class,
             'chip_type' => ChipType::class,
             'completed_at' => 'datetime',
+            'tokens_started_at' => 'datetime',
         ];
     }
 

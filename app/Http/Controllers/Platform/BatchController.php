@@ -82,11 +82,19 @@ class BatchController extends PlatformController
             'has_bundle' => (bool) $batch->print_bundle_path,
             'next_statuses' => array_map(fn ($s) => ['value' => $s->value, 'label' => $s->label()], $batch->status->allowedNext()),
             'counts' => array_map('intval', $counts->only(['tokens', 'encoded', 'qc', 'shipped'])),
+            // pembuatan token di latar (per GenerateBatchTokens::CHUNK kartu)
+            'generation' => $batch->status === BatchStatus::Draft && ($batch->tokens_started_at || $batch->tokens_error) ? [
+                'running' => GenerateBatchTokens::running($batch),
+                'stalled' => ! GenerateBatchTokens::running($batch) && ! $batch->tokens_error,
+                'error' => $batch->tokens_error,
+                'started_at' => self::dt($batch->tokens_started_at),
+            ] : null,
             // pesanan asal (bila batch dibuat dari panel → Pesanan)
             'order' => ($o = $batch->orderItem?->order) ? ['id' => $o->public_id, 'number' => $o->number] : null,
         ]);
     }
 
+    /** POST /api/batches/{id}/generate — mulai (atau lanjutkan) pembuatan token di latar; progres dibaca dari show. */
     public function generate(Batch $batch, GenerateBatchTokens $generate): JsonResponse
     {
         $this->can('production.manage');
