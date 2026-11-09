@@ -6,6 +6,7 @@ use App\Enums\BatchStatus;
 use App\Enums\ChipType;
 use App\Models\Batch;
 use App\Models\Card;
+use App\Models\Design;
 use App\Models\OrderItem;
 use App\Models\User;
 use App\Support\Audit;
@@ -15,7 +16,7 @@ final class CreateBatch
 {
     /** @param  OrderItem|null  $item  pesanan asal: kartu masuk workspace pemesan & bisa diaktifkan pemesan tanpa kode */
     /** @param  bool  $uniform  desain seragam (tanpa QR unik): encode = lolos QC, kartu polos bisa ditulis di tempat (Jual kartu) */
-    public function handle(ChipType $chip, int $quantity, ?User $holder = null, ?string $vendor = null, ?Card $replaces = null, ?OrderItem $item = null, bool $uniform = false): Batch
+    public function handle(ChipType $chip, int $quantity, ?User $holder = null, ?string $vendor = null, ?Card $replaces = null, ?OrderItem $item = null, bool $uniform = false, ?Design $design = null): Batch
     {
         $batch = Batch::create([
             'code' => 'B'.now()->format('ymd').'-'.Str::upper(Str::random(4)),
@@ -30,6 +31,7 @@ final class CreateBatch
             // kartu pengganti (AFD F-13): aktivasi kartu baru mengambil alih profil & mencabut kartu lama
             'replaces_card_id' => $replaces?->id,
             'uniform' => $uniform,
+            'design_id' => $design?->id,
             'created_by' => auth()->id(),
         ]);
         Audit::platform('batch.created', $batch, null, ['quantity' => $quantity, 'chip' => $chip->value, 'order_item' => $item?->public_id, 'uniform' => $uniform]);

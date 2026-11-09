@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\BatchStatus;
 use App\Enums\ChipType;
+use App\Enums\TenantType;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -24,6 +25,25 @@ class Batch extends Model
             'tokens_started_at' => 'datetime',
             'uniform' => 'boolean',
         ];
+    }
+
+    /** Jalur kartu: dijual langsung (stok desain seragam), custom perorangan, atau perusahaan. */
+    public const CHANNELS = ['direct' => 'Jual langsung', 'custom' => 'Custom', 'company' => 'Perusahaan'];
+
+    /** Ditentukan otomatis dari asal batch — tidak perlu diatur. */
+    public function channel(): string
+    {
+        return match (true) {
+            $this->uniform => 'direct',
+            $this->tenant_id && $this->tenant?->type !== TenantType::Personal => 'company',
+            default => 'custom',
+        };
+    }
+
+    /** Desain depan & belakang stok jual langsung (milik akun petugas; dibaca lintas workspace). */
+    public function design(): BelongsTo
+    {
+        return $this->belongsTo(Design::class)->withoutGlobalScopes();
     }
 
     public function cards(): HasMany

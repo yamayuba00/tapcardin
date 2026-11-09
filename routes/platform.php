@@ -73,10 +73,12 @@ Route::middleware(['auth', 'platform'])->prefix('api')->name('api.')->group(func
     Route::get('/field/summary', [FieldActivationController::class, 'summary'])->name('field.summary');
 
     Route::get('/batches', [BatchController::class, 'index'])->name('batches');
+    Route::get('/batches/designs', [BatchController::class, 'designs'])->name('batches.designs');
     Route::post('/batches', [BatchController::class, 'store'])->name('batches.store');
     Route::get('/batches/{batch}', [BatchController::class, 'show'])->name('batches.show');
     Route::get('/batches/{batch}/cards', [BatchController::class, 'cards'])->name('batches.cards');
     Route::post('/batches/{batch}/generate', [BatchController::class, 'generate'])->name('batches.generate');
+    Route::patch('/batches/{batch}/design', [BatchController::class, 'setDesign'])->name('batches.design');
     Route::get('/batches/{batch}/bundle.csv', [BatchController::class, 'bundle'])->name('batches.bundle');
     Route::get('/batches/{batch}/print', [BatchController::class, 'print'])->name('batches.print');
     Route::post('/batches/{batch}/status', [BatchController::class, 'status'])->name('batches.status');

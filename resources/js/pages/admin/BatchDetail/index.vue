@@ -2,7 +2,7 @@
 // AFD F-04 — generate → bundle vendor → encode → QC → kirim.
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { Boxes, CircleCheck, Cpu, Download, QrCode } from 'lucide-vue-next'
+import { Boxes, CircleCheck, Cpu, Download, ExternalLink, QrCode } from 'lucide-vue-next'
 import AppBadge from '@/components/ui/AppBadge/index.vue'
 import AppButton from '@/components/ui/AppButton/index.vue'
 import AppInput from '@/components/ui/AppInput/index.vue'
@@ -12,6 +12,7 @@ import AppSelect from '@/components/ui/AppSelect/index.vue'
 import AppSkeleton from '@/components/ui/AppSkeleton/index.vue'
 import CardsTable from '@/components/admin/CardsTable/index.vue'
 import KpiCard from '@/components/common/KpiCard/index.vue'
+import FlipCard from '@/components/studio/FlipCard/index.vue'
 import PageHeader from '@/components/common/PageHeader/index.vue'
 import { adminApi } from '@/api/admin'
 import { useAction, useAsync } from '@/composables/useAsync'
@@ -43,6 +44,18 @@ watch(() => b.value?.generation?.running, (running) => {
 })
 onBeforeUnmount(() => clearInterval(poll))
 
+// desain stok jual langsung: pratinjau + ganti (daftar & data contoh dimuat saat dibutuhkan)
+const studio = ref(null)
+const changing = ref(false)
+const newDesign = ref('')
+async function openDesigns() {
+  studio.value ??= (await adminApi.batchDesigns()).data
+  newDesign.value = b.value.design?.id ?? ''
+  changing.value = true
+}
+const previewData = computed(() => studio.value ?? { vars: {}, qr: null })
+watch(() => b.value?.design, (d) => { if (d && !studio.value) adminApi.batchDesigns().then((r) => (studio.value = r.data)) }, { immediate: true })
+
 async function act(fn, message) {
   const res = await run(fn, message).catch(() => null)
   if (res) {
@@ -60,7 +73,8 @@ async function act(fn, message) {
         <div class="flex flex-wrap gap-2">
           <AppBadge tone="info">{{ b.status_label }}</AppBadge>
           <AppBadge tone="outline">{{ b.chip_type }}</AppBadge>
-          <AppBadge v-if="b.uniform" tone="ok">Desain seragam</AppBadge>
+          <AppBadge tone="ok">{{ b.channel_label }}</AppBadge>
+          <AppBadge v-if="b.tenant" tone="outline">{{ b.tenant }}</AppBadge>
           <AppBadge tone="outline">{{ b.quantity }} kartu</AppBadge>
           <RouterLink v-if="b.order" :to="`/orders/${b.order.id}`" class="text-sm">Pesanan {{ b.order.number }}</RouterLink>
           <AppBadge v-if="b.holder" tone="outline">{{ b.holder.email }}</AppBadge>
@@ -74,6 +88,33 @@ async function act(fn, message) {
       <KpiCard label="Lolos QC" :value="b.counts.qc" />
       <KpiCard label="Dikirim" :value="b.counts.shipped" />
     </div>
+
+    <AppPanel v-if="b.channel === 'direct'" title="Desain kartu">
+      <div class="grid gap-4 lg:grid-cols-[minmax(0,32rem)_minmax(0,1fr)] lg:items-start">
+        <div v-if="b.design && studio" class="grid grid-cols-2 gap-3">
+          <figure v-for="side in ['front', 'back']" :key="side" class="grid gap-1">
+            <FlipCard :front="b.design.front" :back="b.design.back" :flipped="side === 'back'" :vars="previewData.vars" :kit="b.design.kit" :qr="previewData.qr" />
+            <figcaption class="text-center text-xs text-muted">{{ side === 'front' ? 'Depan' : 'Belakang' }}</figcaption>
+          </figure>
+        </div>
+        <p v-else-if="!b.design" class="text-sm text-muted">Batch ini belum punya desain.</p>
+        <div class="grid content-start gap-3">
+          <p v-if="b.design" class="font-semibold">{{ b.design.name }}</p>
+          <p v-if="b.design?.per_card?.length" class="rounded-md border border-warn p-3 text-sm text-warn" role="alert">
+          Desain ini memuat {{ b.design.per_card.join(', ') }} yang berbeda di tiap kartu. Stok jual langsung dicetak sama semua — hapus elemen itu di Design Studio (cukup logo, tagline, & ikon NFC).
+        </p>
+          <div class="flex flex-wrap gap-2">
+            <AppButton v-if="b.design" variant="secondary" :href="b.design.studio_url" target="_blank" rel="noopener"><ExternalLink class="size-5" /> Ubah di Design Studio</AppButton>
+            <AppButton variant="ghost" @click="openDesigns">{{ b.design ? 'Ganti desain' : 'Pilih desain' }}</AppButton>
+          </div>
+          <form v-if="changing" class="flex flex-wrap gap-2" @submit.prevent="act(() => adminApi.setBatchDesign(id, newDesign || null), 'Desain batch diperbarui').then(() => (changing = false))">
+            <AppSelect v-model="newDesign" :options="studio.designs.map((d) => ({ value: d.id, label: d.name }))" placeholder="Pilih desain" class="min-w-56" />
+            <AppButton type="submit" :loading="busy">Simpan</AppButton>
+          </form>
+          <p class="text-sm text-muted">Perubahan di Design Studio langsung berlaku untuk batch ini. Desain hanya menentukan tampilan cetak — chip & aktivasi tidak terpengaruh.</p>
+        </div>
+      </div>
+    </AppPanel>
 
     <AppPanel title="Langkah produksi">
       <div class="grid gap-4">

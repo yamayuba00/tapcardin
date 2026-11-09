@@ -40,6 +40,9 @@ export const adminApi = {
   replacementBatch: (token) => http.post(`/api/cards/${token}/replacement-batch`),
 
   batches: (params) => http.get('/api/batches', params),
+  /** desain kartu milik petugas (Design Studio app.) + data contoh & QR untuk pratinjau */
+  batchDesigns: () => http.get('/api/batches/designs'),
+  setBatchDesign: (id, design) => http.patch(`/api/batches/${id}/design`, { design }),
   createBatch: (body) => http.post('/api/batches', body),
   batch: (id) => http.get(`/api/batches/${id}`),
   batchCards: (id, params) => http.get(`/api/batches/${id}/cards`, params),
