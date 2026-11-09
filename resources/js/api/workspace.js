@@ -171,3 +171,15 @@ export const billingApi = {
   simulate: (id, result, method) => http.post(`/api/billing/invoices/${id}/simulate`, { result, method }),
   cancel: (resume = false) => http.post('/api/billing/cancel', { resume }),
 }
+
+/** Identitas workspace perusahaan / komunitas / partai: jenis organisasi + logo (disimpan di S3). */
+export const workspaceBrandApi = {
+  get: () => http.get('/api/workspace/brand'),
+  update: (body) => http.patch('/api/workspace/brand', body),
+  logo: (file) => {
+    const fd = new FormData()
+    fd.append('image', file)
+    return http.post('/api/workspace/brand/logo', fd)
+  },
+  removeLogo: () => http.del('/api/workspace/brand/logo'),
+}

@@ -18,6 +18,9 @@ final class Palette
         'amber-300' => '#E0A458', 'amber-700' => '#8A5A12',
         'coral-300' => '#E07A6A', 'coral-700' => '#A63A2B',
         'sky-300' => '#8FB2D9', 'sky-700' => '#2F5C8F',
+        // warna cetak tambahan untuk koleksi template (juga tersedia di palet Design Studio)
+        'navy-800' => '#1C2740', 'forest-800' => '#1E3A2C', 'terracotta-600' => '#A9502F', 'plum-800' => '#3B2340',
+        'rose-200' => '#EBCBC2', 'sand-200' => '#E6D6B5', 'teal-700' => '#1D5A5E', 'mustard-400' => '#D6B04A',
     ];
 
     public static function hex(string $name): string

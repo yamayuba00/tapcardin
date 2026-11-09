@@ -99,7 +99,7 @@ const tabOn = (on) => (on ? 'border-accent bg-surface-2 text-fg' : 'border-line 
         <div class="grid min-w-0 place-items-center gap-3 bg-surface-2 px-4 py-8 sm:px-10">
           <div class="w-full max-w-[520px]">
             <CardSide
-              :side="design[side]" :vars="vars" :qr="qr" :editable="fine" :selection="selection"
+              :side="design[side]" :vars="vars" :qr="qr" :editable="fine" :selection="selection" sample
               @select="(ids) => (selection = ids)" @change="change"
             />
           </div>
@@ -114,10 +114,10 @@ const tabOn = (on) => (on ? 'border-accent bg-surface-2 text-fg' : 'border-line 
             <span class="label">Template</span>
             <div class="grid grid-cols-4 gap-2 lg:grid-cols-2">
               <button
-                v-for="t in templates" :key="t.key" type="button" :aria-pressed="tplKey === t.key" :aria-label="`Template ${t.name}`" :title="t.name"
+                v-for="t in templates.slice(0, 8)" :key="t.key" type="button" :aria-pressed="tplKey === t.key" :aria-label="`Template ${t.name}`" :title="t.name"
                 class="cursor-pointer overflow-hidden rounded-md border-2 p-0.5" :class="tplKey === t.key ? 'border-accent' : 'border-transparent hover:border-line-strong'"
                 @click="tplKey = t.key"
-              ><CardSide :side="t.preview.landscape.front" :vars="vars" :qr="qr" trim /></button>
+              ><CardSide :side="t.preview.landscape.front" :vars="vars" :qr="qr" trim sample /></button>
             </div>
           </div>
           <div class="grid gap-2">

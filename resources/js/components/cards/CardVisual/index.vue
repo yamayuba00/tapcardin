@@ -8,6 +8,7 @@ import AppModal from '@/components/ui/AppModal/index.vue'
 import AppSegmented from '@/components/ui/AppSegmented/index.vue'
 import AppSkeleton from '@/components/ui/AppSkeleton/index.vue'
 import CardSide from '@/components/studio/CardSide/index.vue'
+import LazyRender from '@/components/common/LazyRender/index.vue'
 import { cardsApi } from '@/api/workspace'
 import { studioApi } from '@/api/studio'
 import { useAction, useAsync } from '@/composables/useAsync'
@@ -127,7 +128,9 @@ defineExpose({ reload })
                 class="grid cursor-pointer gap-2 rounded-md border border-line p-2 text-left text-sm hover:border-line-strong disabled:cursor-wait"
                 @click="choose({ template: t.key, orientation })"
               >
-                <div class="overflow-hidden rounded-sm"><CardSide :side="t.preview[orientation].front" :vars="catalog.variables" :qr="catalog.qr" trim /></div>
+                <div class="overflow-hidden rounded-sm">
+                  <LazyRender :aspect="`${t.preview[orientation].front.size.w} / ${t.preview[orientation].front.size.h}`"><CardSide :side="t.preview[orientation].front" :vars="catalog.variables" :qr="catalog.qr" trim sample /></LazyRender>
+                </div>
                 <span class="font-medium">{{ t.name }}</span>
               </button>
             </div>

@@ -17,12 +17,13 @@ const props = defineProps({
   snap: { type: Boolean, default: true },
   overlays: { type: Boolean, default: true },
   hoverFlip: Boolean,
+  sample: Boolean,
 })
 const emit = defineEmits(['select', 'change', 'commit'])
 
 const bleed = computed(() => props.front.size.bleed ?? 3)
 const aspect = computed(() => `${props.front.size.w + 2 * bleed.value} / ${props.front.size.h + 2 * bleed.value}`)
-const common = computed(() => ({ vars: props.vars, kit: props.kit, qr: props.qr, selection: props.selection, grid: props.grid, snap: props.snap, overlays: props.overlays }))
+const common = computed(() => ({ vars: props.vars, kit: props.kit, qr: props.qr, selection: props.selection, grid: props.grid, snap: props.snap, overlays: props.overlays, sample: props.sample }))
 const on = { onSelect: (ids) => emit('select', ids), onChange: (e) => emit('change', e), onCommit: () => emit('commit') }
 </script>
 

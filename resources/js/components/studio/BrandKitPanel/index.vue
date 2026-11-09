@@ -23,7 +23,9 @@ const busy = ref(false)
 const form = ref(null)
 watch(() => props.kit, (k) => (form.value = k ? JSON.parse(JSON.stringify(k)) : null), { immediate: true })
 
-const options = computed(() => props.kits.map((k) => ({ value: k.id, label: k.name, description: k.tagline || undefined })))
+const options = computed(() => props.kits.map((k) => ({ value: k.id, label: k.workspace ? `${k.name} (logo organisasi)` : k.name, description: k.tagline || undefined })))
+// kit workspace dikelola admin di Pengaturan → Identitas organisasi; di sini hanya dipakai
+const locked = computed(() => !!form.value?.workspace)
 const COLORS = [['primary', 'Warna utama'], ['secondary', 'Warna sekunder / aksen'], ['background', 'Warna terang / latar'], ['text', 'Warna teks']]
 
 async function create() {
@@ -70,7 +72,17 @@ async function upload(e) {
       <AppButton variant="secondary" icon aria-label="Buat brand kit baru" title="Buat brand kit baru" :loading="busy" @click="create"><Plus class="size-5" /></AppButton>
     </div>
 
-    <template v-if="form">
+    <div v-if="locked" class="grid gap-3 rounded-md border border-line bg-surface-2 p-3">
+      <div class="flex items-center gap-3">
+        <span class="grid h-12 w-20 flex-none place-items-center overflow-hidden rounded-sm border border-line bg-surface p-1">
+          <img v-if="form.logo" :src="form.logo.url" alt="Logo organisasi" class="max-h-full max-w-full object-contain" />
+          <span v-else class="text-xs text-muted">Belum ada</span>
+        </span>
+        <span class="text-sm">Logo & identitas <strong>{{ form.name }}</strong> dikelola admin workspace di <RouterLink to="/settings" class="font-semibold underline">Pengaturan → Identitas organisasi</RouterLink>.</span>
+      </div>
+    </div>
+
+    <template v-else-if="form">
       <AppField label="Nama kit"><AppInput :model-value="form.name" maxlength="80" @update:model-value="(v) => save({ name: v })" /></AppField>
       <AppField label="Nama merek" hint="Dipakai variabel {{brand}}."><AppInput :model-value="form.display_name ?? ''" maxlength="120" @update:model-value="(v) => save({ display_name: v || null })" /></AppField>
       <AppField label="Tagline" hint="Variabel {{tagline}}."><AppInput :model-value="form.tagline ?? ''" maxlength="160" @update:model-value="(v) => save({ tagline: v || null })" /></AppField>

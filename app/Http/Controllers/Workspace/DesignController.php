@@ -56,7 +56,8 @@ class DesignController extends WorkspaceController
             'glyphs' => DesignNormalizer::GLYPHS,
             'qr' => ['modules' => $qr->size, 'path' => SvgRenderer::path($qr)],
             'variables' => $this->variables(),
-            'kits' => BrandKit::where('user_id', $this->user()->id)->latest('updated_at')->get()->map(fn (BrandKit $k) => $k->toKit()),
+            // brand kit milik saya + brand kit workspace (logo organisasi) — kit workspace selalu pertama
+            'kits' => $this->kits()->orderByDesc('is_workspace')->latest('updated_at')->get()->map(fn (BrandKit $k) => $k->toKit()),
             'lanyard' => LanyardPricing::catalog(),
             'merch' => MerchProduct::catalog(),
             'limits' => ['min_text_pt' => DesignValidator::MIN_TEXT_PT, 'max_layers' => DesignNormalizer::MAX_LAYERS, 'safe' => CardGeometry::SAFE, 'bleed' => CardGeometry::BLEED],
@@ -116,6 +117,8 @@ class DesignController extends WorkspaceController
             'front_json' => $sides['front'],
             'back_json' => $sides['back'],
             'locked_layer_ids' => $this->lockedIds($sides),
+            // workspace organisasi: logo & warna organisasi langsung terpasang di kartu baru
+            'brand_kit_id' => WorkspaceBrandController::kitFor($this->tenant()->id)?->id,
         ]);
 
         return response()->json(['data' => $this->present($design)], 201);
@@ -347,7 +350,13 @@ class DesignController extends WorkspaceController
 
     private function kit(string $publicId): BrandKit
     {
-        return BrandKit::where('public_id', $publicId)->where('user_id', $this->user()->id)->firstOrFail();
+        return $this->kits()->where('public_id', $publicId)->firstOrFail();
+    }
+
+    /** Kit yang boleh dipakai: milik saya, atau kit workspace (logo organisasi yang diunggah admin). */
+    private function kits()
+    {
+        return BrandKit::where(fn ($q) => $q->where('user_id', $this->user()->id)->orWhere('is_workspace', true));
     }
 
     private function present(Design $d, bool $full = true): array

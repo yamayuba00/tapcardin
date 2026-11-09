@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { cardSize, createLayer, fillVars, isSystem, layerBox, moveLayer, ptToMm, resizeLayer, snapMove, textSize } from '../design.js'
+import { autoFitWidth, cardSize, createLayer, fillVars, isSystem, layerBox, moveLayer, ptToMm, resizeLayer, snapMove, textSize } from '../design.js'
 import { createHistory } from '../history.js'
 
 test('fillVars mengganti variabel profil dan membiarkan yang tidak dikenal', () => {
@@ -129,4 +129,20 @@ test('salin elemen kartu → lanyard: diskalakan muat lebar tali & di tengah', (
   assert.ok(Math.abs(box.y + box.h / 2 - 10) < 0.6, 'di tengah melintang')
   assert.notEqual(out[0].id, 'logo', 'id baru')
   assert.ok(out[1].size >= 6, 'teks tidak di bawah 6 pt')
+})
+
+test('teks berisi data dibatasi zona aman sesuai perataan; teks tetap/bleed/berputar tidak diubah', () => {
+  const card = { w: 85.6 }
+  const name = (x, align = 'left', extra = {}) => ({ type: 'text', text: '{{name}}', x, y: 30, size: 16, align, ...extra })
+  assert.equal(autoFitWidth(name(8), card), 85.6 - 4 - 8)
+  assert.equal(autoFitWidth(name(85.6 / 2, 'center'), card), 85.6 - 8)
+  assert.equal(autoFitWidth(name(80, 'right'), card), 76)
+  assert.equal(autoFitWidth(name(8, 'left', { fitWidth: 30 }), card), 30, 'fitWidth eksplisit menang')
+  assert.equal(autoFitWidth({ ...name(8), text: 'TapCard' }, card), null, 'teks tetap')
+  assert.equal(autoFitWidth(name(-2, 'left', { allowBleed: true }), card), null)
+  assert.equal(autoFitWidth(name(8, 'left', { rotate: 90 }), card), null)
+  // nama sangat panjang mengecil (min 6 pt) bila diberi lebar otomatis
+  const long = { ...name(8), fitWidth: autoFitWidth(name(8), card) }
+  assert.ok(textSize(long, { name: 'Raden Ajeng Kusumawardhani Prameswari Wijayakusuma' }) < 16)
+  assert.equal(textSize(long, { name: 'Rina' }), 16)
 })

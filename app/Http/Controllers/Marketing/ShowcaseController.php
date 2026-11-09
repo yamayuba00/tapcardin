@@ -33,7 +33,7 @@ class ShowcaseController extends Controller
 
     public function __invoke(): JsonResponse
     {
-        $data = Cache::remember('showcase:v7', now()->addHour(), function () {
+        $data = Cache::remember('showcase:v9', now()->addHour(), function () {
             $qr = QrEncoder::encode(config('tapcard.resolver_url').'/c/XXXXXXXXXX?src=qr');
 
             return [

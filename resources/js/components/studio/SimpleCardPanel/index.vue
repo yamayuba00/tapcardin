@@ -5,6 +5,7 @@
 import { computed, ref } from 'vue'
 import { Check, LayoutTemplate, Palette, UserRound } from 'lucide-vue-next'
 import CardSide from '@/components/studio/CardSide/index.vue'
+import LazyRender from '@/components/common/LazyRender/index.vue'
 import { useToastStore } from '@/stores/toast'
 
 const props = defineProps({
@@ -50,7 +51,9 @@ function setBg(v) {
           @click="apply(t)"
         >
           <span :class="['block overflow-hidden rounded-sm', orientation === 'portrait' ? 'mx-auto w-3/5' : '']">
-            <CardSide :side="t.preview[orientation].front" :vars="ed.vars.value" :kit="kit" :qr="catalog.qr" trim />
+            <LazyRender :aspect="`${t.preview[orientation].front.size.w} / ${t.preview[orientation].front.size.h}`">
+              <CardSide :side="t.preview[orientation].front" :vars="ed.vars.value" :kit="kit" :qr="catalog.qr" trim sample />
+            </LazyRender>
           </span>
           <span class="flex items-center gap-1 text-sm font-semibold"><Check v-if="applied === t.key" class="size-4 text-ok" /> {{ t.name }}</span>
         </button>

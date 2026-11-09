@@ -57,7 +57,10 @@ class DesignStudioTest extends TestCase
 
         $this->assertSame(self::SYSTEM_FRONT, $ids($sides['front']));
         $this->assertSame(self::SYSTEM_BACK, $ids($sides['back']));
-        $this->assertSame([], (new DesignValidator($g, Variables::SAMPLE))->validate($sides['front'], $sides['back']));
+        // desain berslot logo divalidasi dengan brand kit yang sudah punya logo (2000 px → tajam di ukuran cetak)
+        $kit = in_array($t, TemplateLibrary::LOGO_TEMPLATES, true) ? ['logo' => ['asset' => 't1/brand/logo.png', 'px_w' => 2000, 'px_h' => 1000]] : null;
+        $this->assertSame([], (new DesignValidator($g, Variables::SAMPLE, $kit))->validate($sides['front'], $sides['back']));
+        $this->assertSame(in_array($t, TemplateLibrary::LOGO_TEMPLATES, true), str_contains(json_encode($sides), 'kit:logo'));
 
         $qr = collect($sides['back']['layers'])->firstWhere('id', 'sys-qr');
         $this->assertGreaterThanOrEqual(15, $qr['size'] - 3, 'QR ≥ 15 mm setelah quiet zone (DBD §8.1)');
@@ -69,15 +72,15 @@ class DesignStudioTest extends TestCase
         $this->assertSame([], array_diff(array_unique(array_map('strtoupper', $m[0])), array_values(Palette::COLORS)));
     }
 
-    public function test_catalog_lists_blank_plus_eight_templates_with_palette_qr_and_profile_variables(): void
+    public function test_catalog_lists_blank_plus_forty_three_templates_with_palette_qr_and_profile_variables(): void
     {
         $this->actingAs($this->makeUser());
         $res = $this->api('GET', '/studio/templates')->assertOk();
-        $this->assertCount(9, $res->json('data.templates'));
+        $this->assertCount(44, $res->json('data.templates')); // kosong + 8 klasik + 35 desain koleksi
         $this->assertSame('kosong', $res->json('data.templates.0.key'), 'kartu kosong selalu pertama');
         $this->assertContains('instagram', $res->json('data.glyphs'));
         $this->assertCount(3, $res->json('data.lanyard.widths'));
-        $this->assertCount(22, $res->json('data.palette'));
+        $this->assertCount(30, $res->json('data.palette'));
         $this->assertSame('Rina Saputra', $res->json('data.variables.name'));
         $this->assertStringStartsWith('M', $res->json('data.qr.path'));
         $this->assertNotNull($res->json('data.templates.0.preview.portrait.back'));

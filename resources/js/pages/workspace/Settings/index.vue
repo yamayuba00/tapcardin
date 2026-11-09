@@ -3,6 +3,7 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { CircleCheck, CreditCard, Download, LogOut, Moon, Plus, ShieldCheck, Smartphone, Trash2 } from 'lucide-vue-next'
 import InstallApp from '@/components/common/InstallApp/index.vue'
+import OrgIdentityPanel from '@/components/common/OrgIdentityPanel/index.vue'
 import { useTheme } from '@/composables/useTheme'
 import AppButton from '@/components/ui/AppButton/index.vue'
 import AppField from '@/components/ui/AppField/index.vue'
@@ -99,6 +100,8 @@ async function destroy() {
   <PageHeader eyebrow="Akun" title="Pengaturan" />
 
   <div class="grid gap-4 md:grid-cols-2">
+    <OrgIdentityPanel v-if="auth.workspace && auth.workspace.type !== 'personal'" class="md:col-span-2" />
+
     <AppPanel title="Akun">
       <form class="grid gap-4" @submit.prevent="save(form, 'Akun disimpan')">
         <AppField label="Nama"><AppInput v-model="form.name" maxlength="120" /></AppField>

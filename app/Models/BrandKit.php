@@ -18,6 +18,11 @@ class BrandKit extends Model
 
     public const COLOR_KEYS = ['primary', 'secondary', 'background', 'text'];
 
+    protected function casts(): array
+    {
+        return ['is_workspace' => 'boolean']; // kit workspace: logo organisasi, dipakai semua anggota (WorkspaceBrandController)
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
@@ -42,6 +47,7 @@ class BrandKit extends Model
             'display_name' => $this->display_name,
             'tagline' => $this->tagline,
             'website' => $this->website,
+            'workspace' => (bool) $this->is_workspace,
         ];
     }
 }

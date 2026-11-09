@@ -143,7 +143,7 @@ class WorkspaceApiTest extends TestCase
     public function test_landing_showcase_is_public(): void
     {
         $this->getJson('http://localhost/api/showcase')->assertOk()
-            ->assertJsonCount(8, 'data.templates')
+            ->assertJsonCount(43, 'data.templates')
             ->assertJsonPath('data.templates.0.preview.portrait.front.size.w', 54)
             ->assertJsonCount(8, 'data.bio.presets')
             ->assertJsonPath('data.sample.display_name', 'Rina Saputra')

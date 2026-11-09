@@ -3,11 +3,11 @@
 // Mode edit: overlay DBD §3.5 (bleed, safe zone, chip, slot lanyard / tepi tali & batas pola), grid, seleksi banyak
 // (klik + Shift/Ctrl, kotak seleksi), grup, geser dengan snap (Alt = bebas), ubah ukuran (Shift = rasio tetap),
 // putar (Shift = kelipatan 15°). Elemen sistem & elemen yang dikunci tidak bisa digeser.
-import { computed, onBeforeUnmount, onMounted, ref, useId } from 'vue'
+import { computed, onBeforeUnmount, onMounted, onUpdated, ref, useId } from 'vue'
 import { Lock, Nfc } from 'lucide-vue-next'
 import {
   BLEED, angleTo, center, expandGroups, isFixed, isSystem, layerBox, moveLayer, polygonPoints, ptToMm, rawBox, resizeLayer,
-  resolveColor, snapMove, textLines, textSize, unionBox,
+  autoFitWidth, resolveColor, snapMove, textLines, textSize, unionBox,
 } from '@/lib/design'
 import { glyph } from '@/lib/glyphs'
 
@@ -23,6 +23,7 @@ const props = defineProps({
   grid: { type: Number, default: 0 }, // mm, 0 = mati
   snap: { type: Boolean, default: true },
   trim: Boolean, // tampilkan tepat ukuran potong (tanpa bleed) — mis. pola lanyard yang diulang
+  sample: Boolean, // pratinjau galeri: slot logo kosong ditandai "LOGO" (tidak pernah dipakai untuk cetak)
 })
 const emit = defineEmits(['select', 'change', 'commit'])
 
@@ -44,7 +45,41 @@ const col = (v, fb = 'currentColor') => resolveColor(v, props.kit, fb)
 const bg = computed(() => col(props.side.background?.value, 'transparent'))
 const bgImage = computed(() => (props.side.background?.type === 'image' ? props.side.background : null))
 const imgUrl = (l) => (l.asset === 'kit:logo' ? props.kit?.logo?.url : l.url)
-const fontMm = (l) => ptToMm(textSize(l, props.vars))
+// tinta kontras dengan latar = warna elemen sistem (NFC / merek), dipakai untuk penanda slot logo di galeri
+const sysInk = computed(() => props.side.layers.find((l) => l.locked && l.color)?.color ?? 'currentColor')
+/**
+ * Lebar maksimum teks berisi data ({{nama}}, {{jabatan}}, …) agar isi yang panjang tidak keluar kartu: fitWidth bila
+ * diatur, selain itu sisa ruang sampai zona aman sesuai perataan. Teks tetap/berputar/sengaja keluar tepi tidak diubah.
+ */
+const autoFit = (l) => (isLanyard.value ? l.fitWidth ?? null : autoFitWidth(l, { w: W.value }, safe.value))
+const fitted = (l) => {
+  const f = autoFit(l)
+  return f && f !== l.fitWidth ? { ...l, fitWidth: f } : l
+}
+const fontMm = (l) => ptToMm(textSize(fitted(l), props.vars))
+
+/**
+ * Pengaman terakhir setelah font asli dimuat: lebar huruf sebenarnya bisa lebih besar dari perkiraan, jadi teks yang
+ * masih melewati batas dirapatkan tepat ke batas (textLength). Ikut terbawa ke ekspor PNG/PDF karena memakai SVG ini.
+ */
+function clampText() {
+  svg.value?.querySelectorAll('text[data-fit]').forEach((el) => {
+    el.removeAttribute('textLength')
+    el.removeAttribute('lengthAdjust')
+    const max = Number(el.dataset.fit)
+    let len = 0
+    try { len = el.getComputedTextLength() } catch { return }
+    if (max > 0 && len > max) {
+      el.setAttribute('textLength', String(max))
+      el.setAttribute('lengthAdjust', 'spacingAndGlyphs')
+    }
+  })
+}
+onMounted(() => {
+  clampText()
+  document.fonts?.ready.then(clampText)
+})
+onUpdated(clampText)
 const anchor = (a) => ({ center: 'middle', right: 'end' })[a] ?? 'start'
 const rings = (l) => {
   const out = []
@@ -240,7 +275,7 @@ function up() {
         <text
           v-if="l.type === 'text'"
           :x="l.x" :y="l.y" :fill="col(l.color)" :font-family="l.font" :font-weight="l.weight" :font-style="l.italic ? 'italic' : undefined"
-          :font-size="fontMm(l)" :text-anchor="anchor(l.align)" :letter-spacing="(l.tracking ?? 0) * fontMm(l)"
+          :font-size="fontMm(l)" :text-anchor="anchor(l.align)" :letter-spacing="(l.tracking ?? 0) * fontMm(l)" :data-fit="autoFit(l) ?? undefined"
         ><tspan v-for="(line, i) in textLines(l, vars)" :key="i" :x="l.x" :dy="i === 0 ? 0 : fontMm(l) * (l.lineHeight ?? 1.25)">{{ line || ' ' }}</tspan></text>
         <rect v-else-if="l.type === 'rect'" :x="l.x" :y="l.y" :width="l.w" :height="l.h" :rx="l.rx || 0" :fill="col(l.fill)" :stroke="l.stroke ? col(l.stroke) : undefined" :stroke-width="l.strokeWidth" />
         <ellipse v-else-if="l.type === 'ellipse'" :cx="l.x + l.w / 2" :cy="l.y + l.h / 2" :rx="l.w / 2" :ry="l.h / 2" :fill="col(l.fill)" :stroke="l.stroke ? col(l.stroke) : undefined" :stroke-width="l.strokeWidth" />
@@ -255,6 +290,10 @@ function up() {
         <g v-else-if="l.type === 'image'" :clip-path="l.mask ? `url(#m-${uid}-${l.id})` : undefined">
           <image v-if="imgUrl(l)" :href="imgUrl(l)" :x="l.x" :y="l.y" :width="l.w" :height="l.h" :preserveAspectRatio="l.fit === 'cover' ? 'xMidYMid slice' : 'xMidYMid meet'" />
           <rect v-else-if="editable" :x="l.x" :y="l.y" :width="l.w" :height="l.h" fill="none" class="stroke-muted" stroke-width="0.2" stroke-dasharray="1 0.8" />
+          <g v-else-if="sample && l.asset === 'kit:logo'" :fill="sysInk" :stroke="sysInk" opacity="0.55">
+            <rect :x="l.x" :y="l.y" :width="l.w" :height="l.h" :rx="l.mask === 'circle' ? Math.min(l.w, l.h) / 2 : 1" fill="none" stroke-width="0.25" stroke-dasharray="1 0.7" />
+            <text :x="l.x + l.w / 2" :y="l.y + l.h / 2" :font-size="Math.min(l.h * 0.32, l.w * 0.2)" text-anchor="middle" dominant-baseline="central" stroke="none" font-family="IBM Plex Mono" font-weight="500" letter-spacing="0.3">LOGO</text>
+          </g>
         </g>
         <g v-else-if="l.type === 'qr'">
           <rect :x="l.x" :y="l.y" :width="l.size" :height="l.size" :rx="l.rx || 0" :fill="l.bg" />

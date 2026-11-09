@@ -24,6 +24,7 @@ use App\Http\Controllers\Workspace\ProfileController;
 use App\Http\Controllers\Workspace\ReminderController;
 use App\Http\Controllers\Workspace\ScanController;
 use App\Http\Controllers\Workspace\StreamController;
+use App\Http\Controllers\Workspace\WorkspaceBrandController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -132,6 +133,10 @@ Route::middleware('auth')->prefix('api')->name('api.')->group(function () {
     Route::post('/designs/{design}/assets', [DesignController::class, 'asset'])->name('designs.asset');
     Route::post('/designs/{design}/lanyard', [DesignController::class, 'createPairedLanyard'])->name('designs.lanyard');
     Route::post('/designs/{design}/template', [DesignController::class, 'saveAsTemplate'])->name('designs.template');
+    Route::get('/workspace/brand', [WorkspaceBrandController::class, 'show'])->name('workspace.brand');
+    Route::patch('/workspace/brand', [WorkspaceBrandController::class, 'update'])->name('workspace.brand.update');
+    Route::post('/workspace/brand/logo', [WorkspaceBrandController::class, 'logo'])->middleware('throttle:20,1')->name('workspace.brand.logo');
+    Route::delete('/workspace/brand/logo', [WorkspaceBrandController::class, 'removeLogo'])->name('workspace.brand.logo.remove');
     Route::get('/brand-kits', [BrandKitController::class, 'index'])->name('kits.index');
     Route::post('/brand-kits', [BrandKitController::class, 'store'])->name('kits.store');
     Route::patch('/brand-kits/{kit}', [BrandKitController::class, 'update'])->name('kits.update');

@@ -6,6 +6,7 @@ import { Check } from 'lucide-vue-next'
 import AppSegmented from '@/components/ui/AppSegmented/index.vue'
 import AppToggle from '@/components/ui/AppToggle/index.vue'
 import FlipCard from '@/components/studio/FlipCard/index.vue'
+import LazyRender from '@/components/common/LazyRender/index.vue'
 
 const props = defineProps({ catalog: { type: Object, required: true } })
 const emit = defineEmits(['pick'])
@@ -15,6 +16,8 @@ const orientation = ref('landscape')
 const lanyard = ref(false)
 const selected = ref(props.catalog.templates[0]?.key)
 const mine = ref(props.catalog.my_templates?.[0]?.id ?? null)
+// logo organisasi (brand kit workspace) langsung tampil di pratinjau desain berslot logo
+const orgKit = computed(() => props.catalog.kits?.find((k) => k.workspace && k.logo) ?? null)
 
 /** Pratinjau lanyard: tampilkan zona slot di atas pratinjau tanpa lanyard (posisi elemen final dari server). */
 const preview = (t, side) => {
@@ -47,9 +50,11 @@ const card = 'group/tpl grid cursor-pointer gap-2 rounded-md border border-line 
         v-for="t in catalog.templates" :key="t.key" type="button" :aria-pressed="selected === t.key" :class="card"
         @click="selected = t.key" @dblclick="emit('pick', { ...choice, template: t.key })"
       >
-        <FlipCard :front="preview(t, 'front')" :back="preview(t, 'back')" :vars="catalog.variables" :qr="catalog.qr" hover-flip />
+        <LazyRender :aspect="`${preview(t, 'front').size.w} / ${preview(t, 'front').size.h}`">
+          <FlipCard :front="preview(t, 'front')" :back="preview(t, 'back')" :vars="catalog.variables" :kit="orgKit" :qr="catalog.qr" hover-flip sample />
+        </LazyRender>
         <span class="flex items-center justify-between gap-2">
-          <span class="font-medium">{{ t.name }}<span v-if="t.key === 'kosong'" class="ml-2 rounded-sm bg-surface-2 px-1.5 py-0.5 text-xs text-muted">dari nol</span></span>
+          <span class="font-medium">{{ t.name }}<span v-if="t.key === 'kosong'" class="ml-2 rounded-sm bg-surface-2 px-1.5 py-0.5 text-xs text-muted">dari nol</span><span v-else-if="t.logo" class="ml-2 rounded-sm bg-surface-2 px-1.5 py-0.5 text-xs text-muted">logo</span></span>
           <Check v-if="selected === t.key" class="size-4 text-accent-text" />
         </span>
         <span class="text-xs text-muted">{{ t.description }}</span>

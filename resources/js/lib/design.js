@@ -74,6 +74,22 @@ export function moveLayer(layer, dx, dy) {
 
 const textWidth = (l, text, hgt) => text.length * hgt * (l.font === 'IBM Plex Mono' ? 0.6 : 0.55) * (1 + (l.tracking ?? 0))
 
+/**
+ * Lebar maksimum (mm) teks berisi data ({{nama}}, {{jabatan}}, …) agar isi yang panjang tidak keluar kartu: `fitWidth`
+ * bila diatur, selain itu sisa ruang sampai zona aman sesuai perataan. Teks tetap, berputar, multi-baris, atau yang
+ * sengaja keluar tepi (allowBleed) → null (tidak diubah).
+ * @param {{w: number}} size ukuran kartu (mm)
+ */
+export function autoFitWidth(l, size, safe = SAFE) {
+  if (l.fitWidth) return l.fitWidth
+  const text = String(l.text ?? '')
+  if (l.allowBleed || l.rotate || !text.includes('{{') || text.includes('\n')) return null
+  const left = l.x - safe
+  const right = size.w - safe - l.x
+  const w = l.align === 'center' ? 2 * Math.min(left, right) : l.align === 'right' ? left : right
+  return w > 5 ? round(w) : null
+}
+
 /** Ukuran teks efektif (pt) setelah auto-fit `fitWidth`, minimal 6 pt — sama dengan DesignValidator::textSize. */
 export function textSize(l, vars = {}) {
   if (!l.fitWidth || l.size < MIN_TEXT_PT) return l.size
