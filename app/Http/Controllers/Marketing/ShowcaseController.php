@@ -14,7 +14,6 @@ use App\Support\Design\LanyardGeometry;
 use App\Support\Design\LanyardPricing;
 use App\Support\Design\Palette;
 use App\Support\Design\TemplateLibrary;
-use App\Support\Qr\QrEncoder;
 use App\Support\Qr\SvgRenderer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
@@ -34,7 +33,7 @@ class ShowcaseController extends Controller
     public function __invoke(): JsonResponse
     {
         $data = Cache::remember('showcase:v10', now()->addHour(), function () {
-            $qr = QrEncoder::encode(config('tapcard.resolver_url').'/c/XXXXXXXXXX?src=qr');
+            $qr = SvgRenderer::payload(config('tapcard.resolver_url').'/c/XXXXXXXXXX?src=qr');
 
             return [
                 'templates' => array_map(fn ($t) => $t + ['preview' => [
@@ -42,7 +41,7 @@ class ShowcaseController extends Controller
                     'portrait' => TemplateLibrary::make($t['key'], new CardGeometry('portrait')),
                 ]], array_values(array_filter(TemplateLibrary::catalog(), fn ($t) => $t['key'] !== 'kosong'))),
                 'variables' => self::PERSONA,
-                'qr' => ['modules' => $qr->size, 'path' => SvgRenderer::path($qr)],
+                'qr' => $qr,
                 'bio' => BioTheme::catalog(),
                 'editor' => self::editor(),
                 'sample' => self::sampleProfile(),

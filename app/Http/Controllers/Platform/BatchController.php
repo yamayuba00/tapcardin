@@ -18,7 +18,6 @@ use App\Models\Tenant;
 use App\Models\User;
 use App\Support\Audit;
 use App\Support\Http\Table;
-use App\Support\Qr\QrEncoder;
 use App\Support\Qr\SvgRenderer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -96,13 +95,13 @@ class BatchController extends PlatformController
     public function designs(): JsonResponse
     {
         $this->can('production.manage');
-        $qr = QrEncoder::encode(config('tapcard.resolver_url').'/c/XXXXXXXXXX?src=qr');
+        $qr = SvgRenderer::payload(config('tapcard.resolver_url').'/c/XXXXXXXXXX?src=qr');
 
         return $this->ok([
             'designs' => Design::withoutGlobalScopes()->with('brandKit')->where('user_id', self::designerId())->where('kind', 'card')
                 ->where('is_template', false)->latest('updated_at')->limit(50)->get()->map(fn (Design $d) => self::presentDesign($d))->values(),
             'vars' => ShowcaseController::PERSONA,
-            'qr' => ['modules' => $qr->size, 'path' => SvgRenderer::path($qr)],
+            'qr' => $qr,
             'studio_url' => rtrim((string) config('app.url'), '/').'/designs',
         ]);
     }

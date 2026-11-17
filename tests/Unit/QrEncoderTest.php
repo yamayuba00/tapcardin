@@ -74,8 +74,35 @@ class QrEncoderTest extends TestCase
     {
         $svg = SvgRenderer::forUrl('https://tap.domain.com/c/aB3dE5fG7h?src=qr');
         $this->assertStringContainsString('fill="currentColor"', $svg);
-        $this->assertStringContainsString('viewBox="0 0 37 37"', $svg); // V3 = 29 modul + 2×4 quiet zone
+        $this->assertStringContainsString('viewBox="0 0 45 45"', $svg); // V5-H berlogo = 37 modul + 2×4 quiet zone
         $this->assertDoesNotMatchRegularExpression('/#[0-9a-f]{6}/i', $svg);
-        $this->assertSame(1, substr_count($svg, '<path'));
+        $this->assertSame(2, substr_count($svg, '<path')); // modul + garis logo (mask)
+    }
+
+    public function test_level_h_versions_and_format_bits(): void
+    {
+        $this->assertSame(5, QrEncoder::pickVersion(42, 'H')); // URL kartu produksi → 5-H (blok tidak sama besar)
+        $this->assertSame(6, QrEncoder::pickVersion(58, 'H'));
+        $this->assertFalse(QrEncoder::fits(59, 'H'));
+        $this->assertTrue(QrEncoder::fits(59, 'M'));
+        $this->assertSame(0x1689, Matrix::formatBits(0b10, 0)); // ISO/IEC 18004 Annex C: H, mask 0
+    }
+
+    public function test_payload_puts_logo_in_center_and_clears_modules_under_it(): void
+    {
+        $p = SvgRenderer::payload('https://tap.domain.com/c/aB3dE5fG7h?src=qr');
+        $this->assertSame(37, $p['modules']); // versi 5
+        $this->assertSame(['x' => 13, 'y' => 13, 'size' => 11], $p['logo']);
+        $this->assertSame($p['modules'] - $p['logo']['size'], 2 * $p['logo']['x'], 'tepat di tengah');
+        preg_match_all('/M(\d+) (\d+)h(\d+)/', $p['path'], $segs, PREG_SET_ORDER);
+        foreach ($segs as [, $x, $y, $w]) {
+            $insideRow = $y >= 13 && $y < 24;
+            $this->assertFalse($insideRow && $x < 24 && $x + $w > 13, "modul gelap di bawah logo: $x,$y");
+        }
+
+        $long = 'https://tap.domain.com/'.str_repeat('a', 60);
+        $this->assertNull(SvgRenderer::payload($long)['logo'], 'data terlalu panjang untuk level H → QR polos level M');
+        $this->assertNull(SvgRenderer::payload('https://x.io', logo: false)['logo']);
+        $this->assertStringContainsString('viewBox="0 0 24 24"', SvgRenderer::forUrl('https://tap.domain.com/c/aB3dE5fG7h?src=qr'));
     }
 }

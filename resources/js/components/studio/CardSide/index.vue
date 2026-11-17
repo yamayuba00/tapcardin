@@ -4,6 +4,7 @@
 // (klik + Shift/Ctrl, kotak seleksi), grup, geser dengan snap (Alt = bebas), ubah ukuran (Shift = rasio tetap),
 // putar (Shift = kelipatan 15°). Elemen sistem & elemen yang dikunci tidak bisa digeser.
 import { computed, onBeforeUnmount, onMounted, onUpdated, ref, useId } from 'vue'
+import { QR_MARK } from '@/lib/qrMark'
 import { Lock, Nfc } from 'lucide-vue-next'
 import {
   BLEED, angleTo, center, expandGroups, isFixed, isSystem, layerBox, moveLayer, polygonPoints, ptToMm, rawBox, resizeLayer,
@@ -299,6 +300,10 @@ function up() {
           <rect :x="l.x" :y="l.y" :width="l.size" :height="l.size" :rx="l.rx || 0" :fill="l.bg" />
           <svg v-if="qr" :x="l.x + 1.5" :y="l.y + 1.5" :width="l.size - 3" :height="l.size - 3" :viewBox="`0 0 ${qr.modules} ${qr.modules}`" shape-rendering="crispEdges">
             <path :d="qr.path" :fill="l.fg" />
+            <svg v-if="qr.logo" :x="qr.logo.x + 1" :y="qr.logo.y + 1" :width="qr.logo.size - 2" :height="qr.logo.size - 2" viewBox="0 0 24 24" shape-rendering="geometricPrecision">
+              <rect width="24" height="24" rx="5" :fill="l.fg" />
+              <path :d="QR_MARK" fill="none" :stroke="l.bg" stroke-width="1.6" stroke-linecap="round" />
+            </svg>
           </svg>
         </g>
         <text v-else-if="l.type === 'shortcode'" :x="l.x" :y="l.y" :fill="l.color" font-family="IBM Plex Mono" font-weight="500"

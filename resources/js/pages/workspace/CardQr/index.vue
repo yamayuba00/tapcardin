@@ -2,6 +2,7 @@
 // U-11 / AFD F-11 — QR aman layar penuh: token sekali pakai 60 detik, hitung mundur, diperbarui otomatis
 // 5 detik sebelum habis. Setelah di-scan, QR itu tidak bisa dipakai ulang (mis. bila difoto orang lain).
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { QR_MARK } from '@/lib/qrMark'
 import { useRoute } from 'vue-router'
 import { ArrowLeft, Lock, RefreshCw } from 'lucide-vue-next'
 import AppButton from '@/components/ui/AppButton/index.vue'
@@ -62,6 +63,10 @@ const pct = computed(() => (qr.value ? (left.value / qr.value.ttl) * 100 : 0))
       <div class="w-full rounded-lg bg-bone-0 p-5" data-theme="light">
         <svg :viewBox="`0 0 ${qr.qr.modules} ${qr.qr.modules}`" class="block aspect-square w-full" shape-rendering="crispEdges" role="img" aria-label="QR code sekali pakai">
           <path :d="qr.qr.path" class="fill-ink-950" />
+          <svg v-if="qr.qr.logo" :x="qr.qr.logo.x + 1" :y="qr.qr.logo.y + 1" :width="qr.qr.logo.size - 2" :height="qr.qr.logo.size - 2" viewBox="0 0 24 24" shape-rendering="geometricPrecision">
+            <rect width="24" height="24" rx="5" class="fill-ink-950" />
+            <path :d="QR_MARK" fill="none" class="stroke-bone-0" stroke-width="1.6" stroke-linecap="round" />
+          </svg>
         </svg>
       </div>
       <div class="grid w-full gap-2">

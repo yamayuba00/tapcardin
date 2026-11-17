@@ -17,7 +17,6 @@ use App\Support\Audit;
 use App\Support\Design\LanyardPricing;
 use App\Support\Http\Table;
 use App\Support\Indonesia;
-use App\Support\Qr\QrEncoder;
 use App\Support\Qr\SvgRenderer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -30,7 +29,7 @@ class OrderController extends WorkspaceController
     public function catalog(): JsonResponse
     {
         $this->access()->authorize('orders.create');
-        $qr = QrEncoder::encode(config('tapcard.resolver_url').'/c/XXXXXXXXXX?src=qr');
+        $qr = SvgRenderer::payload(config('tapcard.resolver_url').'/c/XXXXXXXXXX?src=qr');
         $designs = Design::where('user_id', $this->user()->id)->where('is_template', false)->whereIn('kind', ['card', 'lanyard']) // merch: segera hadir
             ->with(['brandKit', 'lanyardWidth', 'lanyardHardware', 'pairedLanyard'])
             ->latest('updated_at')->get()->map(fn (Design $d) => [
@@ -51,7 +50,7 @@ class OrderController extends WorkspaceController
             ]),
             'lanyard' => LanyardPricing::catalog(),
             'designs' => $designs,
-            'qr' => ['modules' => $qr->size, 'path' => SvgRenderer::path($qr)],
+            'qr' => $qr,
             'payment' => PaymentService::info(),
             'provinces' => Indonesia::PROVINCES,
             // isi otomatis formulir dengan alamat pesanan terakhir pengguna ini

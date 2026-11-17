@@ -20,7 +20,6 @@ use App\Support\Design\Palette;
 use App\Support\Design\TemplateLibrary;
 use App\Support\Design\Variables;
 use App\Support\ImageResizer;
-use App\Support\Qr\QrEncoder;
 use App\Support\Qr\SvgRenderer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -45,7 +44,7 @@ class DesignController extends WorkspaceController
                 $previews[$t['key']][$o] = TemplateLibrary::make($t['key'], new CardGeometry($o));
             }
         }
-        $qr = QrEncoder::encode(config('tapcard.resolver_url').'/c/XXXXXXXXXX?src=qr');
+        $qr = SvgRenderer::payload(config('tapcard.resolver_url').'/c/XXXXXXXXXX?src=qr');
         $mine = Design::where('user_id', $this->user()->id)->where('is_template', true)->where('kind', 'card')->latest('updated_at')->limit(30)->get();
 
         return response()->json(['data' => [
@@ -54,7 +53,7 @@ class DesignController extends WorkspaceController
             'palette' => collect(Palette::COLORS)->map(fn ($hex, $name) => ['name' => $name, 'hex' => $hex])->values(),
             'fonts' => DesignNormalizer::FONTS,
             'glyphs' => DesignNormalizer::GLYPHS,
-            'qr' => ['modules' => $qr->size, 'path' => SvgRenderer::path($qr)],
+            'qr' => $qr,
             'variables' => $this->variables(),
             // brand kit milik saya + brand kit workspace (logo organisasi) — kit workspace selalu pertama
             'kits' => $this->kits()->orderByDesc('is_workspace')->latest('updated_at')->get()->map(fn (BrandKit $k) => $k->toKit()),
@@ -93,6 +92,7 @@ class DesignController extends WorkspaceController
             if (! config('tapcard.merch_enabled')) {
                 throw new ApiError('coming_soon', 'Desain merchandise segera hadir.', 403);
             }
+
             return response()->json(['data' => $this->present($this->loaded($this->createMerch($data['product'], $data['name'] ?? null)))], 201);
         }
         if (($data['kind'] ?? 'card') === 'lanyard') {

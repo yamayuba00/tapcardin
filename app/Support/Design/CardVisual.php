@@ -6,7 +6,6 @@ use App\Actions\Cards\ShareQr;
 use App\Models\Card;
 use App\Models\Design;
 use App\Models\Profile;
-use App\Support\Qr\QrEncoder;
 use App\Support\Qr\SvgRenderer;
 
 /**
@@ -33,7 +32,7 @@ final class CardVisual
 
         $profile = $card->profile_id ? Profile::withoutGlobalScopes()->with('fields')->find($card->profile_id) : null;
         $vars = Variables::forKit($kit) + self::profileVars($profile);
-        $qr = QrEncoder::encode(ShareQr::url($card)); // kartu digital Free: QR berganti tiap periode
+        $qr = SvgRenderer::payload(ShareQr::url($card)); // kartu digital Free: QR berganti tiap periode
 
         return [
             'orientation' => $orientation,
@@ -42,7 +41,7 @@ final class CardVisual
             'back' => self::prepare($sides['back'], $vars, $card->isDigital()),
             'kit' => $kit,
             'vars' => $vars,
-            'qr' => ['modules' => $qr->size, 'path' => SvgRenderer::path($qr)],
+            'qr' => $qr,
         ];
     }
 

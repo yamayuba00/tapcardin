@@ -4,7 +4,6 @@ namespace App\Actions\Cards;
 
 use App\Enums\CardStatus;
 use App\Models\Card;
-use App\Support\Qr\QrEncoder;
 use App\Support\Qr\SvgRenderer;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -30,9 +29,9 @@ final class DynamicQr
         DB::table('dynamic_qr_tokens')->where('card_id', $card->id)->where('expires_at', '<', now()->subMinutes(10))->delete();
 
         $url = config('tapcard.resolver_url').'/q/'.$token;
-        $qr = QrEncoder::encode($url);
+        $qr = SvgRenderer::payload($url);
 
-        return ['url' => $url, 'expires_at' => $expires->toIso8601String(), 'ttl' => self::TTL, 'qr' => ['modules' => $qr->size, 'path' => SvgRenderer::path($qr)]];
+        return ['url' => $url, 'expires_at' => $expires->toIso8601String(), 'ttl' => self::TTL, 'qr' => $qr];
     }
 
     /** Tukar token dengan URL kartu; null bila tidak dikenal, kedaluwarsa, atau sudah dipakai. */

@@ -17,7 +17,6 @@ use App\Support\Audit;
 use App\Support\Http\Table;
 use App\Support\Notify;
 use App\Support\OrderRisk;
-use App\Support\Qr\QrEncoder;
 use App\Support\Qr\SvgRenderer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -49,7 +48,7 @@ class OrderController extends PlatformController
     {
         $this->can('orders.view');
         $o = $this->find($order);
-        $qr = QrEncoder::encode(config('tapcard.resolver_url').'/c/XXXXXXXXXX?src=qr');
+        $qr = SvgRenderer::payload(config('tapcard.resolver_url').'/c/XXXXXXXXXX?src=qr');
         $batches = Batch::whereIn('order_item_id', $o->items->pluck('id'))->get();
 
         $refund = Refund::where('order_id', $o->id)->latest('id')->first();
@@ -74,7 +73,7 @@ class OrderController extends PlatformController
                 'id' => $b->public_id, 'code' => $b->code, 'quantity' => $b->quantity, 'status' => $b->status->value, 'status_label' => $b->status->label(),
                 'item' => OrderItem::find($b->order_item_id)?->public_id,
             ])->values(),
-            'qr' => ['modules' => $qr->size, 'path' => SvgRenderer::path($qr)],
+            'qr' => $qr,
         ]);
     }
 
