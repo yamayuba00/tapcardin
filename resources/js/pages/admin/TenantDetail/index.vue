@@ -15,6 +15,7 @@ import AppSkeleton from '@/components/ui/AppSkeleton/index.vue'
 import AppModal from '@/components/ui/AppModal/index.vue'
 import CardsTable from '@/components/admin/CardsTable/index.vue'
 import DomainAdd from '@/components/admin/DomainAdd/index.vue'
+import OwnerTransfer from '@/components/admin/OwnerTransfer/index.vue'
 import DomainCard from '@/components/admin/DomainCard/index.vue'
 import DataTable from '@/components/ui/DataTable/index.vue'
 import AppTextarea from '@/components/ui/AppTextarea/index.vue'
@@ -75,6 +76,7 @@ const domainUpdated = (d) => { t.value.domains = t.value.domains.map((x) => (x.i
 const domainRemoved = (did) => { t.value.domains = t.value.domains.filter((x) => x.id !== did) }
 
 // beri paket tanpa pembayaran
+const changingOwner = ref(false)
 const granting = ref(false)
 const grant = reactive({ plan: '', months: 1, reason: '', reference: '' })
 const grantErrors = ref({})
@@ -112,7 +114,11 @@ async function doGrant() {
           <dl class="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-2 text-sm">
             <dt class="text-muted">ID</dt>
             <dd class="flex items-center gap-1 font-mono text-xs">{{ t.id }}<button type="button" class="cursor-pointer rounded p-1 text-muted hover:text-fg" aria-label="Salin ID workspace" @click="copyId"><Copy class="size-4" /></button></dd>
-            <dt class="text-muted">Owner</dt><dd><RouterLink v-if="t.owner" :to="`/users/${t.owner.id}`">{{ t.owner.email }}</RouterLink></dd>
+            <dt class="text-muted">Owner</dt>
+            <dd class="flex flex-wrap items-center gap-2">
+              <RouterLink v-if="t.owner" :to="`/users/${t.owner.id}`">{{ t.owner.email }}</RouterLink>
+              <AppButton v-if="t.type !== 'personal' && auth.can('tenants.manage')" variant="ghost" @click="changingOwner = true">Ganti owner</AppButton>
+            </dd>
             <dt class="text-muted">Subdomain</dt><dd class="font-mono">{{ t.slug ?? '— (app.)' }}</dd>
             <dt class="text-muted">Dibuat</dt><dd>{{ dateTime(t.created_at) }}</dd>
             <template v-if="t.suspend_reason"><dt class="text-muted">Alasan suspend</dt><dd>{{ t.suspend_reason }}</dd></template>
@@ -189,7 +195,9 @@ async function doGrant() {
 
     <CardsTable :list="cards" :show="['holder']" empty-text="Belum ada kartu." />
 
-    <AppModal v-if="granting" size="sm" title="Ajukan pemberian paket" description="Kompensasi, mitra, atau uji coba khusus. Tidak langsung berjalan: staf lain harus menyetujui di menu Persetujuan." @close="granting = false">
+    <OwnerTransfer v-if="changingOwner" :tenant="t" @changed="(v) => (t = v)" @close="changingOwner = false" />
+
+    <AppModal v-if="granting"size="sm" title="Ajukan pemberian paket" description="Kompensasi, mitra, atau uji coba khusus. Tidak langsung berjalan: staf lain harus menyetujui di menu Persetujuan." @close="granting = false">
       <form id="tenant-grant" class="grid gap-4" @submit.prevent="doGrant">
         <AppField label="Paket" :error="grantErrors.plan?.[0]"><AppSelect v-model="grant.plan" :options="t.plans.map((p) => ({ value: p.key, label: p.name }))" /></AppField>
         <AppField label="Durasi (bulan)" :error="grantErrors.months?.[0]"><AppInput v-model="grant.months" type="number" min="1" max="36" /></AppField>

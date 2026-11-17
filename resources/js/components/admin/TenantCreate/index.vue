@@ -7,6 +7,7 @@ import AppField from '@/components/ui/AppField/index.vue'
 import AppInput from '@/components/ui/AppInput/index.vue'
 import AppModal from '@/components/ui/AppModal/index.vue'
 import AppSelect from '@/components/ui/AppSelect/index.vue'
+import UserSelect from '@/components/admin/UserSelect/index.vue'
 import { adminApi } from '@/api/admin'
 import { useAction } from '@/composables/useAsync'
 import { useToastStore } from '@/stores/toast'
@@ -41,7 +42,7 @@ async function create() {
 </script>
 
 <template>
-  <AppModal size="sm" title="Buat workspace perusahaan" description="Subdomain langsung aktif. Owner harus sudah pernah login ke TapCard." @close="emit('close')">
+  <AppModal size="sm" title="Buat workspace perusahaan" description="Subdomain langsung aktif. Owner dipilih dari akun yang sudah terdaftar." @close="emit('close')">
     <form id="tenant-create" class="grid gap-4" @submit.prevent="create">
       <AppField label="Nama perusahaan" :error="errors.name?.[0]">
         <AppInput v-model="form.name" maxlength="120" required placeholder="Maju Jaya" :invalid="!!errors.name" />
@@ -50,7 +51,7 @@ async function create() {
         <AppInput v-model="form.slug" maxlength="30" required placeholder="majujaya" :invalid="!!errors.slug" @input="slugEdited = true" />
       </AppField>
       <AppField label="Email owner" :error="errors.owner_email?.[0]">
-        <AppInput v-model="form.owner_email" type="email" required placeholder="owner@perusahaan.com" :invalid="!!errors.owner_email" />
+        <UserSelect v-model="form.owner_email" by="email" :invalid="!!errors.owner_email" />
       </AppField>
       <AppField label="Paket" :error="errors.plan?.[0]">
         <AppSelect v-model="form.plan" :options="options" placeholder="Pilih paket" :invalid="!!errors.plan" />

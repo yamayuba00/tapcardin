@@ -45,6 +45,7 @@ Route::middleware(['auth', 'platform'])->prefix('api')->name('api.')->group(func
     Route::get('/tenants/{tenant}', [TenantController::class, 'show'])->name('tenants.show');
     Route::get('/tenants/{tenant}/members', [TenantController::class, 'members'])->name('tenants.members');
     Route::get('/tenants/{tenant}/cards', [TenantController::class, 'cards'])->name('tenants.cards');
+    Route::put('/tenants/{tenant}/owner', [TenantController::class, 'transferOwner'])->name('tenants.owner');
     Route::patch('/tenants/{tenant}', [TenantController::class, 'update'])->name('tenants.update');
     Route::post('/tenants/{tenant}/suspend', [TenantController::class, 'suspend'])->name('tenants.suspend');
     Route::post('/tenants/{tenant}/reactivate', [TenantController::class, 'reactivate'])->name('tenants.reactivate');

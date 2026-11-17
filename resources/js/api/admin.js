@@ -9,6 +9,7 @@ export const adminApi = {
   tenants: (params) => http.get('/api/tenants', params),
   createTenant: (body) => http.post('/api/tenants', body),
   tenant: (id) => http.get(`/api/tenants/${id}`),
+  transferOwner: (id, user) => http.put(`/api/tenants/${id}/owner`, { user }),
   tenantMembers: (id, params) => http.get(`/api/tenants/${id}/members`, params),
   tenantCards: (id, params) => http.get(`/api/tenants/${id}/cards`, params),
   updateTenant: (id, body) => http.patch(`/api/tenants/${id}`, body),

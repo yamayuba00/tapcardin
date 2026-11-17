@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Platform;
 
+use App\Authz\PermissionResolver;
 use App\Authz\PlanFeatures;
 use App\Enums\TenantStatus;
 use App\Enums\TenantType;
@@ -81,6 +82,42 @@ class TenantController extends PlatformController
         Audit::platform('tenant.created', $tenant, null, ['slug' => $tenant->slug, 'owner' => $owner->public_id]);
 
         return $this->show($tenant->fresh(), 201);
+    }
+
+    /**
+     * PUT /api/tenants/{id}/owner — pindah kepemilikan workspace perusahaan ke akun terdaftar.
+     * Owner baru otomatis jadi anggota berperan Owner; owner lama tetap anggota sebagai Admin.
+     */
+    public function transferOwner(Request $request, Tenant $tenant): JsonResponse
+    {
+        $this->can('tenants.manage');
+        if ($tenant->type === TenantType::Personal) {
+            throw new ApiError('owner_fixed', 'Pemilik workspace personal tidak bisa dipindahkan.', 422);
+        }
+        $data = $request->validate(['user' => ['required', 'string', 'size:26']]);
+        $new = User::where('public_id', $data['user'])->first();
+        if (! $new || $new->isBlocked()) {
+            throw new ApiError('owner_invalid', 'Akun tidak ditemukan atau sedang diblokir.', 422);
+        }
+        if ($new->id === $tenant->owner_user_id) {
+            throw new ApiError('owner_same', 'Akun ini sudah menjadi owner.', 422);
+        }
+
+        $previous = $tenant->owner_user_id;
+        DB::transaction(function () use ($tenant, $new, $previous) {
+            $tenant->update(['owner_user_id' => $new->id]);
+            app(CurrentTenant::class)->run($tenant, function () use ($tenant, $new, $previous) {
+                TenantMember::updateOrCreate(
+                    ['tenant_id' => $tenant->id, 'user_id' => $new->id],
+                    ['role_id' => Role::system('owner')->id, 'status' => 'active'],
+                );
+                TenantMember::where('tenant_id', $tenant->id)->where('user_id', $previous)->update(['role_id' => Role::system('admin')->id]);
+            });
+        });
+        PermissionResolver::bump($tenant->id);
+        Audit::platform('tenant.owner_changed', $tenant, ['owner' => User::whereKey($previous)->value('public_id')], ['owner' => $new->public_id]);
+
+        return $this->show($tenant->fresh());
     }
 
     /** GET /api/tenants/{id}/members */

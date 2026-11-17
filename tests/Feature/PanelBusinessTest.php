@@ -7,7 +7,9 @@ use App\Models\Invoice;
 use App\Models\PlatformStaff;
 use App\Models\Role;
 use App\Models\Subscription;
+use App\Models\Tenant;
 use App\Models\TenantDomain;
+use App\Models\TenantMember;
 use App\Models\User;
 use App\Models\Voucher;
 use App\Support\Dns\DnsResolver;
@@ -186,6 +188,27 @@ class PanelBusinessTest extends TestCase
 
         $this->actingAs($owner);
         $this->getJson($this->host('majujaya', '/api/billing'))->assertOk()->assertJsonPath('data.plan.key', 'business');
+    }
+
+    public function test_panel_transfers_workspace_ownership(): void
+    {
+        $old = $this->makeUser('lama@majujaya.id', 'Owner Lama');
+        $new = $this->makeUser('baru@majujaya.id', 'Owner Baru');
+        $this->actingAs($this->staff('platform_owner'));
+        $id = $this->panel('POST', '/tenants', ['name' => 'Maju Jaya', 'slug' => 'majujaya', 'owner_email' => $old->email, 'plan' => 'business'])
+            ->assertCreated()->json('data.id');
+
+        $this->panel('PUT', "/tenants/$id/owner", ['user' => $old->public_id])->assertJsonPath('error.code', 'owner_same');
+        $this->panel('PUT', "/tenants/{$old->personalTenant->public_id}/owner", ['user' => $new->public_id])->assertJsonPath('error.code', 'owner_fixed');
+        $this->panel('PUT', "/tenants/$id/owner", ['user' => $new->public_id])->assertOk()->assertJsonPath('data.owner.email', 'baru@majujaya.id');
+
+        $role = fn ($u) => TenantMember::acrossTenants()->with('role')->where('tenant_id', Tenant::where('public_id', $id)->value('id'))->where('user_id', $u->id)->first()->role->key;
+        $this->assertSame('owner', $role($new));
+        $this->assertSame('admin', $role($old));
+        $this->assertDatabaseHas('audit_logs', ['action' => 'tenant.owner_changed', 'scope' => 'platform']);
+
+        $this->actingAs($new);
+        $this->getJson($this->host('majujaya', '/api/billing'))->assertOk();
     }
 
     public function test_catalog_prices_and_contact_types_and_announcement(): void
