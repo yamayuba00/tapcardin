@@ -21,7 +21,7 @@ const options = ref([])
 
 onMounted(async () => {
   if (props.tenant) return
-  const res = await adminApi.tenants({ per_page: 100, sort: 'name' })
+  const res = await adminApi.tenants({ type: 'company', per_page: 100, sort: 'name' })
   options.value = (res.data ?? []).map((t) => ({ value: t.id, label: t.name, description: t.slug }))
 })
 
@@ -43,7 +43,7 @@ async function add() {
       <AppSelect v-model="tenantId" :options="options" searchable placeholder="Pilih workspace" :invalid="!!errors.tenant" />
     </AppField>
     <AppField label="Domain" :error="errors.domain?.[0]" :class="props.tenant ? 'sm:col-span-2' : ''">
-      <AppInput v-model="domain" code maxlength="190" required placeholder="kartu.perusahaan.com" :invalid="!!errors.domain" />
+      <AppInput v-model="domain" maxlength="190" required placeholder="kartu.perusahaan.com" :invalid="!!errors.domain" />
     </AppField>
     <AppButton type="submit" :loading="busy" :disabled="!tenantId"><Plus class="size-5" /> Tambah</AppButton>
   </form>
