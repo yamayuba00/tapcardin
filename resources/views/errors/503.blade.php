@@ -4,28 +4,79 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>503 - Layanan Sedang Tidak Tersedia</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    @vite(['resources/css/app.css'])
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+        }
+        .error-container {
+            min-h: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+        }
+        .error-content {
+            text-align: center;
+            max-width: 600px;
+        }
+        .error-code {
+            font-size: 8rem;
+            font-weight: 900;
+            color: var(--color-warn);
+            margin: 0;
+            line-height: 1;
+            font-family: var(--font-display);
+        }
+        .error-title {
+            font-size: 2rem;
+            font-weight: 700;
+            margin: 1rem 0;
+            color: var(--color-fg);
+        }
+        .error-message {
+            font-size: 1rem;
+            color: var(--color-muted);
+            margin: 1.5rem 0;
+            line-height: 1.6;
+        }
+        .error-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 2rem;
+        }
+        .error-button {
+            padding: 0.75rem 2rem;
+            border-radius: var(--radius-md);
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.2s;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+        .error-button-primary {
+            background: var(--color-warn);
+            color: var(--color-on-solid);
+        }
+        .error-button-primary:hover {
+            filter: brightness(1.1);
+            transform: translateY(-2px);
+        }
+    </style>
 </head>
-<body class="bg-gradient-to-br from-slate-900 via-orange-900 to-slate-900 min-h-screen flex items-center justify-center">
-    <div class="text-center px-6">
-        <div class="mb-8">
-            <div class="text-9xl font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-red-500">
-                503
+<body class="bg-bg text-fg">
+    <div class="error-container">
+        <div class="error-content">
+            <h1 class="error-code">503</h1>
+            <h2 class="error-title">Layanan Sedang Tidak Tersedia</h2>
+            <p class="error-message">Kami sedang melakukan pemeliharaan. Silakan coba lagi dalam beberapa saat.</p>
+            <div class="error-actions">
+                <button class="error-button error-button-primary" onclick="location.reload()">Muat Ulang</button>
             </div>
-        </div>
-
-        <h1 class="text-4xl md:text-5xl font-bold text-white mb-4">
-            Layanan Sedang Tidak Tersedia
-        </h1>
-
-        <p class="text-xl text-slate-300 mb-8 max-w-lg mx-auto">
-            Kami sedang melakukan pemeliharaan. Silakan coba lagi dalam beberapa saat.
-        </p>
-
-        <div class="flex justify-center">
-            <button onclick="location.reload()" class="px-8 py-3 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-lg transition transform hover:scale-105">
-                Muat Ulang
-            </button>
         </div>
     </div>
 </body>
