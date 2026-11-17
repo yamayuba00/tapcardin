@@ -151,7 +151,7 @@ async function act(fn, message) {
     <template v-if="b.counts.tokens">
       <form class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap" @submit.prevent="cards.search">
         <AppInput v-model="cards.filters.q" type="search" placeholder="Token atau kode pendek" aria-label="Cari kartu batch" class="col-span-2 sm:max-w-xs" />
-        <AppSelect v-model="cards.filters.progress" placeholder="Semua tahap" :options="PROGRESS" class="sm:!w-auto" aria-label="Tahap" />
+        <AppSelect v-model="cards.filters.progress" placeholder="Semua tahap" :options="PROGRESS" class="sm:!w-56" aria-label="Tahap" />
         <AppButton type="submit" variant="secondary" class="col-span-2 sm:col-auto">Cari</AppButton>
       </form>
       <CardsTable :list="cards" :show="auth.can('cards.manage') ? ['sequence', 'progress', 'activate'] : ['sequence', 'progress']" />

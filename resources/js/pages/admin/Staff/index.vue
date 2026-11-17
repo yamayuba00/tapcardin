@@ -56,7 +56,7 @@ async function submit() {
 
   <form class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap" @submit.prevent="list.search">
     <AppInput v-model="list.filters.q" type="search" placeholder="Nama atau email staf" aria-label="Cari staf" class="col-span-2 sm:max-w-xs" />
-    <AppSelect v-model="list.filters.status" placeholder="Semua status" :options="[{ value: 'active', label: 'Aktif' }, { value: 'revoked', label: 'Dicabut' }]" class="sm:!w-auto" aria-label="Status" />
+    <AppSelect v-model="list.filters.status" placeholder="Semua status" :options="[{ value: 'active', label: 'Aktif' }, { value: 'revoked', label: 'Dicabut' }]" class="sm:!w-56" aria-label="Status" />
     <AppButton type="submit" variant="secondary" class="col-span-2 sm:col-auto"><Search class="size-5" /> Cari</AppButton>
   </form>
   <DataTable

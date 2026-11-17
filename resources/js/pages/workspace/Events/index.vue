@@ -61,7 +61,7 @@ async function stop() {
   <form class="grid grid-cols-[minmax(0,1fr)_auto] gap-2 sm:flex sm:flex-wrap" @submit.prevent="list.search">
     <AppInput v-model="list.filters.q" type="search" placeholder="Cari nama atau lokasi event" aria-label="Cari event" class="sm:max-w-xs" />
     <AppButton type="submit" variant="secondary" class="sm:order-last">Cari</AppButton>
-    <AppSelect v-model="list.filters.when" placeholder="Semua event" :options="[{ value: 'upcoming', label: 'Berlangsung & akan datang' }, { value: 'past', label: 'Sudah selesai' }]" class="col-span-2 sm:col-span-1 sm:!w-auto" aria-label="Waktu" />
+    <AppSelect v-model="list.filters.when" placeholder="Semua event" :options="[{ value: 'upcoming', label: 'Berlangsung & akan datang' }, { value: 'past', label: 'Sudah selesai' }]" class="col-span-2 sm:col-span-1 sm:!w-64" aria-label="Waktu" />
   </form>
 
   <DataTable

@@ -54,7 +54,7 @@ function badge(t) {
   </p>
   <form class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap" @submit.prevent="search">
     <AppInput v-model="filters.q" type="search" :placeholder="company ? 'Nama, subdomain, atau email owner' : 'Nama atau email'" aria-label="Cari workspace" class="col-span-2 sm:max-w-xs" />
-    <AppSelect v-model="filters.status" placeholder="Semua status" :options="STATUSES" class="sm:!w-auto" aria-label="Status" />
+    <AppSelect v-model="filters.status" placeholder="Semua status" :options="STATUSES" class="sm:!w-56" aria-label="Status" />
     <AppButton type="submit" variant="secondary"><Search class="size-5" /> Cari</AppButton>
   </form>
 

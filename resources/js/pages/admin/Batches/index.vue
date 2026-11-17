@@ -122,7 +122,7 @@ async function create() {
 
   <form class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap" @submit.prevent="list.search">
     <AppInput v-model="list.filters.q" type="search" placeholder="Kode batch" aria-label="Cari batch" class="col-span-2 sm:max-w-xs" />
-    <AppSelect v-model="list.filters.status" placeholder="Semua status" :options="STATUSES" class="sm:!w-auto" aria-label="Status" />
+    <AppSelect v-model="list.filters.status" placeholder="Semua status" :options="STATUSES" class="sm:!w-56" aria-label="Status" />
     <AppButton type="submit" variant="secondary" class="col-span-2 sm:col-auto">Cari</AppButton>
   </form>
   <DataTable

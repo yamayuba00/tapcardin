@@ -86,7 +86,7 @@ async function doGrant() {
   <template v-if="tab === 'invoices'">
     <form class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap" @submit.prevent="invoices.search">
       <AppInput v-model="invoices.filters.q" placeholder="Nomor invoice / workspace" aria-label="Cari invoice" class="col-span-2 sm:max-w-[260px]" />
-      <AppSelect v-model="invoices.filters.status" placeholder="Semua status" class="sm:!w-auto" aria-label="Status"
+      <AppSelect v-model="invoices.filters.status" placeholder="Semua status" class="sm:!w-56" aria-label="Status"
         :options="Object.entries(INV).map(([value, [, label]]) => ({ value, label }))" @update:model-value="invoices.search" />
       <AppButton type="submit" variant="secondary" class="col-span-2 sm:col-auto">Saring</AppButton>
     </form>

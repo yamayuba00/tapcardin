@@ -22,7 +22,7 @@ const json = (v) => JSON.stringify(v)
 <template>
   <PageHeader title="Audit log" />
   <form class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap" @submit.prevent="search">
-    <AppSelect v-model="filters.scope" placeholder="Semua cakupan" :options="[{ value: 'platform', label: 'Platform' }, { value: 'tenant', label: 'Workspace' }]" class="col-span-2 sm:!w-auto" aria-label="Cakupan" />
+    <AppSelect v-model="filters.scope" placeholder="Semua cakupan" :options="[{ value: 'platform', label: 'Platform' }, { value: 'tenant', label: 'Workspace' }]" class="col-span-2 sm:!w-56" aria-label="Cakupan" />
     <AppInput v-model="filters.action" placeholder="Aksi, mis. card." aria-label="Aksi" class="sm:max-w-[200px]" />
     <AppInput v-model="filters.from" type="date" aria-label="Dari tanggal" class="sm:!w-auto" />
     <AppInput v-model="filters.to" type="date" aria-label="Sampai tanggal" class="sm:!w-auto" />
