@@ -103,7 +103,7 @@ async function doGrant() {
 
   <template v-else-if="tab === 'subscriptions'">
     <div class="flex flex-wrap gap-2">
-      <AppSelect v-model="subs.filters.status" placeholder="Semua status" class="!w-auto" aria-label="Status langganan"
+      <AppSelect v-model="subs.filters.status" placeholder="Semua status" class="!w-56" aria-label="Status langganan"
         :options="Object.entries(SUB).map(([value, [, label]]) => ({ value, label }))" @update:model-value="subs.search" />
     </div>
     <DataTable dense :columns="SUB_COLUMNS" :rows="subs.rows.value" :meta="subs.meta.value" :sort="subs.sort.value" :loading="subs.loading.value"

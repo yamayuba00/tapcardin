@@ -73,7 +73,7 @@ async function manual() {
 
 <template>
   <PageHeader eyebrow="Produksi" title="Stasiun encode">
-    <AppSelect v-if="batches?.length" v-model="batch" :options="batches.map((b) => ({ value: b.id, label: `${b.code} · ${b.quantity} kartu · ${b.chip.toUpperCase()}` }))" class="!w-full sm:!w-auto" aria-label="Batch" />
+    <AppSelect v-if="batches?.length" v-model="batch" :options="batches.map((b) => ({ value: b.id, label: `${b.code} · ${b.quantity} kartu · ${b.chip.toUpperCase()}` }))" class="!w-full sm:!w-96" aria-label="Batch" />
   </PageHeader>
 
   <p v-if="!supported" class="rounded-md border border-line-strong bg-surface-2 px-4 py-3 text-sm">

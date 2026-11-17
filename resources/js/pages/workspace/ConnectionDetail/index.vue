@@ -88,7 +88,7 @@ const activityText = (a) => (a.type === 'stage_changed'
         :disabled="busy"
         :options="stages.map((s) => ({ value: s.id, label: s.name }))"
         aria-label="Tahap"
-        class="!w-auto"
+        class="!w-48"
         @update:model-value="changeStage"
       />
     </PageHeader>

@@ -119,7 +119,7 @@ function pickSort(v) {
           v-if="meta.total > perPageOptions[0]"
           :model-value="meta.per_page"
           :options="perPageOptions.map((n) => ({ value: n, label: `${n} / halaman` }))"
-          class="!min-h-9 !w-auto"
+          class="!min-h-9 !w-40"
           aria-label="Baris per halaman"
           @update:model-value="(v) => emit('per-page', v)"
         />

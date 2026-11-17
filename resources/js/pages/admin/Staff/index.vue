@@ -69,7 +69,7 @@ async function submit() {
         :model-value="s.role_id"
         :options="roles"
         :aria-label="`Peran ${s.email}`"
-        class="!min-h-11 !w-auto"
+        class="!min-h-11 !w-56"
         @update:model-value="(v) => act(() => adminApi.updateStaff(s.id, { role_id: Number(v) }), 'Peran diperbarui.')"
       />
     </template>
