@@ -41,6 +41,7 @@ Route::middleware(['auth', 'platform'])->prefix('api')->name('api.')->group(func
     Route::get('/dashboard', [DashboardController::class, 'show'])->name('dashboard');
 
     Route::get('/tenants', [TenantController::class, 'index'])->name('tenants');
+    Route::post('/tenants', [TenantController::class, 'store'])->name('tenants.store');
     Route::get('/tenants/{tenant}', [TenantController::class, 'show'])->name('tenants.show');
     Route::get('/tenants/{tenant}/members', [TenantController::class, 'members'])->name('tenants.members');
     Route::get('/tenants/{tenant}/cards', [TenantController::class, 'cards'])->name('tenants.cards');

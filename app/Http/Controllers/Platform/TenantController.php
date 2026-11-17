@@ -5,20 +5,27 @@ namespace App\Http\Controllers\Platform;
 use App\Authz\PlanFeatures;
 use App\Enums\TenantStatus;
 use App\Enums\TenantType;
+use App\Exceptions\ApiError;
 use App\Models\Card;
 use App\Models\Connection;
 use App\Models\Invoice;
+use App\Models\LeadStage;
 use App\Models\Plan;
+use App\Models\Role;
 use App\Models\Subscription;
 use App\Models\Tenant;
 use App\Models\TenantDomain;
 use App\Models\TenantMember;
+use App\Models\User;
 use App\Support\Audit;
 use App\Support\Http\Table;
+use App\Support\Notify;
+use App\Tenancy\CurrentTenant;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 /** PL-02 — workspace: daftar, detail, ubah paket/batas, suspend/aktifkan, catatan internal. */
@@ -36,6 +43,44 @@ class TenantController extends PlatformController
         $sorts = ['name' => 'name', 'type' => 'type', 'status' => 'status', 'created_at' => 'created_at'];
 
         return Table::json(Table::paginate($tenants, $request, $sorts, '-created_at'), fn (Tenant $t) => self::summary($t), $request);
+    }
+
+    /** POST /api/tenants — buat workspace perusahaan; alamat {slug}.domain aktif langsung (tanpa DNS). Owner = pengguna yang sudah terdaftar. */
+    public function store(Request $request): JsonResponse
+    {
+        $this->can('tenants.manage');
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:120'],
+            'slug' => ['required', 'string', 'regex:/^[a-z0-9]([a-z0-9-]{1,28}[a-z0-9])$/', Rule::notIn(config('tapcard.reserved_slugs')), Rule::unique('tenants', 'slug')],
+            'owner_email' => ['required', 'email'],
+            'plan' => ['required', Rule::exists('plans', 'key')->where('tenant_type', 'company')],
+        ], [
+            'slug.regex' => 'Subdomain 3–30 karakter: huruf kecil, angka, dan strip.',
+            'slug.not_in' => 'Subdomain ini dipakai sistem.',
+            'slug.unique' => 'Subdomain ini sudah dipakai.',
+        ]);
+        $owner = User::where('email', strtolower(trim($data['owner_email'])))->first();
+        if (! $owner) {
+            throw new ApiError('owner_not_found', 'Owner belum terdaftar. Minta yang bersangkutan mendaftar dulu.', 422);
+        }
+
+        $tenant = DB::transaction(function () use ($data, $owner) {
+            $tenant = Tenant::create([
+                'type' => TenantType::Company, 'name' => $data['name'], 'slug' => $data['slug'], 'owner_user_id' => $owner->id,
+                'status' => TenantStatus::Active, 'plan_id' => Plan::where('key', $data['plan'])->value('id'), 'settings' => Tenant::DEFAULT_SETTINGS,
+            ]);
+            app(CurrentTenant::class)->run($tenant, function () use ($tenant, $owner) {
+                TenantMember::create(['tenant_id' => $tenant->id, 'user_id' => $owner->id, 'role_id' => Role::system('owner')->id, 'status' => 'active']);
+                foreach (LeadStage::DEFAULTS as $i => $stage) {
+                    LeadStage::create([...$stage, 'sort' => $i]);
+                }
+            });
+
+            return $tenant;
+        });
+        Audit::platform('tenant.created', $tenant, null, ['slug' => $tenant->slug, 'owner' => $owner->public_id]);
+
+        return $this->show($tenant->fresh(), 201);
     }
 
     /** GET /api/tenants/{id}/members */
@@ -61,7 +106,7 @@ class TenantController extends PlatformController
             fn (Card $c) => CardController::summary($c), $request);
     }
 
-    public function show(Tenant $tenant): JsonResponse
+    public function show(Tenant $tenant, int $status = 200): JsonResponse
     {
         $this->can('tenants.view');
         $tenant->load(['owner', 'plan']);
@@ -85,7 +130,7 @@ class TenantController extends PlatformController
                 ->map(fn (Invoice $i) => FinanceController::invoiceRow($i)),
             'domains' => TenantDomain::with('tenant')->where('tenant_id', $tenant->id)->orderBy('domain')->get()
                 ->map(fn (TenantDomain $d) => DomainController::present($d)),
-        ]);
+        ], $status);
     }
 
     public function update(Request $request, Tenant $tenant): JsonResponse
@@ -142,6 +187,7 @@ class TenantController extends PlatformController
             'name' => $t->name,
             'type' => $t->type->value,
             'slug' => $t->slug,
+            'url' => $t->slug ? Notify::baseUrl($t) : null,
             'status' => $t->status->value,
             'plan' => $t->plan?->name,
             'owner' => $t->owner ? ['id' => $t->owner->public_id, 'email' => $t->owner->email] : null,

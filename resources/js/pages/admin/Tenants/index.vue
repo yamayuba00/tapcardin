@@ -4,12 +4,17 @@ import { Search } from 'lucide-vue-next'
 import AppBadge from '@/components/ui/AppBadge/index.vue'
 import AppButton from '@/components/ui/AppButton/index.vue'
 import AppInput from '@/components/ui/AppInput/index.vue'
+import AppPanel from '@/components/ui/AppPanel/index.vue'
 import AppSelect from '@/components/ui/AppSelect/index.vue'
 import DataTable from '@/components/ui/DataTable/index.vue'
 import PageHeader from '@/components/common/PageHeader/index.vue'
+import TenantCreate from '@/components/admin/TenantCreate/index.vue'
 import { adminApi } from '@/api/admin'
 import { usePagedList } from '@/composables/usePagedList'
+import { useAuthStore } from '@/stores/auth'
 import { date } from '@/lib/format'
+
+const auth = useAuthStore()
 
 const list = usePagedList(adminApi.tenants, { q: '', type: '', status: '' }, { sort: '-created_at' })
 const { filters, search } = list
@@ -22,6 +27,7 @@ const STATUSES = ['active', 'trialing', 'past_due', 'suspended', 'pending_deleti
 
 <template>
   <PageHeader title="Workspace" />
+  <AppPanel v-if="auth.can('tenants.manage')" title="Buat workspace perusahaan"><TenantCreate @created="list.reload()" /></AppPanel>
   <form class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap" @submit.prevent="search">
     <AppInput v-model="filters.q" type="search" placeholder="Nama, subdomain, atau email owner" aria-label="Cari workspace" class="col-span-2 sm:max-w-xs" />
     <AppSelect v-model="filters.type" placeholder="Semua tipe" :options="[{ value: 'personal', label: 'Personal' }, { value: 'company', label: 'Perusahaan' }]" class="sm:!w-auto" aria-label="Tipe" />

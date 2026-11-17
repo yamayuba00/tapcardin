@@ -170,6 +170,24 @@ class PanelBusinessTest extends TestCase
         $this->getJson('http://kartu.acme.com/api/billing')->assertNotFound();
     }
 
+    public function test_panel_creates_company_workspace_with_subdomain(): void
+    {
+        $owner = $this->makeUser('owner@majujaya.id', 'Owner MJ');
+        $this->actingAs($this->staff('platform_owner'));
+        $body = ['name' => 'Maju Jaya', 'slug' => 'majujaya', 'owner_email' => 'owner@majujaya.id', 'plan' => 'business'];
+
+        $this->panel('POST', '/tenants', ['slug' => 'admin'] + $body)->assertUnprocessable();
+        $this->panel('POST', '/tenants', ['owner_email' => 'nobody@x.id'] + $body)->assertJsonPath('error.code', 'owner_not_found');
+        $this->panel('POST', '/tenants', ['plan' => 'personal_free'] + $body)->assertUnprocessable();
+        $res = $this->panel('POST', '/tenants', $body)->assertCreated();
+        $res->assertJsonPath('data.slug', 'majujaya')->assertJsonPath('data.type', 'company');
+        $this->assertStringContainsString('majujaya.', $res->json('data.url'));
+        $this->panel('POST', '/tenants', $body)->assertUnprocessable();
+
+        $this->actingAs($owner);
+        $this->getJson($this->host('majujaya', '/api/billing'))->assertOk()->assertJsonPath('data.plan.key', 'business');
+    }
+
     public function test_catalog_prices_and_contact_types_and_announcement(): void
     {
         $this->actingAs($this->staff('platform_owner'));

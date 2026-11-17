@@ -7,6 +7,7 @@ export const adminApi = {
   dashboard: () => http.get('/api/dashboard'),
 
   tenants: (params) => http.get('/api/tenants', params),
+  createTenant: (body) => http.post('/api/tenants', body),
   tenant: (id) => http.get(`/api/tenants/${id}`),
   tenantMembers: (id, params) => http.get(`/api/tenants/${id}/members`, params),
   tenantCards: (id, params) => http.get(`/api/tenants/${id}/cards`, params),

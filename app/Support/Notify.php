@@ -57,7 +57,7 @@ final class Notify
     }
 
     /** Tautan di email membuka workspace yang benar: subdomain perusahaan, atau app. untuk workspace personal. */
-    private static function baseUrl(?Tenant $tenant): string
+    public static function baseUrl(?Tenant $tenant): string
     {
         $app = rtrim((string) config('app.url'), '/');
         if (! $tenant || $tenant->type === TenantType::Personal || ! $tenant->slug) {
