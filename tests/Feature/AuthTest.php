@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Models\PlatformStaff;
+use App\Models\StaffAccount;
 use App\Models\User;
 use App\Support\Altcha;
 use Database\Seeders\DummyAccountSeeder;
@@ -41,6 +41,7 @@ class AuthTest extends TestCase
         $this->app['env'] = 'local';
         $this->withSession(['_token' => 'tes-csrf'])->withHeader('X-CSRF-TOKEN', 'tes-csrf'); // env local menyalakan cek CSRF
         $dev('rina@example.com')->assertStatus(422); // bukan akun dummy
+        $dev('admin@tapcard.test')->assertStatus(422); // staf dummy hanya bisa masuk di panel
         $this->assertGuest();
         $dummy = array_key_first(DummyAccountSeeder::ACCOUNTS);
         User::where('email', $dummy)->exists() || $this->makeUser($dummy);
@@ -85,25 +86,31 @@ class AuthTest extends TestCase
 
     public function test_admin_login_with_email_and_password(): void
     {
-        $owner = User::where('email', 'owner@tapcard.test')->firstOrFail();
+        $owner = StaffAccount::where('email', 'owner@tapcard.test')->firstOrFail();
         $this->assertNotNull($owner->password, 'seeder memberi password ke Pemilik Platform');
+        $this->assertDatabaseMissing('users', ['email' => 'owner@tapcard.test']); // staf bukan pengguna app.
         $owner->forceFill(['password' => 'rahasia123'])->save();
 
         $this->adminLogin('Owner@TapCard.test', 'rahasia123')->assertOk()->assertJsonPath('data.user.email', 'owner@tapcard.test');
         $this->getJson($this->host('panel', '/api/dashboard'))->assertOk()->assertJsonStructure(['data' => ['users', 'cards', 'series']]);
-        $this->assertNotNull(PlatformStaff::where('user_id', $owner->id)->value('last_reverified_at'));
-        $this->assertDatabaseHas('audit_logs', ['action' => 'staff.logged_in']);
+        $this->assertNotNull($owner->fresh()->last_reverified_at);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'staff.logged_in', 'actor_type' => 'staff', 'actor_user_id' => $owner->id]);
+        // sesi staf tidak berlaku di app.
+        $this->getJson($this->host('app', '/api/me'))->assertUnauthorized();
     }
 
     public function test_admin_login_rejects_wrong_password_and_non_staff_with_same_message(): void
     {
-        User::where('email', 'owner@tapcard.test')->firstOrFail()->forceFill(['password' => 'rahasia123'])->save();
-        $user = $this->makeUser();
+        StaffAccount::where('email', 'owner@tapcard.test')->firstOrFail()->forceFill(['password' => 'rahasia123'])->save();
+        $user = $this->makeUser('owner2@tapcard.test');
         $user->forceFill(['password' => 'rahasia123'])->save(); // punya password tapi bukan staf
 
-        foreach ([['owner@tapcard.test', 'salah'], ['rina@example.com', 'rahasia123'], ['tidakada@example.com', 'x']] as [$email, $pw]) {
+        foreach ([['owner@tapcard.test', 'salah'], ['owner2@tapcard.test', 'rahasia123'], ['tidakada@example.com', 'x']] as [$email, $pw]) {
             $this->adminLogin($email, $pw)->assertStatus(422)->assertJsonPath('error.message', 'Email atau password salah.');
         }
+        // akun pengguna dengan email staf yang sama: password pengguna tidak membuka panel
+        $this->makeUser('owner@tapcard.test')->forceFill(['password' => 'pelanggan123'])->save();
+        $this->adminLogin('owner@tapcard.test', 'pelanggan123')->assertStatus(422);
         $this->assertGuest();
     }
 
@@ -117,7 +124,7 @@ class AuthTest extends TestCase
 
     public function test_staff_can_change_password(): void
     {
-        $owner = User::where('email', 'owner@tapcard.test')->firstOrFail();
+        $owner = StaffAccount::where('email', 'owner@tapcard.test')->firstOrFail();
         $owner->forceFill(['password' => 'lama12345'])->save();
         $this->adminLogin('owner@tapcard.test', 'lama12345')->assertOk();
 

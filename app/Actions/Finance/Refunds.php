@@ -7,7 +7,7 @@ use App\Exceptions\ApiError;
 use App\Models\Invoice;
 use App\Models\Order;
 use App\Models\Refund;
-use App\Models\User;
+use App\Models\StaffAccount;
 use App\Support\Audit;
 use App\Support\Notify;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -75,7 +75,7 @@ final class Refunds
     }
 
     /** @param  array{reason_code:string, reason:string, amount?:?int, evidence?:array}  $in */
-    public static function request(Order $order, User $by, array $in): Refund
+    public static function request(Order $order, StaffAccount $by, array $in): Refund
     {
         $code = (string) $in['reason_code'];
         try {
@@ -124,7 +124,7 @@ final class Refunds
         return $refund;
     }
 
-    public static function approve(Refund $refund, User $by, ?string $note): Refund
+    public static function approve(Refund $refund, StaffAccount $by, ?string $note): Refund
     {
         $solo = false;
         DB::transaction(function () use ($refund, $by, $note, &$solo) {
@@ -151,7 +151,7 @@ final class Refunds
         return $fresh;
     }
 
-    public static function reject(Refund $refund, User $by, string $note): Refund
+    public static function reject(Refund $refund, StaffAccount $by, string $note): Refund
     {
         $solo = false;
         DB::transaction(function () use ($refund, $by, $note, &$solo) {
@@ -169,7 +169,7 @@ final class Refunds
     }
 
     /** Catat bahwa dana sudah dikembalikan ke pembayar asal (transfer dilakukan di luar sistem). */
-    public static function payout(Refund $refund, User $by, string $method, string $reference): Refund
+    public static function payout(Refund $refund, StaffAccount $by, string $method, string $reference): Refund
     {
         try {
             DB::transaction(function () use ($refund, $by, $method, $reference) {
@@ -201,7 +201,7 @@ final class Refunds
         return $fresh;
     }
 
-    public static function cancel(Refund $refund, User $by): Refund
+    public static function cancel(Refund $refund, StaffAccount $by): Refund
     {
         $access = app(PlatformAccess::class);
         $isRequester = $refund->requested_by === $by->id;

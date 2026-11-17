@@ -14,7 +14,7 @@ class AuditController extends PlatformController
     public function index(Request $request): JsonResponse
     {
         $this->can('audit.view');
-        $logs = AuditLog::with('actor')
+        $logs = AuditLog::with(['actorUser', 'actorStaff'])
             ->when($request->query('scope'), fn ($q, $s) => $q->where('scope', $s))
             ->when($request->query('action'), fn ($q, $a) => $q->where('action', 'like', "$a%"))
             ->when($request->query('from'), fn ($q, $d) => $q->where('created_at', '>=', $d))
@@ -24,7 +24,8 @@ class AuditController extends PlatformController
         return Table::json($logs, fn (AuditLog $l) => [
             'id' => $l->id,
             'at' => self::dt($l->created_at),
-            'actor' => $l->actor?->email,
+            'actor' => $l->actorEmail(),
+            'actor_type' => $l->actor_type,
             'impersonated' => $l->impersonation_id !== null,
             'action' => $l->action,
             'scope' => $l->scope,

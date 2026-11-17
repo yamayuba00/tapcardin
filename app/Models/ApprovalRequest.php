@@ -36,12 +36,12 @@ class ApprovalRequest extends Model
 
     public function requester(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'requested_by');
+        return $this->belongsTo(StaffAccount::class, 'requested_by');
     }
 
     public function decider(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'decided_by');
+        return $this->belongsTo(StaffAccount::class, 'decided_by');
     }
 
     /** Status yang ditampilkan: permintaan tertunda yang lewat masa berlaku dianggap kedaluwarsa. */

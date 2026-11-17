@@ -6,13 +6,12 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import {
-  BellRing, Blocks, CalendarDays, ChartColumn, ChevronsUpDown, CreditCard, Gem, House, LayoutDashboard, LogOut, Moon, Package, Palette, Settings, ShieldCheck, User, Users,
+  BellRing, Blocks, CalendarDays, ChartColumn, ChevronsUpDown, CreditCard, Gem, House, LayoutDashboard, LogOut, Moon, Package, Palette, Settings, User, Users,
 } from 'lucide-vue-next'
 import BrandLogo from '@/components/common/BrandLogo/index.vue'
 import InstallApp from '@/components/common/InstallApp/index.vue'
 import MobileNav from '@/components/common/MobileNav/index.vue'
 import PullIndicator from '@/components/common/PullIndicator/index.vue'
-import { config } from '@/config'
 import { useAuthStore } from '@/stores/auth'
 import { useNotificationStore } from '@/stores/notifications'
 import { useTheme } from '@/composables/useTheme'
@@ -95,10 +94,6 @@ const link = 'group flex min-h-9 cursor-pointer items-center gap-3 rounded-lg px
             </span>
           </RouterLink>
         </div>
-        <div v-if="auth.me?.is_staff" class="grid gap-0.5">
-          <p class="label mb-1 px-3 !text-[10px]">Panel</p>
-          <a :href="config.adminUrl" :class="link"><ShieldCheck class="size-[18px]" aria-hidden="true" /> Panel pemilik</a>
-        </div>
       </nav>
 
       <!-- akun: workspace, tema, keluar dalam satu menu agar sidebar tetap pendek -->
@@ -132,7 +127,6 @@ const link = 'group flex min-h-9 cursor-pointer items-center gap-3 rounded-lg px
       :title="auth.me?.name || 'Akun'" :subtitle="workspaceLine" :initial="(auth.me?.name || auth.workspace?.name || '?')[0]?.toUpperCase()"
     >
       <template #actions>
-        <a v-if="auth.me?.is_staff" :href="config.adminUrl" class="flex min-h-11 items-center gap-3 rounded-sm px-3 text-sm text-fg no-underline hover:bg-surface-2"><ShieldCheck class="size-5" /> Panel pemilik</a>
         <button type="button" class="flex min-h-11 cursor-pointer items-center gap-3 rounded-sm px-3 text-sm text-fg hover:bg-surface-2" @click="toggle"><Moon class="size-5" /> Ganti tema</button>
         <InstallApp link-class="flex min-h-11 w-full items-center gap-3 rounded-sm px-3 text-sm text-fg hover:bg-surface-2 [&_svg]:size-5" />
         <button type="button" class="flex min-h-11 cursor-pointer items-center gap-3 rounded-sm px-3 text-sm text-danger hover:bg-surface-2" @click="auth.askLogout()"><LogOut class="size-5" /> Keluar</button>

@@ -3,8 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use App\Models\PlatformStaff;
-use App\Models\User;
+use App\Models\StaffAccount;
 use App\Support\Audit;
 use App\Support\Hasher;
 use Illuminate\Http\JsonResponse;
@@ -37,29 +36,28 @@ class AdminLoginController extends Controller
             ])->status(429);
         }
 
-        $user = User::whereRaw('lower(email) = ?', [$email])->first();
-        $staff = $user ? PlatformStaff::where('user_id', $user->id)->where('status', 'active')->first() : null;
+        // hanya tabel staff_accounts — akun pengguna app. tidak bisa masuk panel walau emailnya sama
+        $staff = StaffAccount::whereRaw('lower(email) = ?', [$email])->where('status', 'active')->first();
 
         // Pesan sama untuk email tak dikenal, bukan staf, atau password salah — jangan bocorkan siapa staf.
-        if (! $staff || ! $user->password || ! Hash::check($data['password'], $user->password) || $user->isBlocked()) {
+        if (! $staff || ! $staff->password || ! Hash::check($data['password'], $staff->password)) {
             RateLimiter::hit($key, 900);
             throw ValidationException::withMessages(['email' => 'Email atau password salah.']);
         }
 
         RateLimiter::clear($key);
-        Auth::login($user);
+        Auth::guard('staff')->login($staff);
         $request->session()->regenerate();
-        $staff->update(['last_reverified_at' => now()]);
-        $user->forceFill(['last_login_at' => now()])->save();
+        $staff->forceFill(['last_reverified_at' => now(), 'last_login_at' => now()])->save();
         Audit::platform('staff.logged_in', $staff);
 
-        return response()->json(['data' => ['user' => ['id' => $user->public_id, 'name' => $user->name, 'email' => $user->email]]]);
+        return response()->json(['data' => ['user' => ['id' => $staff->public_id, 'name' => $staff->name, 'email' => $staff->email]]]);
     }
 
     /** PUT /api/me/password — staf mengganti password sendiri. */
     public function changePassword(Request $request): JsonResponse
     {
-        $user = $request->user();
+        $user = $request->user('staff');
         $data = $request->validate([
             'current_password' => ['required', 'string'],
             'password' => ['required', 'string', 'min:8', 'max:200', 'confirmed', 'regex:/[A-Za-z]/', 'regex:/\d/'],
@@ -80,7 +78,7 @@ class AdminLoginController extends Controller
 
     public function logout(Request $request): JsonResponse
     {
-        Auth::guard('web')->logout();
+        Auth::guard('staff')->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 

@@ -4,9 +4,7 @@ namespace Tests\Feature;
 
 use App\Console\Commands\Health;
 use App\Mail\NotificationMail;
-use App\Models\PlatformStaff;
-use App\Models\Role;
-use App\Models\User;
+use App\Models\StaffAccount;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Process\PendingProcess;
 use Illuminate\Support\Facades\Cache;
@@ -31,13 +29,9 @@ class OpsTest extends TestCase
         Mail::fake();
     }
 
-    private function staff(string $email = 'dina@tapcard.test'): User
+    private function staff(string $email = 'dina@tapcard.test'): StaffAccount
     {
-        $u = $this->makeUser($email, 'Dina');
-        $u->forceFill(['password' => 'lama12345'])->save();
-        PlatformStaff::create(['user_id' => $u->id, 'role_id' => Role::system('platform_owner')->id, 'status' => 'active', 'last_reverified_at' => now()]);
-
-        return $u;
+        return $this->makeStaff('platform_owner', $email, 'Dina', ['password' => 'lama12345']);
     }
 
     /** @return list<string> */
@@ -52,7 +46,7 @@ class OpsTest extends TestCase
     {
         $dina = $this->staff();
         $this->makeUser('bukan.staf@example.com');
-        DB::table('sessions')->insert(['id' => 'lama', 'user_id' => $dina->id, 'payload' => '', 'last_activity' => time()]);
+        DB::table('staff_sessions')->insert(['id' => 'lama', 'user_id' => $dina->id, 'payload' => '', 'last_activity' => time()]);
 
         $panel = fn (string $path, array $body) => $this->postJson($this->host('panel', $path), $body);
         $same = $panel('/api/auth/forgot-password', ['email' => 'bukan.staf@example.com'])->assertOk()->json('data.message');
@@ -71,7 +65,7 @@ class OpsTest extends TestCase
         $panel('/api/auth/reset-password', ['email' => $q['email'], 'token' => $q['token'], 'password' => 'baru12345', 'password_confirmation' => 'baru12345'])->assertOk();
 
         $this->assertTrue(Hash::check('baru12345', $dina->fresh()->password));
-        $this->assertSame(0, DB::table('sessions')->where('user_id', $dina->id)->count(), 'sesi lama berakhir');
+        $this->assertSame(0, DB::table('staff_sessions')->where('user_id', $dina->id)->count(), 'sesi lama berakhir');
         $panel('/api/auth/reset-password', ['email' => $q['email'], 'token' => $q['token'], 'password' => 'lagi12345', 'password_confirmation' => 'lagi12345'])->assertStatus(422);
         $panel('/api/auth/login', ['email' => 'dina@tapcard.test', 'password' => 'baru12345'])->assertOk();
     }

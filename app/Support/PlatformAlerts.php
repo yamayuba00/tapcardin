@@ -2,8 +2,8 @@
 
 namespace App\Support;
 
-use App\Models\PlatformStaff;
 use App\Models\Role;
+use App\Models\StaffAccount;
 use Throwable;
 
 /** Penerima & alamat untuk pemberitahuan operasional (alarm kesehatan, uptime) — staf Pemilik Platform + ALERT_EMAILS. */
@@ -14,11 +14,9 @@ final class PlatformAlerts
     {
         $list = array_fill_keys(config('tapcard.alert.emails'), 'Tim TapCard');
         try {
-            PlatformStaff::with('user')->where('status', 'active')->where('role_id', Role::system('platform_owner')->id)->get()
+            StaffAccount::where('status', 'active')->where('role_id', Role::system('platform_owner')->id)->get()
                 ->each(function ($s) use (&$list) {
-                    if ($s->user && ! $s->user->trashed()) {
-                        $list[$s->user->email] = $s->user->name;
-                    }
+                    $list[$s->email] = $s->name;
                 });
         } catch (Throwable) {
             // database mati → hanya alamat dari ALERT_EMAILS

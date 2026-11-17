@@ -3,7 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Exceptions\ApiError;
-use App\Models\PlatformStaff;
+use App\Models\StaffAccount;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -13,9 +13,8 @@ class EnsurePlatformStaff
 {
     public function handle(Request $request, Closure $next): Response
     {
-        $user = $request->user();
-        $staff = $user ? PlatformStaff::where('user_id', $user->id)->first() : null;
-        if (! $staff?->isActive()) {
+        $staff = $request->user('staff');
+        if (! $staff instanceof StaffAccount || ! $staff->isActive()) {
             throw new ApiError('not_staff', 'Akun ini bukan staf aktif TapCard.', 403);
         }
 
@@ -25,7 +24,7 @@ class EnsurePlatformStaff
 
         $hours = config('tapcard.admin_reverify_hours');
         if (! $staff->last_reverified_at || $staff->last_reverified_at->lt(now()->subHours($hours))) {
-            auth()->logout();
+            auth('staff')->logout();
             $request->session()->invalidate();
             throw new ApiError('reverify_required', "Sesi panel pemilik berakhir setelah $hours jam. Masuk lagi untuk verifikasi.", 401);
         }

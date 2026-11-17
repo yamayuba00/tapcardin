@@ -45,7 +45,7 @@ class PaymentReview extends Model
 
     public function resolver(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'resolved_by');
+        return $this->belongsTo(StaffAccount::class, 'resolved_by');
     }
 
     /** Catat satu tinjauan per event pembayaran (idempoten) dan beri tahu staf keuangan. */

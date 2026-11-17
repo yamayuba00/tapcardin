@@ -10,7 +10,6 @@ use App\Models\BioPage;
 use App\Models\Card;
 use App\Models\Connection;
 use App\Models\Invoice;
-use App\Models\PlatformStaff;
 use App\Models\Profile;
 use App\Models\Tap;
 use App\Models\TenantMember;
@@ -112,7 +111,6 @@ class MeController extends WorkspaceController
             ],
             'workspaces' => $this->workspaces(),
             'permissions' => $this->access()->list(),
-            'is_staff' => PlatformStaff::where('user_id', $this->user()->id)->where('status', 'active')->exists(),
         ]]);
     }
 

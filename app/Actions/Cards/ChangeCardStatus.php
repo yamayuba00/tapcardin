@@ -44,7 +44,7 @@ final class ChangeCardStatus
                 'card_id' => $card->id,
                 'from_status' => $from->value,
                 'to_status' => $to->value,
-                'actor_user_id' => auth()->id(),
+                ...Audit::actor(),
                 'reason' => $reason,
             ]);
 

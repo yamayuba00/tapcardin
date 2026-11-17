@@ -49,17 +49,17 @@ class Refund extends Model
 
     public function requester(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'requested_by');
+        return $this->belongsTo(StaffAccount::class, 'requested_by');
     }
 
     public function decider(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'decided_by');
+        return $this->belongsTo(StaffAccount::class, 'decided_by');
     }
 
     public function payoutBy(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'paid_by');
+        return $this->belongsTo(StaffAccount::class, 'paid_by');
     }
 
     public function label(): string

@@ -35,7 +35,7 @@ Route::post('/api/auth/logout', [AdminLoginController::class, 'logout'])->name('
 Route::post('/api/auth/forgot-password', [StaffPasswordResetController::class, 'forgot'])->middleware('throttle:5,1')->name('password.forgot');
 Route::post('/api/auth/reset-password', [StaffPasswordResetController::class, 'reset'])->middleware('throttle:10,1')->name('password.reset');
 
-Route::middleware(['auth', 'platform'])->prefix('api')->name('api.')->group(function () {
+Route::middleware(['auth:staff', 'platform'])->prefix('api')->name('api.')->group(function () {
     Route::get('/me', MeController::class)->name('me');
     Route::put('/me/password', [AdminLoginController::class, 'changePassword'])->name('me.password');
     Route::get('/dashboard', [DashboardController::class, 'show'])->name('dashboard');

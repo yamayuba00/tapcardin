@@ -38,7 +38,7 @@ class WorkspaceApiTest extends TestCase
         $this->getJson($this->host('app', '/api/me'))->assertOk()
             ->assertJsonPath('data.email', 'rina@example.com')
             ->assertJsonPath('data.workspace.contact_label', 'Koneksi')
-            ->assertJsonPath('data.is_staff', false);
+            ->assertJsonMissingPath('data.is_staff');
         $this->getJson($this->host('app', '/api/me/settings'))->assertOk()->assertJsonPath('data.plan.name', 'Personal Free');
         $this->getJson($this->host('app', "/api/profiles/{$profile->public_id}/preview"))->assertOk()
             ->assertJsonPath('data.display_name', 'Rina Saputra')->assertJsonPath('data.vcard_url', null);

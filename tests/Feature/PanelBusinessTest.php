@@ -4,13 +4,11 @@ namespace Tests\Feature;
 
 use App\Enums\CardStatus;
 use App\Models\Invoice;
-use App\Models\PlatformStaff;
-use App\Models\Role;
+use App\Models\StaffAccount;
 use App\Models\Subscription;
 use App\Models\Tenant;
 use App\Models\TenantDomain;
 use App\Models\TenantMember;
-use App\Models\User;
 use App\Models\Voucher;
 use App\Support\Dns\DnsResolver;
 use App\Tenancy\TenantScope;
@@ -24,10 +22,9 @@ class PanelBusinessTest extends TestCase
 
     protected bool $seed = true;
 
-    private function staff(string $role, string $email = 'staf@tapcard.test'): User
+    private function staff(string $role, string $email = 'staf@tapcard.test'): StaffAccount
     {
-        $user = $this->makeUser($email, 'Staf');
-        PlatformStaff::create(['user_id' => $user->id, 'role_id' => Role::system($role)->id, 'status' => 'active', 'last_reverified_at' => now()]);
+        $user = $this->makeStaff($role, $email, 'Staf');
 
         return $user;
     }
@@ -103,7 +100,7 @@ class PanelBusinessTest extends TestCase
         $this->panel('GET', '/finance/invoices')->assertForbidden();
 
         // hanya satu staf berwenang (Pemilik bawaan seeder dicabut) → mode tunggal: boleh menyetujui sendiri, tercatat
-        PlatformStaff::where('user_id', User::where('email', 'owner@tapcard.test')->value('id'))->update(['status' => 'revoked']);
+        StaffAccount::where('email', 'owner@tapcard.test')->update(['status' => 'revoked']);
         $this->actingAs($this->staff('platform_owner'));
         $this->panel('GET', '/finance/invoices?status=issued')->assertOk()->assertJsonPath('meta.total', 1);
         // tandai lunas manual TIDAK langsung berjalan: jadi permintaan persetujuan (hanya satu staf berwenang → mode tunggal)

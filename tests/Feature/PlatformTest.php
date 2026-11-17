@@ -5,9 +5,8 @@ namespace Tests\Feature;
 use App\Enums\CardStatus;
 use App\Models\Batch;
 use App\Models\Card;
-use App\Models\PlatformStaff;
 use App\Models\Role;
-use App\Models\User;
+use App\Models\StaffAccount;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -19,10 +18,9 @@ class PlatformTest extends TestCase
 
     protected bool $seed = true;
 
-    private function staff(string $role, string $email = 'staf@tapcard.test'): User
+    private function staff(string $role, string $email = 'staf@tapcard.test', array $extra = []): StaffAccount
     {
-        $user = $this->makeUser($email, 'Staf');
-        PlatformStaff::create(['user_id' => $user->id, 'role_id' => Role::system($role)->id, 'status' => 'active', 'last_reverified_at' => now()]);
+        $user = $this->makeStaff($role, $email, 'Staf', $extra);
 
         return $user;
     }
@@ -38,16 +36,19 @@ class PlatformTest extends TestCase
         $this->api('GET', '/dashboard')->assertUnauthorized();
     }
 
-    public function test_non_staff_is_forbidden(): void
+    public function test_app_user_is_unknown_on_panel_and_revoked_staff_is_forbidden(): void
     {
         $this->actingAs($this->makeUser());
+        $this->api('GET', '/dashboard')->assertUnauthorized(); // akun pengguna app. tidak berlaku di panel
+
+        $this->actingAs($this->staff('support', 'cabut@tapcard.test', ['status' => 'revoked']));
         $this->api('GET', '/dashboard')->assertForbidden()->assertJsonPath('error.code', 'not_staff');
     }
 
     public function test_staff_must_reverify_every_12_hours(): void
     {
         $staff = $this->staff('platform_owner');
-        PlatformStaff::where('user_id', $staff->id)->update(['last_reverified_at' => now()->subHours(13)]);
+        $staff->update(['last_reverified_at' => now()->subHours(13)]);
         $this->actingAs($staff);
         $this->api('GET', '/dashboard')->assertUnauthorized()->assertJsonPath('error.code', 'reverify_required');
     }
@@ -176,10 +177,10 @@ class PlatformTest extends TestCase
 
     public function test_last_platform_owner_cannot_be_revoked(): void
     {
-        $owner = PlatformStaff::where('role_id', Role::system('platform_owner')->id)->firstOrFail();
+        $owner = StaffAccount::where('role_id', Role::system('platform_owner')->id)->firstOrFail();
         $owner->update(['last_reverified_at' => now()]);
-        $this->actingAs($owner->user);
-        $this->api('PATCH', "/staff/{$owner->id}", ['status' => 'revoked'])->assertStatus(422)->assertJsonPath('error.code', 'last_owner');
+        $this->actingAs($owner);
+        $this->api('PATCH', "/staff/{$owner->public_id}", ['status' => 'revoked'])->assertStatus(422)->assertJsonPath('error.code', 'last_owner');
         $this->assertSame('active', $owner->fresh()->status);
     }
 
@@ -203,9 +204,9 @@ class PlatformTest extends TestCase
 
     public function test_invite_staff_issues_temporary_password_once(): void
     {
-        $owner = PlatformStaff::where('role_id', Role::system('platform_owner')->id)->firstOrFail();
+        $owner = StaffAccount::where('role_id', Role::system('platform_owner')->id)->firstOrFail();
         $owner->update(['last_reverified_at' => now()]);
-        $this->actingAs($owner->user);
+        $this->actingAs($owner);
 
         $temp = $this->api('POST', '/staff', ['email' => 'baru@tapcard.test', 'role_id' => Role::system('support')->id])
             ->assertOk()->json('data.issued.temporary_password');

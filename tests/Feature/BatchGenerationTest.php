@@ -6,8 +6,6 @@ use App\Jobs\FinalizeBatchBundle;
 use App\Jobs\GenerateBatchChunk;
 use App\Models\Batch;
 use App\Models\Card;
-use App\Models\PlatformStaff;
-use App\Models\Role;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -26,9 +24,7 @@ class BatchGenerationTest extends TestCase
     {
         parent::setUp();
         Storage::fake('local');
-        $u = $this->makeUser('produksi@tapcard.test', 'Produksi');
-        PlatformStaff::create(['user_id' => $u->id, 'role_id' => Role::system('production')->id, 'status' => 'active', 'last_reverified_at' => now()]);
-        $this->actingAs($u);
+        $this->actingAs($this->makeStaff('production', 'produksi@tapcard.test', 'Produksi'));
     }
 
     private function api(string $method, string $path, array $data = [])

@@ -31,7 +31,7 @@ class CardSale extends Model
 
     public function seller(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'sold_by_user_id');
+        return $this->belongsTo(StaffAccount::class, 'sold_by_user_id');
     }
 
     /** Status bayar: paid → wajib metode & waktu (sesuai CHECK di tabel). */

@@ -4,8 +4,8 @@ namespace Database\Seeders;
 
 use App\Actions\Auth\RegisterUser;
 use App\Models\Card;
-use App\Models\PlatformStaff;
 use App\Models\Role;
+use App\Models\StaffAccount;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 
@@ -31,16 +31,16 @@ class DummyAccountSeeder extends Seeder
     public function run(): void
     {
         foreach (self::ACCOUNTS as $email => [$name, $role]) {
+            if ($role) {
+                // staf hanya di staff_accounts — tidak punya akun pengguna / workspace pribadi
+                $staff = StaffAccount::whereRaw('lower(email) = ?', [$email])->first() ?? new StaffAccount(['email' => $email]);
+                $staff->fill(['name' => $name, 'role_id' => Role::system($role)->id, 'status' => 'active', 'password' => self::DEV_PASSWORD])->save();
+
+                continue;
+            }
             $user = User::whereRaw('lower(email) = ?', [$email])->first()
                 ?? app(RegisterUser::class)->handle($email, $name);
-
             $user->forceFill(['password' => self::DEV_PASSWORD])->save();
-            if ($role) {
-                PlatformStaff::updateOrCreate(
-                    ['user_id' => $user->id],
-                    ['role_id' => Role::system($role)->id, 'status' => 'active'],
-                );
-            }
         }
 
         // Kartu, riwayat tap, dan koneksi contoh untuk akun demo (sekali saja).

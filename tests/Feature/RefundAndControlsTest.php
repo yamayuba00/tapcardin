@@ -7,9 +7,8 @@ use App\Models\Design;
 use App\Models\Invoice;
 use App\Models\Order;
 use App\Models\PaymentReview;
-use App\Models\PlatformStaff;
 use App\Models\Refund;
-use App\Models\Role;
+use App\Models\StaffAccount;
 use App\Models\User;
 use App\Services\Payment\PaymentNotification;
 use App\Tenancy\TenantScope;
@@ -25,17 +24,16 @@ class RefundAndControlsTest extends TestCase
 
     protected bool $seed = true;
 
-    private function staff(string $role, ?string $email = null): User
+    private function staff(string $role, ?string $email = null): StaffAccount
     {
         // Pemilik Platform bawaan seeder (SEED_PLATFORM_OWNER_EMAIL) dipakai sebagai "staf lain yang berwenang"
         if ($email === 'owner@tapcard.test') {
-            $owner = User::where('email', $email)->firstOrFail();
-            PlatformStaff::where('user_id', $owner->id)->update(['status' => 'active', 'last_reverified_at' => now()]);
+            $owner = StaffAccount::where('email', $email)->firstOrFail();
+            $owner->update(['status' => 'active', 'last_reverified_at' => now()]);
 
             return $owner;
         }
-        $u = $this->makeUser($email ?? "$role@tapcard.test", ucfirst($role));
-        PlatformStaff::create(['user_id' => $u->id, 'role_id' => Role::system($role)->id, 'status' => 'active', 'last_reverified_at' => now()]);
+        $u = $this->makeStaff($role, $email ?? "$role@tapcard.test", ucfirst($role));
 
         return $u;
     }
@@ -119,13 +117,13 @@ class RefundAndControlsTest extends TestCase
         $this->panel('POST', "/refunds/{$r['id']}/reject", ['note' => 'saya sendiri'])->assertForbidden();
         $this->assertDatabaseHas('refunds', ['public_id' => $r['id'], 'status' => 'requested']);
 
-        $this->actingAs(User::where('email', 'owner@tapcard.test')->firstOrFail());
+        $this->actingAs(StaffAccount::where('email', 'owner@tapcard.test')->firstOrFail());
         $this->panel('POST', "/refunds/{$r['id']}/approve")->assertOk()->assertJsonPath('data.self_approved', false);
     }
 
     public function test_solo_mode_allows_single_owner_but_records_self_approval(): void
     {
-        PlatformStaff::where('user_id', User::where('email', 'owner@tapcard.test')->value('id'))->update(['status' => 'revoked']); // hanya satu staf berwenang
+        StaffAccount::where('email', 'owner@tapcard.test')->update(['status' => 'revoked']); // hanya satu staf berwenang
         $p = $this->paidOrder();
         $this->actingAs($this->staff('platform_owner'));
         $r = $this->refund($p['order'])->assertCreated()->json('data');
@@ -228,15 +226,15 @@ class RefundAndControlsTest extends TestCase
 
         $this->actingAs($finance);
         $req = $this->panel('POST', "/finance/invoices/{$inv['id']}/void", ['reason' => 'Salah tagih', 'reference' => 'TKT-1'])->assertStatus(202)->json('data');
-        $this->actingAs(User::where('email', 'owner@tapcard.test')->firstOrFail());
+        $this->actingAs(StaffAccount::where('email', 'owner@tapcard.test')->firstOrFail());
         $this->panel('POST', "/approvals/{$req['id']}/reject", ['note' => 'Tidak valid, tagihan benar'])->assertOk()->assertJsonPath('data.status', 'rejected');
         $this->assertSame('issued', Invoice::withoutGlobalScope(TenantScope::class)->where('public_id', $inv['id'])->value('status'));
 
         $this->actingAs($finance);
         $req2 = $this->panel('POST', "/finance/invoices/{$inv['id']}/void", ['reason' => 'Coba lagi', 'reference' => 'TKT-2'])->assertStatus(202)->json('data');
         $this->travel(4)->days();
-        PlatformStaff::query()->update(['last_reverified_at' => now()]); // sesi staf diverifikasi ulang setelah 12 jam
-        $this->actingAs(User::where('email', 'owner@tapcard.test')->firstOrFail());
+        StaffAccount::query()->update(['last_reverified_at' => now()]); // sesi staf diverifikasi ulang setelah 12 jam
+        $this->actingAs(StaffAccount::where('email', 'owner@tapcard.test')->firstOrFail());
         $this->panel('POST', "/approvals/{$req2['id']}/approve")->assertStatus(409)->assertJsonPath('error.code', 'approval_expired');
         $this->assertSame('issued', Invoice::withoutGlobalScope(TenantScope::class)->where('public_id', $inv['id'])->value('status'));
     }

@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Platform;
 
-use App\Exceptions\ApiError;
 use App\Models\Card;
 use App\Models\TenantMember;
 use App\Models\User;
@@ -52,9 +51,6 @@ class UserController extends PlatformController
     public function block(Request $request, User $user): JsonResponse
     {
         $this->can('users.manage');
-        if ($user->id === auth()->id()) {
-            throw new ApiError('self_block', 'Tidak bisa memblokir akun sendiri.');
-        }
         $user->forceFill(['blocked_at' => now()])->save();
         DB::table('sessions')->where('user_id', $user->id)->delete();
         Audit::platform('user.blocked', $user, null, ['reason' => $request->input('reason')]);

@@ -11,6 +11,7 @@ use App\Models\Card;
 use App\Models\CardSale;
 use App\Models\Profile;
 use App\Models\ProfileField;
+use App\Models\StaffAccount;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Support\Audit;
@@ -44,7 +45,7 @@ final class FieldActivate
      * @param  array{amount?:int, status?:string, payment_method?:?string, note?:?string}  $sale
      * @return array{user: User, card: Card, code: string, created: bool, sale: CardSale}
      */
-    public function handle(string $token, array $customer, array $sale, User $staff): array
+    public function handle(string $token, array $customer, array $sale, StaffAccount $staff): array
     {
         $card = Card::acrossTenants()->where('card_token', $token)->first();
         if (! $card || $card->isDigital()) {

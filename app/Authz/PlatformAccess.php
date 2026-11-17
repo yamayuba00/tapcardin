@@ -7,15 +7,15 @@ use Illuminate\Auth\Access\AuthorizationException;
 /** Izin staf platform (panel pemilik). Staf tidak otomatis mendapat akses ke data workspace. */
 final class PlatformAccess
 {
-    /** @var array<int, array<string,true>> per pengguna */
+    /** @var array<int, array<string,true>> per staf */
     private array $perms = [];
 
     /** @return array<string,true> */
     public function perms(): array
     {
-        $user = auth()->user();
+        $staff = auth('staff')->user();
 
-        return $user ? ($this->perms[$user->id] ??= app(PermissionResolver::class)->forStaff($user)) : [];
+        return $staff ? ($this->perms[$staff->id] ??= app(PermissionResolver::class)->forStaff($staff)) : [];
     }
 
     public function has(string $permission): bool

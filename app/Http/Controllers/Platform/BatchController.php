@@ -99,7 +99,7 @@ class BatchController extends PlatformController
         $qr = QrEncoder::encode(config('tapcard.resolver_url').'/c/XXXXXXXXXX?src=qr');
 
         return $this->ok([
-            'designs' => Design::withoutGlobalScopes()->with('brandKit')->where('user_id', auth()->id())->where('kind', 'card')
+            'designs' => Design::withoutGlobalScopes()->with('brandKit')->where('user_id', self::designerId())->where('kind', 'card')
                 ->where('is_template', false)->latest('updated_at')->limit(50)->get()->map(fn (Design $d) => self::presentDesign($d))->values(),
             'vars' => ShowcaseController::PERSONA,
             'qr' => ['modules' => $qr->size, 'path' => SvgRenderer::path($qr)],
@@ -122,8 +122,14 @@ class BatchController extends PlatformController
     /** Hanya desain kartu milik petugas yang sedang masuk. */
     private static function myDesign(string $id): Design
     {
-        return Design::withoutGlobalScopes()->where('public_id', $id)->where('user_id', auth()->id())->where('kind', 'card')->first()
+        return Design::withoutGlobalScopes()->where('public_id', $id)->where('user_id', self::designerId())->where('kind', 'card')->first()
             ?? throw ValidationException::withMessages(['design' => 'Desain tidak ditemukan di akun Anda. Buat dulu di Design Studio.']);
+    }
+
+    /** Desain dibuat di Design Studio app. — memakai akun pengguna yang emailnya sama dengan email staf (bila ada). */
+    private static function designerId(): int
+    {
+        return (int) User::whereRaw('lower(email) = ?', [strtolower(auth('staff')->user()->email)])->value('id');
     }
 
     public static function presentDesign(Design $d): array

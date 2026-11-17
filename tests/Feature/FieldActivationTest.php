@@ -6,10 +6,9 @@ use App\Enums\CardStatus;
 use App\Models\Card;
 use App\Models\CardLoginKey;
 use App\Models\CardSale;
-use App\Models\PlatformStaff;
 use App\Models\Profile;
 use App\Models\ProfileField;
-use App\Models\Role;
+use App\Models\StaffAccount;
 use App\Models\User;
 use App\Tenancy\TenantScope;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -22,12 +21,9 @@ class FieldActivationTest extends TestCase
 
     protected bool $seed = true;
 
-    private function staff(string $role = 'production'): User
+    private function staff(string $role = 'production'): StaffAccount
     {
-        $u = $this->makeUser("$role@tapcard.test", 'Staf');
-        PlatformStaff::create(['user_id' => $u->id, 'role_id' => Role::system($role)->id, 'status' => 'active', 'last_reverified_at' => now()]);
-
-        return $u;
+        return $this->makeStaff($role, "$role@tapcard.test", 'Staf');
     }
 
     private function panel(string $method, string $path, array $data = [])
@@ -68,7 +64,7 @@ class FieldActivationTest extends TestCase
         $this->assertSame('Warung Sari', $profile->company);
         $this->assertTrue(ProfileField::withoutGlobalScope(TenantScope::class)->where(['profile_id' => $profile->id, 'type' => 'whatsapp'])->exists(),
             'WhatsApp dari form masuk ke bio kartu');
-        $this->assertDatabaseHas('audit_logs', ['action' => 'card.field_activated', 'actor_user_id' => $staff->id]);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'card.field_activated', 'actor_user_id' => $staff->id, 'actor_type' => 'staff']);
         $this->assertNotSame($code, CardLoginKey::first()->pin_hash, 'hanya hash yang disimpan');
 
         // pelanggan menempelkan kartu (URL chip membawa kunci) lalu mengetik kode akun

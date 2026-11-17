@@ -8,12 +8,15 @@ use App\Enums\CardStatus;
 use App\Models\Batch;
 use App\Models\Card;
 use App\Models\Profile;
+use App\Models\Role;
+use App\Models\StaffAccount;
 use App\Models\User;
 use App\Support\Altcha;
 use App\Support\Base62;
 use App\Support\Crockford;
 use App\Tenancy\CurrentTenant;
 use App\Tenancy\TenantScope;
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Hash;
@@ -57,6 +60,23 @@ abstract class TestCase extends BaseTestCase
         return app(RegisterUser::class)->handle($email, $name);
     }
 
+    /** Akun staf panel (tabel staff_accounts, terpisah dari pengguna). */
+    protected function makeStaff(string $role = 'platform_owner', string $email = 'staf@tapcard.test', string $name = 'Staf', array $extra = []): StaffAccount
+    {
+        return StaffAccount::create([
+            'email' => $email, 'name' => $name, 'role_id' => Role::system($role)->id, 'status' => 'active', 'last_reverified_at' => now(), ...$extra,
+        ]);
+    }
+
+    /** Staf memakai guard `staff`, pengguna guard `web`; guard lain dikosongkan agar satu langkah tes = satu identitas. */
+    public function actingAs(Authenticatable $user, $guard = null)
+    {
+        $guard ??= $user instanceof StaffAccount ? 'staff' : 'web';
+        $this->app['auth']->guard($guard === 'staff' ? 'web' : 'staff')->forgetUser();
+
+        return parent::actingAs($user, $guard);
+    }
+
     protected function profileOf(User $user): Profile
     {
         return Profile::withoutGlobalScope(TenantScope::class)->where('user_id', $user->id)->orderBy('id')->firstOrFail();
@@ -67,7 +87,7 @@ abstract class TestCase extends BaseTestCase
     {
         $batch = Batch::create([
             'code' => 'T'.Base62::random(6), 'status' => BatchStatus::TokensGenerated, 'chip_type' => 'ntag213',
-            'quantity' => 1, 'created_by' => ($holder ?? $buyer ?? $this->makeUser('staff'.Base62::random(4).'@example.com'))->id,
+            'quantity' => 1,
         ]);
         $tenantId = $holder?->personal_tenant_id ?? $buyer?->personal_tenant_id;
 

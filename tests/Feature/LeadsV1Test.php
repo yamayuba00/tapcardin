@@ -8,8 +8,6 @@ use App\Models\Connection;
 use App\Models\LeadReminder;
 use App\Models\Notification;
 use App\Models\Plan;
-use App\Models\PlatformStaff;
-use App\Models\Role;
 use App\Models\Tap;
 use App\Models\User;
 use App\Tenancy\TenantScope;
@@ -117,8 +115,7 @@ class LeadsV1Test extends TestCase
 
     public function test_admin_embedded_tables_are_paged_endpoints(): void
     {
-        $owner = $this->makeUser('pemilik-platform@tapcard.test', 'Owner');
-        PlatformStaff::create(['user_id' => $owner->id, 'role_id' => Role::system('platform_owner')->id, 'status' => 'active', 'last_reverified_at' => now()]);
+        $owner = $this->makeStaff('platform_owner', 'pemilik-platform@tapcard.test', 'Owner');
         $rina = $this->makeUser();
         $card = $this->makeCard(CardStatus::Active, $rina);
         $this->actingAs($owner);

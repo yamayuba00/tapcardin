@@ -9,8 +9,8 @@ use App\Exceptions\ApiError;
 use App\Models\ApprovalRequest;
 use App\Models\Invoice;
 use App\Models\Plan;
+use App\Models\StaffAccount;
 use App\Models\Tenant;
-use App\Models\User;
 use App\Services\Payment\PaymentNotification;
 use App\Support\Audit;
 use Illuminate\Support\Facades\DB;
@@ -24,7 +24,7 @@ use Illuminate\Support\Str;
 final class Approvals
 {
     /** @param  array<string,mixed>  $payload */
-    public static function submit(string $type, array $payload, string $summary, string $reference, ?string $reason, ?int $amount, User $by): ApprovalRequest
+    public static function submit(string $type, array $payload, string $summary, string $reference, ?string $reason, ?int $amount, StaffAccount $by): ApprovalRequest
     {
         $subject = $payload['invoice'] ?? $payload['tenant'] ?? null;
         if ($subject && ApprovalRequest::where('type', $type)->where('status', 'pending')->where('expires_at', '>', now())
@@ -46,7 +46,7 @@ final class Approvals
         return $request;
     }
 
-    public static function approve(ApprovalRequest $request, User $by, ?string $note): ApprovalRequest
+    public static function approve(ApprovalRequest $request, StaffAccount $by, ?string $note): ApprovalRequest
     {
         $solo = false;
         DB::transaction(function () use ($request, $by, $note, &$solo) {
@@ -76,7 +76,7 @@ final class Approvals
         return $request->fresh();
     }
 
-    public static function reject(ApprovalRequest $request, User $by, string $note): ApprovalRequest
+    public static function reject(ApprovalRequest $request, StaffAccount $by, string $note): ApprovalRequest
     {
         DB::transaction(function () use ($request, $by, $note) {
             $r = ApprovalRequest::whereKey($request->id)->lockForUpdate()->firstOrFail();
@@ -91,7 +91,7 @@ final class Approvals
         return $request->fresh();
     }
 
-    public static function cancel(ApprovalRequest $request, User $by): ApprovalRequest
+    public static function cancel(ApprovalRequest $request, StaffAccount $by): ApprovalRequest
     {
         if ($request->requested_by !== $by->id) {
             throw new ApiError('not_requester', 'Hanya pengaju yang bisa membatalkan permintaannya.', 403);
@@ -106,7 +106,7 @@ final class Approvals
     }
 
     /** Pengaju ≠ pemutus. Mengembalikan true bila lolos karena mode tunggal (tidak ada staf lain yang berwenang). */
-    public static function guardSelf(int $requesterId, User $by, string $permission): bool
+    public static function guardSelf(int $requesterId, StaffAccount $by, string $permission): bool
     {
         if ($requesterId !== $by->id) {
             return false;

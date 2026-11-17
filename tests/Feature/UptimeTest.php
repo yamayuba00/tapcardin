@@ -6,9 +6,7 @@ use App\Events\MonitorChecked;
 use App\Events\StatusPageUpdated;
 use App\Mail\NotificationMail;
 use App\Models\Monitor;
-use App\Models\PlatformStaff;
-use App\Models\Role;
-use App\Models\User;
+use App\Models\StaffAccount;
 use App\Support\Uptime\Checker;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\ConnectionException;
@@ -32,10 +30,9 @@ class UptimeTest extends TestCase
         Monitor::query()->delete(); // tanpa monitor bawaan migrasi
     }
 
-    private function staff(string $role = 'platform_owner'): User
+    private function staff(string $role = 'platform_owner'): StaffAccount
     {
-        $u = $this->makeUser("$role@tapcard.test", 'Staf');
-        PlatformStaff::create(['user_id' => $u->id, 'role_id' => Role::system($role)->id, 'status' => 'active', 'last_reverified_at' => now()]);
+        $u = $this->makeStaff($role, "$role@tapcard.test", 'Staf');
 
         return $u;
     }

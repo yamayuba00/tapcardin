@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\AuditLog;
+use App\Models\StaffAccount;
 use Illuminate\Database\Eloquent\Model;
 
 /** BSD §4.10 audit_logs — semua aksi admin & perubahan sensitif. */
@@ -24,7 +25,7 @@ final class Audit
         AuditLog::create([
             'scope' => $scope,
             'tenant_id' => $tenantId,
-            'actor_user_id' => auth()->id(),
+            ...self::actor(),
             'impersonation_id' => $request?->hasSession() ? $request->session()->get('impersonation_id') : null,
             'action' => $action,
             'subject_type' => class_basename($subject),
@@ -33,5 +34,13 @@ final class Audit
             'after' => $after,
             'ip_hash' => $request ? Hasher::ip($request->ip()) : null,
         ]);
+    }
+
+    /** Pelaku aksi saat ini: staf panel (guard staff) atau pengguna app. — id-nya dari tabel berbeda. */
+    public static function actor(): array
+    {
+        $who = auth()->user();
+
+        return ['actor_user_id' => $who?->getKey(), 'actor_type' => $who instanceof StaffAccount ? 'staff' : 'user'];
     }
 }

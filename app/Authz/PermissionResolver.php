@@ -3,8 +3,8 @@
 namespace App\Authz;
 
 use App\Models\Permission;
-use App\Models\PlatformStaff;
 use App\Models\RolePermission;
+use App\Models\StaffAccount;
 use App\Models\TeamMember;
 use App\Models\Tenant;
 use App\Models\TenantMember;
@@ -45,15 +45,15 @@ final class PermissionResolver
     }
 
     /** @return array<string,true> */
-    public function forStaff(User $user): array
+    public function forStaff(StaffAccount $staff): array
     {
-        return Cache::remember("platform:perm:{$user->id}:v".Cache::get('platform:permver', 0), 600, function () use ($user) {
-            $staff = PlatformStaff::where('user_id', $user->id)->where('status', 'active')->first();
-            if (! $staff) {
+        return Cache::remember("platform:perm:{$staff->id}:v".Cache::get('platform:permver', 0), 600, function () use ($staff) {
+            $fresh = StaffAccount::whereKey($staff->id)->where('status', 'active')->first();
+            if (! $fresh) {
                 return [];
             }
 
-            return RolePermission::where('role_id', $staff->role_id)->pluck('permission_key')
+            return RolePermission::where('role_id', $fresh->role_id)->pluck('permission_key')
                 ->flip()->map(fn () => true)->all();
         });
     }

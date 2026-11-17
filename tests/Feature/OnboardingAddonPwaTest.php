@@ -5,10 +5,8 @@ namespace Tests\Feature;
 use App\Enums\CardStatus;
 use App\Models\Addon;
 use App\Models\Card;
-use App\Models\PlatformStaff;
 use App\Models\Profile;
 use App\Models\ProfileField;
-use App\Models\Role;
 use App\Tenancy\TenantScope;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -83,8 +81,7 @@ class OnboardingAddonPwaTest extends TestCase
         $rina = $this->makeUser();
         $this->actingAs($rina)->api('POST', '/addons/crm/interest');
 
-        $owner = $this->makeUser('pemilik-addon@tapcard.test', 'Owner');
-        PlatformStaff::create(['user_id' => $owner->id, 'role_id' => Role::system('platform_owner')->id, 'status' => 'active', 'last_reverified_at' => now()]);
+        $owner = $this->makeStaff('platform_owner', 'pemilik-addon@tapcard.test', 'Owner');
         $this->actingAs($owner);
         $addon = collect($this->getJson($this->host('panel', '/api/catalog'))->assertOk()->json('data.addons'))->firstWhere('key', 'crm');
         $this->assertSame(1, $addon['interests']);

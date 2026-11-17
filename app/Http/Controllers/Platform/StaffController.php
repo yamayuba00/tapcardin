@@ -2,12 +2,10 @@
 
 namespace App\Http\Controllers\Platform;
 
-use App\Actions\Auth\RegisterUser;
 use App\Authz\PermissionResolver;
 use App\Exceptions\ApiError;
-use App\Models\PlatformStaff;
 use App\Models\Role;
-use App\Models\User;
+use App\Models\StaffAccount;
 use App\Support\Audit;
 use App\Support\Http\Table;
 use Illuminate\Http\JsonResponse;
@@ -15,28 +13,27 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
-/** PL-15 — undang staf, tetapkan peran platform, cabut akses. Pemilik Platform minimal 1. */
+/** PL-15 — undang staf, tetapkan peran platform, cabut akses. Pemilik Platform minimal 1. Akun staf terpisah dari pengguna app. */
 class StaffController extends PlatformController
 {
     public function index(Request $request): JsonResponse
     {
         $this->can('staff.manage');
-        $q = PlatformStaff::with(['user', 'role'])->join('users', 'users.id', '=', 'platform_staff.user_id')->select('platform_staff.*')
-            ->when($request->query('status'), fn ($w, $s) => $w->where('platform_staff.status', $s));
-        $sorts = ['name' => 'users.name', 'email' => 'users.email', 'status' => 'platform_staff.status', 'last_reverified_at' => 'platform_staff.last_reverified_at'];
+        $q = StaffAccount::with('role')->when($request->query('status'), fn ($w, $s) => $w->where('status', $s));
+        $sorts = ['name' => 'name', 'email' => 'email', 'status' => 'status', 'last_reverified_at' => 'last_reverified_at'];
 
-        return Table::json(Table::paginate($q, $request, $sorts, 'name', ['users.name', 'users.email']), fn ($s) => self::row($s), $request, [
+        return Table::json(Table::paginate($q, $request, $sorts, 'name', ['name', 'email']), fn ($s) => self::row($s), $request, [
             'roles' => Role::where('scope', 'platform')->where('is_system', true)->orderBy('id')->get()
                 ->map(fn ($r) => ['id' => $r->id, 'name' => $r->name, 'description' => $r->description]),
         ]);
     }
 
-    private static function row(PlatformStaff $s): array
+    private static function row(StaffAccount $s): array
     {
         return [
-            'id' => $s->id, 'name' => $s->user->name, 'email' => $s->user->email, 'role_id' => $s->role_id,
+            'id' => $s->public_id, 'name' => $s->name, 'email' => $s->email, 'role_id' => $s->role_id,
             'role' => $s->role->name, 'status' => $s->status, 'last_reverified_at' => self::dt($s->last_reverified_at),
-            'has_password' => $s->user->password !== null,
+            'has_password' => $s->password !== null,
         ];
     }
 
@@ -49,44 +46,45 @@ class StaffController extends PlatformController
         return $this->ok(['issued' => $issued]);
     }
 
-    public function store(Request $request, RegisterUser $register): JsonResponse
+    public function store(Request $request): JsonResponse
     {
         $this->can('staff.manage');
         $data = $request->validate([
-            'email' => ['required', 'email'],
+            'email' => ['required', 'email', 'max:190'],
+            'name' => ['nullable', 'string', 'max:120'],
             'role_id' => ['required', Rule::exists('roles', 'id')->where('scope', 'platform')],
         ]);
-        $user = User::whereRaw('lower(email) = ?', [strtolower($data['email'])])->first()
-            ?? $register->handle($data['email']);
-        $staff = PlatformStaff::updateOrCreate(['user_id' => $user->id], [
-            'role_id' => $data['role_id'], 'status' => 'active', 'invited_by' => auth()->id(),
+        $email = strtolower(trim($data['email']));
+        $staff = StaffAccount::whereRaw('lower(email) = ?', [$email])->first() ?? new StaffAccount([
+            'email' => $email, 'name' => $data['name'] ?? ucwords(str_replace(['.', '_', '-'], ' ', strstr($email, '@', true))),
         ]);
-        $temporary = $user->password ? null : $this->issueTemporaryPassword($user);
+        $staff->fill(['role_id' => $data['role_id'], 'status' => 'active'])->forceFill(['invited_by' => $staff->invited_by ?? auth('staff')->id()])->save();
+        $temporary = $staff->password ? null : $this->issueTemporaryPassword($staff);
         PermissionResolver::bumpPlatform();
-        Audit::platform('staff.invited', $staff, null, ['email' => $user->email, 'role_id' => (int) $data['role_id']]);
+        Audit::platform('staff.invited', $staff, null, ['email' => $staff->email, 'role_id' => (int) $data['role_id']]);
 
-        return $this->listing(['email' => $user->email, 'temporary_password' => $temporary]);
+        return $this->listing(['email' => $staff->email, 'temporary_password' => $temporary]);
     }
 
     /** Password sementara baru, ditampilkan sekali; staf menggantinya lewat menu Akun. */
-    public function resetPassword(PlatformStaff $staff): JsonResponse
+    public function resetPassword(StaffAccount $staff): JsonResponse
     {
         $this->can('staff.manage');
-        $temporary = $this->issueTemporaryPassword($staff->user);
+        $temporary = $this->issueTemporaryPassword($staff);
         Audit::platform('staff.password_reset', $staff);
 
-        return $this->listing(['email' => $staff->user->email, 'temporary_password' => $temporary]);
+        return $this->listing(['email' => $staff->email, 'temporary_password' => $temporary]);
     }
 
-    private function issueTemporaryPassword(User $user): string
+    private function issueTemporaryPassword(StaffAccount $staff): string
     {
         $password = Str::password(12, symbols: false);
-        $user->forceFill(['password' => $password, 'password_changed_at' => null])->save();
+        $staff->forceFill(['password' => $password, 'password_changed_at' => null])->save();
 
         return $password;
     }
 
-    public function update(Request $request, PlatformStaff $staff): JsonResponse
+    public function update(Request $request, StaffAccount $staff): JsonResponse
     {
         $this->can('staff.manage');
         $data = $request->validate([
@@ -96,7 +94,7 @@ class StaffController extends PlatformController
         $ownerRole = Role::system('platform_owner')->id;
         $losingOwner = $staff->role_id === $ownerRole && $staff->status === 'active'
             && (($data['role_id'] ?? $ownerRole) != $ownerRole || ($data['status'] ?? 'active') === 'revoked');
-        if ($losingOwner && PlatformStaff::where('role_id', $ownerRole)->where('status', 'active')->count() <= 1) {
+        if ($losingOwner && StaffAccount::where('role_id', $ownerRole)->where('status', 'active')->count() <= 1) {
             throw new ApiError('last_owner', 'Minimal harus ada satu Pemilik Platform aktif.');
         }
         $before = $staff->only(['role_id', 'status']);

@@ -5,10 +5,8 @@ namespace Tests\Feature;
 use App\Enums\CardStatus;
 use App\Models\Batch;
 use App\Models\Card;
-use App\Models\PlatformStaff;
-use App\Models\Role;
+use App\Models\StaffAccount;
 use App\Models\Tenant;
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -27,12 +25,9 @@ class FieldSellTest extends TestCase
         Storage::fake('local');
     }
 
-    private function staff(string $email): User
+    private function staff(string $email): StaffAccount
     {
-        $u = $this->makeUser($email, 'Staf');
-        PlatformStaff::create(['user_id' => $u->id, 'role_id' => Role::system('production')->id, 'status' => 'active', 'last_reverified_at' => now()]);
-
-        return $u;
+        return $this->makeStaff('production', $email, 'Staf');
     }
 
     private function panel(string $method, string $path, array $data = [])
@@ -93,7 +88,7 @@ class FieldSellTest extends TestCase
         $custom = $this->panel('POST', '/batches', ['chip_type' => 'ntag215', 'quantity' => 1, 'holder_email' => 'pembeli@example.com'])->json('data.id');
         $pt = Tenant::create(['type' => 'company', 'name' => 'PT Maju', 'slug' => 'maju', 'owner_user_id' => $buyer->id, 'status' => 'active',
             'plan_id' => DB::table('plans')->where('key', 'team')->value('id'), 'settings' => Tenant::DEFAULT_SETTINGS]);
-        $company = Batch::create(['code' => 'BPT-1', 'status' => 'draft', 'chip_type' => 'ntag215', 'quantity' => 1, 'tenant_id' => $pt->id, 'created_by' => $buyer->id]);
+        $company = Batch::create(['code' => 'BPT-1', 'status' => 'draft', 'chip_type' => 'ntag215', 'quantity' => 1, 'tenant_id' => $pt->id]);
 
         $codes = fn (string $ch) => collect($this->panel('GET', "/batches?channel=$ch")->assertOk()->json('data'))->pluck('id')->sort()->values()->all();
         $this->assertSame([$direct->public_id], $codes('direct'));
@@ -107,12 +102,12 @@ class FieldSellTest extends TestCase
     public function test_direct_stock_batch_carries_a_front_and_back_design_that_can_be_changed(): void
     {
         $andi = $this->staff('andi@tapcard.test');
-        // desain dibuat di Design Studio (app.) akun petugas
-        $this->actingAs($andi);
+        // desain dibuat di Design Studio (app.) dengan akun pengguna ber-email sama dengan email staf
+        $this->actingAs($this->makeUser('andi@tapcard.test', 'Andi'));
         $mine = $this->postJson($this->host('app', '/api/designs'), ['template' => 'onyx', 'name' => 'Door to door v1'])->assertCreated()->json('data.id');
         $mine2 = $this->postJson($this->host('app', '/api/designs'), ['template' => 'onyx', 'name' => 'Door to door v2'])->assertCreated()->json('data.id');
-        $budi = $this->staff('budi@tapcard.test');
-        $this->actingAs($budi);
+        $this->staff('budi@tapcard.test');
+        $this->actingAs($this->makeUser('budi@tapcard.test', 'Budi'));
         $other = $this->postJson($this->host('app', '/api/designs'), ['template' => 'onyx', 'name' => 'Milik Budi'])->assertCreated()->json('data.id');
 
         $this->actingAs($andi);

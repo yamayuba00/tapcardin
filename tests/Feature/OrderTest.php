@@ -10,8 +10,7 @@ use App\Models\Design;
 use App\Models\Invoice;
 use App\Models\Order;
 use App\Models\OrderItem;
-use App\Models\PlatformStaff;
-use App\Models\Role;
+use App\Models\StaffAccount;
 use App\Models\Subscription;
 use App\Models\User;
 use App\Tenancy\TenantScope;
@@ -39,10 +38,9 @@ class OrderTest extends TestCase
         return $this->json($method, $this->host('panel', "/api$path"), $data);
     }
 
-    private function staff(string $role): User
+    private function staff(string $role): StaffAccount
     {
-        $u = $this->makeUser("$role@tapcard.test", 'Staf');
-        PlatformStaff::create(['user_id' => $u->id, 'role_id' => Role::system($role)->id, 'status' => 'active', 'last_reverified_at' => now()]);
+        $u = $this->makeStaff($role, "$role@tapcard.test", 'Staf');
 
         return $u;
     }

@@ -54,7 +54,9 @@ class AuthController extends Controller
     {
         abort_unless(self::devLogin(), 404);
         $email = (string) $request->validate(['email' => ['required', 'email']])['email'];
-        $user = array_key_exists($email, DummyAccountSeeder::ACCOUNTS) ? User::where('email', $email)->first() : null;
+        // hanya akun dummy pengguna; staf dummy masuk di panel dengan password
+        $customer = array_key_exists($email, DummyAccountSeeder::ACCOUNTS) && DummyAccountSeeder::ACCOUNTS[$email][1] === null;
+        $user = $customer ? User::where('email', $email)->first() : null;
         if (! $user) {
             throw ValidationException::withMessages(['email' => 'Akun dummy tidak ditemukan. Jalankan db:seed.']);
         }

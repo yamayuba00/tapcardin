@@ -2,7 +2,7 @@
 
 namespace App\Authz;
 
-use App\Models\PlatformStaff;
+use App\Models\StaffAccount;
 
 /**
  * Siapa saja staf aktif yang berwenang untuk suatu izin platform. Dipakai aturan "dua orang":
@@ -11,22 +11,20 @@ use App\Models\PlatformStaff;
  */
 final class Approvers
 {
-    /** @return list<int> id pengguna staf aktif (tidak diblokir) yang punya izin; opsional kecualikan satu pengguna. */
-    public static function userIds(string $permission, ?int $except = null): array
+    /** @return list<int> id staf aktif yang punya izin; opsional kecualikan satu staf. */
+    public static function staffIds(string $permission, ?int $except = null): array
     {
-        return PlatformStaff::query()
-            ->join('role_permissions', 'role_permissions.role_id', '=', 'platform_staff.role_id')
-            ->join('users', 'users.id', '=', 'platform_staff.user_id')
-            ->where('platform_staff.status', 'active')
-            ->whereNull('users.blocked_at')->whereNull('users.deleted_at')
+        return StaffAccount::query()
+            ->join('role_permissions', 'role_permissions.role_id', '=', 'staff_accounts.role_id')
+            ->where('staff_accounts.status', 'active')
             ->where('role_permissions.permission_key', 'platform.'.$permission)
-            ->when($except, fn ($q) => $q->where('platform_staff.user_id', '!=', $except))
-            ->pluck('platform_staff.user_id')->unique()->values()->all();
+            ->when($except, fn ($q) => $q->where('staff_accounts.id', '!=', $except))
+            ->pluck('staff_accounts.id')->unique()->values()->all();
     }
 
-    /** Tidak ada staf lain yang berwenang → pengguna ini satu-satunya yang bisa memutuskan. */
-    public static function solo(string $permission, int $userId): bool
+    /** Tidak ada staf lain yang berwenang → staf ini satu-satunya yang bisa memutuskan. */
+    public static function solo(string $permission, int $staffId): bool
     {
-        return self::userIds($permission, $userId) === [];
+        return self::staffIds($permission, $staffId) === [];
     }
 }

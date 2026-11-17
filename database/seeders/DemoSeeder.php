@@ -36,7 +36,7 @@ class DemoSeeder extends Seeder
         $current = app(CurrentTenant::class);
 
         $batch = Batch::create(['code' => 'DEMO-'.now()->format('His'), 'status' => BatchStatus::Draft, 'chip_type' => ChipType::Ntag213,
-            'quantity' => 2, 'holder_user_id' => $user->id, 'tenant_id' => $tenant->id, 'created_by' => $user->id]);
+            'quantity' => 2, 'holder_user_id' => $user->id, 'tenant_id' => $tenant->id]);
         app(GenerateBatchTokens::class)->handle($batch);
         $batch->cards()->update(['encoded_at' => now(), 'qc_passed_at' => now()]);
         app(ShipBatch::class)->handle($batch->fresh(), 'DEMO');
