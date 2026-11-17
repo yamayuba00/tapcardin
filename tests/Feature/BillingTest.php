@@ -50,7 +50,7 @@ class BillingTest extends TestCase
         $this->api('POST', "/cards/{$card->card_token}/dynamic-qr")->assertStatus(402);
 
         $this->api('POST', '/billing/checkout', ['plan' => 'personal_free', 'cycle' => 'monthly'])->assertJsonPath('error.code', 'plan_free');
-        $this->api('POST', '/billing/checkout', ['plan' => 'team', 'cycle' => 'monthly'])->assertJsonPath('error.code', 'plan_unavailable');
+        $this->api('POST', '/billing/checkout', ['plan' => 'starter', 'cycle' => 'monthly'])->assertJsonPath('error.code', 'plan_unavailable');
         $c = $this->api('POST', '/billing/checkout', ['plan' => 'personal_pro', 'cycle' => 'yearly', 'amount' => 1])->assertCreated()->json('data');
         $this->assertSame(490000, $c['invoice']['total'], 'harga dari tabel plans, bukan klien');
         $this->assertMatchesRegularExpression('#^INV/\d{4}/\d{2}/\d{6}$#', $c['invoice']['number']);

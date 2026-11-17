@@ -23,7 +23,7 @@ import PageHeader from '@/components/common/PageHeader/index.vue'
 import { adminApi } from '@/api/admin'
 import { useAction, useAsync } from '@/composables/useAsync'
 import { usePagedList } from '@/composables/usePagedList'
-import { date, dateTime, rupiah } from '@/lib/format'
+import { cycleLabel, date, dateTime, rupiah } from '@/lib/format'
 import { useAuthStore } from '@/stores/auth'
 import { useToastStore } from '@/stores/toast'
 
@@ -82,6 +82,7 @@ const grant = reactive({ plan: '', months: 1, reason: '', reference: '' })
 const grantErrors = ref({})
 function openGrant() {
   grant.plan = t.value.plans.find((p) => p.id === t.value.plan_id)?.key ?? t.value.plans[0]?.key
+  grant.months = t.value.type === 'personal' ? 1 : 6 // perusahaan per 6 bulan
   granting.value = true
 }
 async function doGrant() {
@@ -156,7 +157,7 @@ async function doGrant() {
       <AppPanel title="Langganan">
         <template v-if="auth.can('finance.invoices')" #actions><AppButton variant="ghost" @click="openGrant"><Gift class="size-4" /> Ajukan beri paket</AppButton></template>
         <dl v-if="t.subscription" class="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-2 text-sm">
-          <dt class="text-muted">Paket</dt><dd>{{ t.subscription.plan }} · {{ t.subscription.cycle === 'yearly' ? 'tahunan' : 'bulanan' }}</dd>
+          <dt class="text-muted">Paket</dt><dd>{{ t.subscription.plan }} · {{ cycleLabel(t.subscription.cycle) }}</dd>
           <dt class="text-muted">Status</dt>
           <dd><AppBadge :tone="SUB[t.subscription.status]?.[0]">{{ SUB[t.subscription.status]?.[1] }}</AppBadge><span v-if="t.subscription.cancel_at_period_end" class="ml-2 text-muted">berhenti di akhir periode</span></dd>
           <dt class="text-muted">Berakhir</dt><dd>{{ date(t.subscription.current_period_end) }}</dd>
@@ -200,7 +201,10 @@ async function doGrant() {
     <AppModal v-if="granting"size="sm" title="Ajukan pemberian paket" description="Kompensasi, mitra, atau uji coba khusus. Tidak langsung berjalan: staf lain harus menyetujui di menu Persetujuan." @close="granting = false">
       <form id="tenant-grant" class="grid gap-4" @submit.prevent="doGrant">
         <AppField label="Paket" :error="grantErrors.plan?.[0]"><AppSelect v-model="grant.plan" :options="t.plans.map((p) => ({ value: p.key, label: p.name }))" /></AppField>
-        <AppField label="Durasi (bulan)" :error="grantErrors.months?.[0]"><AppInput v-model="grant.months" type="number" min="1" max="36" /></AppField>
+        <AppField v-if="t.type === 'personal'" label="Durasi (bulan)" :error="grantErrors.months?.[0]"><AppInput v-model="grant.months" type="number" min="1" max="36" /></AppField>
+        <AppField v-else label="Durasi (bulan)" hint="Paket perusahaan per 6 bulan" :error="grantErrors.months?.[0]">
+          <AppSelect v-model="grant.months" :options="[6, 12, 18, 24, 30, 36].map((m) => ({ value: m, label: `${m} bulan` }))" />
+        </AppField>
         <AppField label="Alasan (wajib)" :error="grantErrors.reason?.[0]"><AppInput v-model="grant.reason" maxlength="200" minlength="5" required /></AppField>
         <AppField label="Nomor tiket / referensi (wajib)" :error="grantErrors.reference?.[0]"><AppInput v-model="grant.reference" maxlength="80" minlength="3" required /></AppField>
       </form>

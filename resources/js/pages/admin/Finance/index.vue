@@ -19,7 +19,7 @@ import TimeBars from '@/components/charts/TimeBars/index.vue'
 import { adminApi } from '@/api/admin'
 import { useAction, useAsync } from '@/composables/useAsync'
 import { usePagedList } from '@/composables/usePagedList'
-import { date, dateTime, delta, num, rupiah } from '@/lib/format'
+import { cycleLabel, date, dateTime, delta, num, rupiah } from '@/lib/format'
 import { useAuthStore } from '@/stores/auth'
 
 const route = useRoute()
@@ -109,7 +109,7 @@ async function doGrant() {
     <DataTable dense :columns="SUB_COLUMNS" :rows="subs.rows.value" :meta="subs.meta.value" :sort="subs.sort.value" :loading="subs.loading.value"
       empty-text="Belum ada langganan." @sort="subs.toggleSort" @page="subs.goto" @per-page="subs.setPerPage">
       <template #cell-tenant="{ row }"><RouterLink :to="`/tenants/${row.tenant.id}`">{{ row.tenant.name }}</RouterLink></template>
-      <template #cell-plan="{ row }">{{ row.plan }} · {{ row.cycle === 'yearly' ? 'tahunan' : 'bulanan' }}</template>
+      <template #cell-plan="{ row }">{{ row.plan }} · {{ cycleLabel(row.cycle) }}</template>
       <template #cell-status="{ row }">
         <AppBadge :tone="SUB[row.status]?.[0]">{{ SUB[row.status]?.[1] ?? row.status }}</AppBadge>
         <span v-if="row.cancel_at_period_end" class="block text-xs text-muted">berhenti di akhir periode</span>

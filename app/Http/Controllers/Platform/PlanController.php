@@ -12,14 +12,14 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 /**
- * Paket & harga (platform.plans.manage): harga bulanan/tahunan, batas, fitur, tampil di halaman harga.
+ * Paket & harga (platform.plans.manage): personal bulanan/tahunan, perusahaan per 6 bulan; batas, fitur, tampil di halaman harga.
  * Perubahan harga berlaku untuk tagihan berikutnya; batas & fitur langsung berlaku (cache paket tenant dibersihkan).
  * Paket yang dipakai tidak bisa dihapus — sembunyikan saja (is_public = false).
  */
 class PlanController extends PlatformController
 {
     public const LIMITS = [
-        'members' => 'Anggota', 'cards_active' => 'Kartu aktif', 'cards_per_member' => 'Kartu per anggota', 'profiles_per_user' => 'Profil per pengguna',
+        'members' => 'Anggota', 'cards_active' => 'Kartu aktif', 'profiles_per_user' => 'Profil per pengguna',
         'connections' => 'Koneksi terlihat', 'qr_rotation_days' => 'QR kartu digital berganti (hari)', 'analytics_days' => 'Riwayat analitik (hari)', 'audit_days' => 'Audit log (hari)',
     ];
 
@@ -72,6 +72,7 @@ class PlanController extends PlatformController
             'name' => [$s, 'string', 'max:60'],
             'price_monthly' => [$s, 'integer', 'min:0', 'max:100000000'],
             'price_yearly' => [$s, 'integer', 'min:0', 'max:1000000000'],
+            'price_semiannual' => ['sometimes', 'integer', 'min:0', 'max:1000000000'],
             'per_seat' => ['sometimes', 'boolean'],
             'trial_days' => ['sometimes', 'integer', 'min:0', 'max:90'],
             'is_public' => ['sometimes', 'boolean'],
@@ -100,7 +101,8 @@ class PlanController extends PlatformController
     {
         return [
             'id' => $p->id, 'key' => $p->key, 'name' => $p->name, 'tenant_type' => $p->tenant_type,
-            'price_monthly' => (int) $p->price_monthly, 'price_yearly' => (int) $p->price_yearly, 'per_seat' => (bool) $p->per_seat,
+            'price_monthly' => (int) $p->price_monthly, 'price_yearly' => (int) $p->price_yearly, 'price_semiannual' => (int) $p->price_semiannual,
+            'cycles' => $p->cycles(), 'per_seat' => (bool) $p->per_seat,
             'trial_days' => (int) $p->trial_days, 'is_public' => (bool) $p->is_public, 'sort' => (int) $p->sort,
             'limits' => array_merge(array_fill_keys(array_keys(self::LIMITS), null), $p->limits ?? []),
             'features' => array_merge(array_fill_keys(array_keys(self::FEATURES), false), $p->features ?? []),

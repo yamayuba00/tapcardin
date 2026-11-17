@@ -87,7 +87,7 @@ class FieldSellTest extends TestCase
         $buyer = $this->makeUser('pembeli@example.com', 'Pembeli');
         $custom = $this->panel('POST', '/batches', ['chip_type' => 'ntag215', 'quantity' => 1, 'holder_email' => 'pembeli@example.com'])->json('data.id');
         $pt = Tenant::create(['type' => 'company', 'name' => 'PT Maju', 'slug' => 'maju', 'owner_user_id' => $buyer->id, 'status' => 'active',
-            'plan_id' => DB::table('plans')->where('key', 'team')->value('id'), 'settings' => Tenant::DEFAULT_SETTINGS]);
+            'plan_id' => DB::table('plans')->where('key', 'starter')->value('id'), 'settings' => Tenant::DEFAULT_SETTINGS]);
         $company = Batch::create(['code' => 'BPT-1', 'status' => 'draft', 'chip_type' => 'ntag215', 'quantity' => 1, 'tenant_id' => $pt->id]);
 
         $codes = fn (string $ch) => collect($this->panel('GET', "/batches?channel=$ch")->assertOk()->json('data'))->pluck('id')->sort()->values()->all();

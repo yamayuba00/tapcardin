@@ -91,7 +91,7 @@ class PermissionTest extends TestCase
 
     public function test_plan_features_strip_permissions(): void
     {
-        $this->company('team'); // Team: tanpa webhook & custom field
+        $this->company('starter'); // Starter: tanpa webhook & custom field
         $this->assertArrayNotHasKey('integrations.manage', $this->perms($this->members['owner']));
         $this->assertArrayNotHasKey('fields.manage', $this->perms($this->members['owner']));
         $this->assertArrayHasKey('teams.manage', $this->perms($this->members['owner']));

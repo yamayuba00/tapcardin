@@ -46,9 +46,11 @@ class BillingController extends WorkspaceController
             ->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()))->latest('id')->with('plan')->first();
 
         return response()->json(['data' => [
+            'company' => $tenant->type->value !== 'personal',
+            'expired' => $sub?->status === 'expired' && $tenant->type->value !== 'personal',
             'plan' => self::presentPlan($tenant->plan),
             'subscription' => $sub ? [
-                'id' => $sub->public_id, 'plan' => $sub->plan->name, 'cycle' => $sub->cycle, 'status' => $sub->status,
+                'id' => $sub->public_id, 'plan' => $sub->plan->name, 'plan_key' => $sub->plan->key, 'cycle' => $sub->cycle, 'status' => $sub->status,
                 'current_period_end' => $sub->current_period_end->toIso8601String(), 'grace_until' => $sub->grace_until?->toIso8601String(),
                 'cancel_at_period_end' => $sub->cancel_at_period_end,
             ] : null,
@@ -186,7 +188,10 @@ class BillingController extends WorkspaceController
     {
         return $p ? [
             'key' => $p->key, 'name' => $p->name, 'price_monthly' => (int) $p->price_monthly, 'price_yearly' => (int) $p->price_yearly,
-            'yearly_saving' => PaymentService::yearlySaving($p), 'free' => (int) $p->price_monthly === 0,
+            'price_semiannual' => (int) $p->price_semiannual, 'cycles' => $p->cycles(),
+            'prices' => collect($p->cycles())->mapWithKeys(fn ($c) => [$c => $p->priceFor($c)]),
+            'cards_max' => $p->limits['cards_active'] ?? null,
+            'yearly_saving' => PaymentService::yearlySaving($p), 'free' => $p->isFree(),
         ] : null;
     }
 

@@ -26,7 +26,7 @@ const COLUMNS = [
   { key: 'redeemed', label: 'Terpakai', sortable: true }, { key: 'ends_at', label: 'Berakhir', sortable: true }, { key: 'status', label: 'Status' }, { key: 'act', label: '' },
 ]
 const { data: plans } = useAsync(() => (auth.can('plans.manage') ? adminApi.plans() : Promise.resolve({ data: [] })))
-const planOptions = computed(() => (plans.value ?? []).filter((p) => p.price_monthly > 0).map((p) => ({ value: p.key, label: p.name })))
+const planOptions = computed(() => (plans.value ?? []).filter((p) => p.price_monthly > 0 || p.price_semiannual > 0).map((p) => ({ value: p.key, label: p.name })))
 const planName = (k) => plans.value?.find((p) => p.key === k)?.name ?? k
 const expired = (v) => v.ends_at && new Date(v.ends_at) < new Date()
 

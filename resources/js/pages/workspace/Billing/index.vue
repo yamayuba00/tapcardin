@@ -29,7 +29,12 @@ const toast = useToastStore()
 const { data: b, reload } = useAsync(() => billingApi.get())
 const invoices = usePagedList(billingApi.invoices, {}, { url: false, sort: '-created_at', perPage: 10 })
 const { busy, run } = useAction()
-const cycle = ref(route.query.cycle === 'yearly' ? 'yearly' : 'monthly')
+const CYCLE = { monthly: ['Bulanan', 'bulan', '1 bulan'], yearly: ['Tahunan · hemat 2 bulan', 'tahun', '12 bulan'], semiannual: ['Per 6 bulan', '6 bulan', '6 bulan'] }
+const cycle = ref(CYCLE[route.query.cycle] ? route.query.cycle : 'monthly')
+// perusahaan hanya per 6 bulan; personal bulanan/tahunan
+const cycles = computed(() => [...new Set((b.value?.plans ?? []).flatMap((p) => p.cycles))])
+watch(cycles, (c) => { if (c.length && !c.includes(cycle.value)) cycle.value = c[0] }, { immediate: true })
+const cycleLabel = (c) => CYCLE[c]?.[2] ?? c
 const choosing = ref(null) // plan yang sedang di-checkout
 const cancelling = ref(false)
 const voucherCode = ref('')
@@ -40,7 +45,7 @@ watch([choosing, cycle], () => { voucher.value = null; voucherError.value = '' }
 const canManage = computed(() => auth.can('billing.manage'))
 
 const rupiah = (n) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n ?? 0)
-const price = (p) => (cycle.value === 'yearly' ? p.price_yearly : p.price_monthly)
+const price = (p) => p.prices?.[cycle.value] ?? 0
 const current = computed(() => b.value?.plan)
 const sub = computed(() => b.value?.subscription)
 const STATUS = { issued: ['warn', 'Belum dibayar'], overdue: ['danger', 'Terlambat'], paid: ['ok', 'Lunas'], void: ['muted', 'Dibatalkan'], draft: ['muted', 'Draf'] }
@@ -61,7 +66,7 @@ if (route.query.paid) {
 
 function cta(p) {
   if (p.free) return null
-  if (p.key === current.value?.key) return sub.value?.status === 'active' ? 'Perpanjang' : 'Aktifkan lagi'
+  if (p.key === current.value?.key) return { active: 'Perpanjang', trialing: 'Mulai berlangganan' }[sub.value?.status] ?? 'Aktifkan lagi'
   return `Upgrade ke ${p.name}`
 }
 async function applyVoucher() {
@@ -112,9 +117,13 @@ const COLUMNS = [
   <div v-if="!b" class="grid gap-4"><AppSkeleton class="!h-40" /><AppSkeleton class="!h-96" /></div>
   <template v-else>
     <!-- peringatan -->
-    <div v-if="sub?.status === 'past_due'" class="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-3 rounded-md border border-danger bg-surface p-4 sm:flex sm:flex-wrap sm:items-center sm:px-4 sm:py-3">
+    <div v-if="b.expired" class="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-3 rounded-md border border-danger bg-surface p-4 sm:flex sm:flex-wrap sm:items-center sm:px-4 sm:py-3">
+      <Lock class="mt-0.5 size-5 flex-none text-danger" />
+      <span class="min-w-0 flex-1 text-sm">Masa aktif workspace habis. Dashboard terkunci sampai diperpanjang; kartu karyawan tetap bisa di-tap. Pilih paket di bawah untuk membuka kembali.</span>
+    </div>
+    <div v-else-if="sub?.status === 'past_due'" class="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-3 rounded-md border border-danger bg-surface p-4 sm:flex sm:flex-wrap sm:items-center sm:px-4 sm:py-3">
       <TriangleAlert class="mt-0.5 size-5 flex-none text-danger" />
-      <span class="min-w-0 flex-1 text-sm">Periode paket sudah berakhir. Fitur {{ sub.plan }} tetap jalan sampai <strong>{{ date(sub.grace_until) }}</strong>; setelah itu workspace kembali ke paket gratis.</span>
+      <span class="min-w-0 flex-1 text-sm">Periode paket sudah berakhir. Fitur {{ sub.plan }} tetap jalan sampai <strong>{{ date(sub.grace_until) }}</strong>; setelah itu {{ b.company ? 'dashboard workspace terkunci sampai diperpanjang' : 'workspace kembali ke paket gratis' }}.</span>
       <AppButton v-if="b.open_invoice && canManage" class="col-span-2 w-full sm:w-auto" :loading="busy" @click="payOpen">Bayar sekarang</AppButton>
     </div>
     <div v-else-if="b.open_invoice" class="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-3 rounded-md border border-accent bg-surface p-4 sm:flex sm:flex-wrap sm:items-center sm:px-4 sm:py-3">
@@ -136,8 +145,9 @@ const COLUMNS = [
             <AppBadge v-else tone="outline">Gratis selamanya</AppBadge>
           </div>
           <p v-if="sub" class="text-sm text-muted">
-            {{ sub.cycle === 'yearly' ? 'Tahunan' : 'Bulanan' }} ·
-            <template v-if="sub.cancel_at_period_end">berhenti pada <strong class="text-fg">{{ date(sub.current_period_end) }}</strong></template>
+            {{ sub.status === 'trialing' ? 'Uji coba' : `Per ${cycleLabel(sub.cycle)}` }} ·
+            <template v-if="sub.status === 'expired'">berakhir pada <strong class="text-fg">{{ date(sub.current_period_end) }}</strong></template>
+            <template v-else-if="sub.cancel_at_period_end">berhenti pada <strong class="text-fg">{{ date(sub.current_period_end) }}</strong></template>
             <template v-else>periode berikutnya mulai <strong class="text-fg">{{ date(sub.current_period_end) }}</strong></template>
           </p>
           <p v-else class="text-sm text-muted">Upgrade kapan saja; kartu, bio link, dan koneksi Anda tetap utuh.</p>
@@ -158,7 +168,8 @@ const COLUMNS = [
     <section class="grid gap-4">
       <div class="grid gap-3 sm:flex sm:flex-wrap sm:items-center sm:justify-between">
         <h2 class="text-xl">Pilih paket</h2>
-        <AppSegmented v-model="cycle" label="Siklus tagihan" :options="[{ value: 'monthly', label: 'Bulanan' }, { value: 'yearly', label: 'Tahunan · hemat 2 bulan' }]" class="w-full sm:w-auto" />
+        <AppSegmented v-if="cycles.length > 1" v-model="cycle" label="Siklus tagihan" :options="cycles.map((c) => ({ value: c, label: CYCLE[c][0] }))" class="w-full sm:w-auto" />
+        <p v-else-if="b.company" class="text-sm text-muted">Langganan workspace per 6 bulan. Kartu fisik dipesan terpisah.</p>
       </div>
       <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <article
@@ -172,7 +183,7 @@ const COLUMNS = [
           </div>
           <p>
             <span class="font-display text-[34px] leading-none font-bold">{{ p.free ? 'Gratis' : rupiah(price(p)) }}</span>
-            <span v-if="!p.free" class="text-muted"> /{{ cycle === 'yearly' ? 'tahun' : 'bulan' }}</span>
+            <span v-if="!p.free" class="text-muted"> /{{ CYCLE[cycle][1] }}</span>
             <span v-if="!p.free && cycle === 'yearly' && p.yearly_saving" class="mt-1 block text-sm text-ok">Hemat {{ rupiah(p.yearly_saving) }} per tahun</span>
           </p>
           <ul class="grid gap-2 text-sm">
@@ -195,7 +206,7 @@ const COLUMNS = [
         empty-text="Belum ada tagihan." @sort="invoices.toggleSort" @page="invoices.goto" @per-page="invoices.setPerPage"
       >
         <template #cell-number="{ row }"><RouterLink :to="`/billing/invoices/${row.id}`" class="font-mono">{{ row.number }}</RouterLink></template>
-        <template #cell-plan="{ row }">{{ row.plan }} · {{ row.cycle === 'yearly' ? 'tahunan' : 'bulanan' }}</template>
+        <template #cell-plan="{ row }">{{ row.plan }}<template v-if="row.cycle"> · {{ cycleLabel(row.cycle) }}</template></template>
         <template #cell-total="{ row }"><span class="font-mono">{{ rupiah(row.total) }}</span></template>
         <template #cell-status="{ row }"><AppBadge :tone="STATUS[row.status][0]">{{ STATUS[row.status][1] }}</AppBadge></template>
         <template #cell-created_at="{ row }"><span class="font-mono text-sm">{{ dateTime(row.issued_at) }}</span></template>
@@ -205,9 +216,9 @@ const COLUMNS = [
 
   <!-- ringkasan checkout -->
   <AppModal v-if="choosing" :title="`Checkout ${choosing.name}`" description="Periksa ringkasan, lalu lanjut ke halaman pembayaran aman." @close="choosing = null">
-    <AppSegmented v-model="cycle" label="Siklus" :options="[{ value: 'monthly', label: 'Bulanan' }, { value: 'yearly', label: 'Tahunan' }]" />
+    <AppSegmented v-if="choosing.cycles.length > 1" v-model="cycle" label="Siklus" :options="choosing.cycles.map((c) => ({ value: c, label: CYCLE[c][0] }))" />
     <dl class="grid gap-2 rounded-md bg-surface-2 p-4 text-sm">
-      <div class="flex justify-between gap-3"><dt>Paket {{ choosing.name }} · {{ cycle === 'yearly' ? '12 bulan' : '1 bulan' }}</dt><dd class="font-mono">{{ rupiah(price(choosing)) }}</dd></div>
+      <div class="flex justify-between gap-3"><dt>Paket {{ choosing.name }} · {{ cycleLabel(cycle) }}</dt><dd class="font-mono">{{ rupiah(price(choosing)) }}</dd></div>
       <div v-if="cycle === 'yearly' && choosing.yearly_saving" class="flex justify-between gap-3 text-ok"><dt>Hemat dibanding bulanan</dt><dd class="font-mono">−{{ rupiah(choosing.yearly_saving) }}</dd></div>
       <div v-if="voucher" class="flex justify-between gap-3 text-ok"><dt>Voucher {{ voucher.code }}</dt><dd class="font-mono">−{{ rupiah(voucher.discount) }}</dd></div>
       <div class="flex justify-between gap-3 border-t border-line pt-2 text-base font-semibold"><dt>Total</dt><dd class="font-display text-xl">{{ rupiah(total) }}</dd></div>
@@ -233,7 +244,7 @@ const COLUMNS = [
     </template>
   </AppModal>
 
-  <AppModal v-if="cancelling" size="sm" title="Hentikan langganan?" :description="`Fitur ${sub?.plan} tetap aktif sampai ${date(sub?.current_period_end)}, lalu workspace kembali ke paket gratis. Data Anda tidak dihapus.`" @close="cancelling = false">
+  <AppModal v-if="cancelling" size="sm" title="Hentikan langganan?" :description="`Fitur ${sub?.plan} tetap aktif sampai ${date(sub?.current_period_end)}, lalu ${b?.company ? 'dashboard workspace terkunci sampai diperpanjang' : 'workspace kembali ke paket gratis'}. Data Anda tidak dihapus.`" @close="cancelling = false">
     <template #footer>
       <AppButton variant="secondary" @click="cancelling = false">Tetap berlangganan</AppButton>
       <AppButton variant="danger" :loading="busy" @click="toggleCancel(false)">Hentikan di akhir periode</AppButton>

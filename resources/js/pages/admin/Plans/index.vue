@@ -1,5 +1,5 @@
 <script setup>
-// Paket & harga — harga bulanan/tahunan, batas, fitur, tampil di halaman harga. Harga baru berlaku untuk tagihan
+// Paket & harga — personal bulanan/tahunan, perusahaan per 6 bulan (di luar kartu); batas, fitur, tampil di halaman harga. Harga baru berlaku untuk tagihan
 // berikutnya; batas & fitur langsung berlaku untuk semua workspace di paket itu.
 import { computed, reactive, ref } from 'vue'
 import { Check, Minus, Pencil, Plus } from 'lucide-vue-next'
@@ -20,6 +20,7 @@ const { data: plans, meta, reload } = useAsync(() => adminApi.plans())
 const { busy, run } = useAction()
 const type = ref('personal')
 const shown = computed(() => (plans.value ?? []).filter((p) => p.tenant_type === type.value))
+const company = computed(() => type.value === 'company')
 const editing = ref(null) // null | 'new' | plan
 const form = reactive({})
 const errors = ref({})
@@ -31,7 +32,7 @@ function open(p) {
   Object.assign(form, p
     ? { ...p, limits: { ...p.limits }, features: { ...p.features } }
     : {
-        key: '', name: '', tenant_type: type.value, price_monthly: 0, price_yearly: 0, per_seat: type.value === 'company', trial_days: 0, is_public: false, sort: 99,
+        key: '', name: '', tenant_type: type.value, price_monthly: 0, price_yearly: 0, price_semiannual: 0, trial_days: type.value === 'company' ? 14 : 0, is_public: false, sort: 99,
         limits: Object.fromEntries(Object.keys(limits).map((k) => [k, null])), features: Object.fromEntries(Object.keys(features).map((k) => [k, false])),
       })
   for (const k of Object.keys(form.limits)) form.limits[k] = form.limits[k] ?? ''
@@ -44,7 +45,7 @@ function suggestYearly() {
 async function save() {
   errors.value = {}
   const body = {
-    name: form.name, price_monthly: Number(form.price_monthly), price_yearly: Number(form.price_yearly), per_seat: form.per_seat,
+    name: form.name, price_monthly: Number(form.price_monthly), price_yearly: Number(form.price_yearly), price_semiannual: Number(form.price_semiannual),
     trial_days: Number(form.trial_days), is_public: form.is_public, sort: Number(form.sort),
     limits: Object.fromEntries(Object.entries(form.limits).map(([k, v]) => [k, intOrNull(v)])), features: form.features,
   }
@@ -86,17 +87,24 @@ const limitText = (v) => (v === null || v === undefined ? '∞' : num(v))
       </thead>
       <tbody>
         <tr class="bg-surface-2"><th colspan="99" scope="colgroup" class="px-4 py-2 text-left"><span class="label">Harga</span></th></tr>
-        <tr class="border-b border-line">
-          <th scope="row" class="sticky left-0 bg-surface px-4 py-3 text-left font-normal text-muted">Bulanan</th>
+        <tr v-if="company" class="border-b border-line">
+          <th scope="row" class="sticky left-0 bg-surface px-4 py-3 text-left font-normal text-muted">Per 6 bulan</th>
           <td v-for="p in shown" :key="p.key" class="px-4 py-3">
-            <span class="font-display text-lg">{{ p.price_monthly ? rupiah(p.price_monthly) : 'Gratis' }}</span>
-            <span v-if="p.price_monthly && p.per_seat" class="text-xs text-muted"> / anggota</span>
+            <span class="font-display text-lg">{{ p.price_semiannual ? rupiah(p.price_semiannual) : 'Hubungi kami' }}</span>
           </td>
         </tr>
-        <tr class="border-b border-line">
-          <th scope="row" class="sticky left-0 bg-surface px-4 py-3 text-left font-normal text-muted">Tahunan</th>
-          <td v-for="p in shown" :key="p.key" class="px-4 py-3 font-mono">{{ p.price_yearly ? rupiah(p.price_yearly) : '—' }}</td>
-        </tr>
+        <template v-else>
+          <tr class="border-b border-line">
+            <th scope="row" class="sticky left-0 bg-surface px-4 py-3 text-left font-normal text-muted">Bulanan</th>
+            <td v-for="p in shown" :key="p.key" class="px-4 py-3">
+              <span class="font-display text-lg">{{ p.price_monthly ? rupiah(p.price_monthly) : 'Gratis' }}</span>
+            </td>
+          </tr>
+          <tr class="border-b border-line">
+            <th scope="row" class="sticky left-0 bg-surface px-4 py-3 text-left font-normal text-muted">Tahunan</th>
+            <td v-for="p in shown" :key="p.key" class="px-4 py-3 font-mono">{{ p.price_yearly ? rupiah(p.price_yearly) : '—' }}</td>
+          </tr>
+        </template>
         <tr class="border-b border-line">
           <th scope="row" class="sticky left-0 bg-surface px-4 py-3 text-left font-normal text-muted">Uji coba</th>
           <td v-for="p in shown" :key="p.key" class="px-4 py-3">{{ p.trial_days ? `${p.trial_days} hari` : '—' }}</td>
@@ -133,17 +141,20 @@ const limitText = (v) => (v === null || v === undefined ? '∞' : num(v))
         <AppField label="Nama" :error="errors.name?.[0]"><AppInput v-model="form.name" maxlength="60" required /></AppField>
         <AppField label="Urutan"><AppInput v-model="form.sort" type="number" min="0" /></AppField>
       </div>
-      <div class="grid gap-4 sm:grid-cols-3">
+      <div v-if="form.tenant_type === 'company'" class="grid gap-4 sm:grid-cols-3">
+        <AppField label="Harga per 6 bulan (Rp)" hint="Langganan workspace & subdomain, di luar kartu" :error="errors.price_semiannual?.[0]">
+          <AppInput v-model="form.price_semiannual" type="number" min="0" />
+        </AppField>
+        <AppField label="Masa uji coba (hari)"><AppInput v-model="form.trial_days" type="number" min="0" max="90" /></AppField>
+      </div>
+      <div v-else class="grid gap-4 sm:grid-cols-3">
         <AppField label="Harga bulanan (Rp)" :error="errors.price_monthly?.[0]"><AppInput v-model="form.price_monthly" type="number" min="0" @change="!form.price_yearly && suggestYearly()" /></AppField>
         <AppField label="Harga tahunan (Rp)" :error="errors.price_yearly?.[0]">
           <div class="flex gap-2"><AppInput v-model="form.price_yearly" type="number" min="0" /><AppButton type="button" variant="secondary" title="10 × bulanan (hemat 2 bulan)" @click="suggestYearly">×10</AppButton></div>
         </AppField>
         <AppField label="Masa uji coba (hari)"><AppInput v-model="form.trial_days" type="number" min="0" max="90" /></AppField>
       </div>
-      <div class="flex flex-wrap gap-6">
-        <AppToggle v-model="form.is_public" label="Tampil di halaman harga & bisa dibeli" />
-        <AppToggle v-model="form.per_seat" label="Harga per anggota" />
-      </div>
+      <AppToggle v-model="form.is_public" label="Tampil di halaman harga & bisa dibeli" />
 
       <fieldset class="grid gap-3">
         <legend class="label mb-2">Batas (kosong = tanpa batas)</legend>

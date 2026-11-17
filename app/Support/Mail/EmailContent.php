@@ -15,7 +15,7 @@ final class EmailContent
      * aktivitas harian (tap, koneksi baru, pengingat) mati agar kotak masuk tidak penuh.
      */
     public const DEFAULT_ON = [
-        'invoice_due' => true, 'invoice_paid' => true, 'plan_changed' => true, 'subscription_past_due' => true,
+        'invoice_due' => true, 'invoice_paid' => true, 'plan_changed' => true, 'workspace_expired' => true, 'subscription_past_due' => true,
         'grace_ending' => true, 'order_status' => true, 'order_unpaid' => true, 'tap_quota' => true, 'lost_card_tapped' => true,
     ];
 
@@ -76,7 +76,9 @@ final class EmailContent
                 'title' => 'Masa tenggang dimulai',
                 'lines' => [
                     "Periode paket **{$d['plan']}** sudah berakhir dan tagihan perpanjangannya belum dibayar.",
-                    "Semua fitur masih bisa dipakai sampai **{$date($d['grace_until'] ?? null)}**. Setelah itu workspace otomatis turun ke paket gratis dan fitur berbayar terkunci.",
+                    "Semua fitur masih bisa dipakai sampai **{$date($d['grace_until'] ?? null)}**. ".(empty($d['company'])
+                        ? 'Setelah itu workspace otomatis turun ke paket gratis dan fitur berbayar terkunci.'
+                        : 'Setelah itu dashboard workspace terkunci sampai diperpanjang. Kartu karyawan tetap bisa di-tap.'),
                 ],
                 'action' => isset($d['id']) ? ['label' => 'Bayar tagihan', 'path' => '/billing/invoices/'.$d['id']] : ['label' => 'Buka paket', 'path' => '/billing'],
                 'tone' => 'warn',
@@ -85,7 +87,9 @@ final class EmailContent
                 'subject' => 'Masa tenggang paket berakhir '.$date($d['grace_until'] ?? null),
                 'title' => 'Masa tenggang hampir berakhir',
                 'lines' => [
-                    "Paket **{$d['plan']}** akan turun ke paket gratis pada **{$date($d['grace_until'] ?? null)}** karena tagihan perpanjangan belum dibayar.",
+                    empty($d['company'])
+                        ? "Paket **{$d['plan']}** akan turun ke paket gratis pada **{$date($d['grace_until'] ?? null)}** karena tagihan perpanjangan belum dibayar."
+                        : "Dashboard workspace akan terkunci pada **{$date($d['grace_until'] ?? null)}** karena tagihan perpanjangan belum dibayar.",
                     'Bayar sekarang agar data, kartu, dan fitur berbayar tidak terkunci.',
                 ],
                 'action' => isset($d['id']) ? ['label' => 'Bayar tagihan', 'path' => '/billing/invoices/'.$d['id']] : ['label' => 'Buka paket', 'path' => '/billing'],
@@ -104,6 +108,16 @@ final class EmailContent
                 ])),
                 'action' => ['label' => 'Lihat pilihan paket', 'path' => '/billing'],
                 'tone' => 'warn',
+            ],
+            'workspace_expired' => [
+                'subject' => 'Masa aktif workspace habis',
+                'title' => 'Masa aktif workspace habis',
+                'lines' => [
+                    ($d['reason'] ?? null) === 'trial' ? "Masa uji coba paket **{$d['plan']}** sudah selesai." : "Masa aktif paket **{$d['plan']}** sudah habis.",
+                    'Dashboard dan subdomain workspace terkunci sampai diperpanjang. Kartu karyawan tetap bisa di-tap dan datanya aman.',
+                ],
+                'action' => ['label' => 'Perpanjang sekarang', 'path' => '/billing'],
+                'tone' => 'danger',
             ],
             'order_status' => [
                 'subject' => "Pesanan {$d['number']}: {$d['label']}",

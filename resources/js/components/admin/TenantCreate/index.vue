@@ -23,11 +23,15 @@ const plans = ref([])
 const slugify = (s) => s.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 30)
 watch(() => form.value.name, (n) => { if (!slugEdited.value) form.value.slug = slugify(n) })
 
-const options = computed(() => plans.value.map((p) => ({ value: p.key, label: p.name })))
+const rupiah = (n) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n ?? 0)
+const options = computed(() => plans.value.map((p) => ({
+  value: p.key, label: p.name,
+  description: `${p.limits.cards_active == null ? 'Kartu tanpa batas' : `Maks ${p.limits.cards_active} kartu`} · ${p.price_semiannual ? `${rupiah(p.price_semiannual)} / 6 bulan` : 'harga khusus'}`,
+})))
 onMounted(async () => {
   const res = await adminApi.plans()
   plans.value = (res.data ?? []).filter((p) => p.tenant_type === 'company')
-  form.value.plan = plans.value.find((p) => p.key === 'business')?.key ?? plans.value[0]?.key ?? ''
+  form.value.plan = plans.value[0]?.key ?? ''
 })
 
 async function create() {
@@ -42,7 +46,7 @@ async function create() {
 </script>
 
 <template>
-  <AppModal size="sm" title="Buat workspace perusahaan" description="Subdomain langsung aktif. Owner dipilih dari akun yang sudah terdaftar." @close="emit('close')">
+  <AppModal size="sm" title="Buat workspace perusahaan" description="Subdomain langsung aktif dengan uji coba 14 hari, lalu dibayar per 6 bulan. Owner dipilih dari akun yang sudah terdaftar." @close="emit('close')">
     <form id="tenant-create" class="grid gap-4" @submit.prevent="create">
       <AppField label="Nama perusahaan" :error="errors.name?.[0]">
         <AppInput v-model="form.name" maxlength="120" required placeholder="Maju Jaya" :invalid="!!errors.name" />

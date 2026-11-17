@@ -91,7 +91,7 @@ class NotificationEmailTest extends TestCase
     {
         $rina = $this->makeUser();
         $pt = Tenant::create(['type' => 'company', 'name' => 'PT Maju', 'slug' => 'maju', 'owner_user_id' => $rina->id, 'status' => 'active',
-            'plan_id' => DB::table('plans')->where('key', 'team')->value('id'), 'settings' => Tenant::DEFAULT_SETTINGS]);
+            'plan_id' => DB::table('plans')->where('key', 'starter')->value('id'), 'settings' => Tenant::DEFAULT_SETTINGS]);
         $rina->update(['notification_prefs' => ['lead_new' => ['email' => true]]]);
         Notify::user($rina->id, $pt->id, 'lead_new', ['id' => 'ABC', 'name' => '<script>x</script>', 'company' => 'A & B']);
 

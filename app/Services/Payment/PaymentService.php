@@ -15,7 +15,9 @@ use App\Services\Payment\Gateways\SimulatorGateway;
  */
 final class PaymentService
 {
-    public const CYCLES = ['monthly' => 1, 'yearly' => 12];
+    public const CYCLES = ['monthly' => 1, 'semiannual' => 6, 'yearly' => 12];
+
+    public const CYCLE_LABELS = ['monthly' => '1 bulan', 'semiannual' => '6 bulan', 'yearly' => '1 tahun'];
 
     public static function gateway(): PaymentGateway
     {
@@ -75,7 +77,13 @@ final class PaymentService
 
     public static function price(Plan $plan, string $cycle): int
     {
-        return (int) ($cycle === 'yearly' ? $plan->price_yearly : $plan->price_monthly);
+        return $plan->priceFor($cycle);
+    }
+
+    /** Pendapatan per bulan dari satu langganan (untuk MRR). */
+    public static function monthly(Plan $plan, string $cycle): float
+    {
+        return $plan->priceFor($cycle) / (self::CYCLES[$cycle] ?? 1);
     }
 
     /** Hemat langganan tahunan dibanding 12× bulanan (rupiah). */

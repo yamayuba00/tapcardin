@@ -165,7 +165,7 @@ class DigitalPlanTest extends TestCase
     public function test_owner_of_company_workspace_must_hand_it_over_before_deleting(): void
     {
         $rina = $this->makeUser();
-        Tenant::create(['type' => 'company', 'name' => 'PT Maju', 'slug' => 'maju', 'owner_user_id' => $rina->id, 'status' => 'active', 'plan_id' => DB::table('plans')->where('key', 'team')->value('id'), 'settings' => Tenant::DEFAULT_SETTINGS]);
+        Tenant::create(['type' => 'company', 'name' => 'PT Maju', 'slug' => 'maju', 'owner_user_id' => $rina->id, 'status' => 'active', 'plan_id' => DB::table('plans')->where('key', 'starter')->value('id'), 'settings' => Tenant::DEFAULT_SETTINGS]);
         $this->actingAs($rina)->deleteJson($this->host('app', '/api/me'), ['confirm_email' => 'rina@example.com'])->assertJsonPath('error.code', 'owns_workspace');
         $this->assertNotSoftDeleted($rina);
     }

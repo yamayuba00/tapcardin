@@ -14,7 +14,7 @@ import AppSkeleton from '@/components/ui/AppSkeleton/index.vue'
 import PageHeader from '@/components/common/PageHeader/index.vue'
 import { adminApi } from '@/api/admin'
 import { useAction, useAsync } from '@/composables/useAsync'
-import { dateTime, rupiah } from '@/lib/format'
+import { cycleLabel, dateTime, rupiah } from '@/lib/format'
 import { useAuthStore } from '@/stores/auth'
 
 const route = useRoute()
@@ -79,7 +79,7 @@ async function doVoid() {
         <dl class="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-2 text-sm">
           <dt class="text-muted">Workspace</dt><dd><RouterLink v-if="inv.tenant" :to="`/tenants/${inv.tenant.id}`">{{ inv.tenant.name }}</RouterLink></dd>
           <dt class="text-muted">Ditagihkan ke</dt><dd>{{ inv.billing_snapshot?.name ?? '—' }}<span class="block text-muted">{{ inv.billing_snapshot?.email }}</span></dd>
-          <dt class="text-muted">Paket</dt><dd>{{ inv.plan ?? '—' }} · {{ inv.cycle === 'yearly' ? 'tahunan' : 'bulanan' }}</dd>
+          <dt class="text-muted">Paket</dt><dd>{{ inv.plan ?? '—' }} · {{ cycleLabel(inv.cycle) }}</dd>
           <dt class="text-muted">Diterbitkan</dt><dd>{{ dateTime(inv.issued_at) }}</dd>
           <dt class="text-muted">Jatuh tempo</dt><dd>{{ dateTime(inv.due_at) }}</dd>
           <template v-if="inv.paid_at"><dt class="text-muted">Dibayar</dt><dd>{{ dateTime(inv.paid_at) }} · {{ inv.payment_method }}</dd></template>

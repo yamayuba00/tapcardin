@@ -5,8 +5,11 @@ const tz = 'Asia/Jakarta'
 /** @param {number|null|undefined} n */
 export const num = (n) => (n == null ? '—' : new Intl.NumberFormat('id-ID').format(n))
 
+/** Siklus langganan: personal bulanan/tahunan, perusahaan per 6 bulan. */
+export const cycleLabel = (c) => ({ monthly: 'bulanan', yearly: 'tahunan', semiannual: 'per 6 bulan' })[c] ?? c ?? '—'
+
 /** @param {number|null|undefined} n */
-export const rupiah = (n) => (n == null ? '—' : 'Rp ' + new Intl.NumberFormat('id-ID').format(n))
+export const rupiah =(n) => (n == null ? '—' : 'Rp ' + new Intl.NumberFormat('id-ID').format(n))
 
 /** @param {string|null} iso */
 export function dateTime(iso) {

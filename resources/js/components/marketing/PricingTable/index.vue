@@ -1,5 +1,5 @@
 <script setup>
-// Harga dari GET /api/showcase (tabel `plans`, bisa diubah dari panel): paket personal & paket tim/perusahaan per anggota.
+// Harga dari GET /api/showcase (tabel `plans`, bisa diubah dari panel): paket personal & paket perusahaan per 6 bulan.
 import { computed, ref } from 'vue'
 import { Check } from 'lucide-vue-next'
 import AppButton from '@/components/ui/AppButton/index.vue'
@@ -30,14 +30,14 @@ const personalPerks = (p) => [
   'Tukar Kontak & pipeline koneksi',
 ]
 const companyPerks = (p) => [
+  p.cards ? `Maksimal ${num(p.cards)} kartu fisik aktif` : 'Kartu fisik tanpa batas',
   p.members ? `Hingga ${num(p.members)} anggota` : 'Anggota tanpa batas',
-  `${p.cards_per_member} kartu fisik per anggota`,
   `Riwayat analitik ${p.analytics_days} hari`,
   ...p.features.filter((f) => FEATURE[f]).map((f) => FEATURE[f]),
 ]
 const list = computed(() => (scope.value === 'personal'
-  ? props.plans.map((p, i) => ({ ...p, perks: personalPerks(p), highlight: i === 1, cta: p.price_monthly ? `Coba ${p.name}` : 'Mulai gratis', unit: '/bulan' }))
-  : props.companyPlans.map((p, i) => ({ ...p, perks: companyPerks(p), highlight: i === 0, cta: p.trial_days ? `Coba gratis ${p.trial_days} hari` : 'Mulai', unit: p.per_seat ? '/anggota/bulan' : '/bulan' }))))
+  ? props.plans.map((p, i) => ({ ...p, price: p.price_monthly, perks: personalPerks(p), highlight: i === 1, cta: p.price_monthly ? `Coba ${p.name}` : 'Mulai gratis', unit: '/bulan' }))
+  : props.companyPlans.map((p, i) => ({ ...p, price: p.price_semiannual, perks: companyPerks(p), highlight: i === 0, cta: p.trial_days ? `Coba gratis ${p.trial_days} hari` : 'Mulai', unit: '/6 bulan' }))))
 </script>
 
 <template>
@@ -54,8 +54,8 @@ const list = computed(() => (scope.value === 'personal'
           <span v-if="p.highlight" class="rounded-full bg-accent px-3 py-1 text-xs font-semibold text-accent-ink">{{ scope === 'personal' ? 'Paling populer' : 'Untuk tim kecil' }}</span>
         </div>
         <p>
-          <span class="font-display text-[36px] font-bold">{{ p.price_monthly ? rupiah(p.price_monthly) : 'Gratis' }}</span>
-          <span v-if="p.price_monthly" class="text-muted"> {{ p.unit }}</span>
+          <span class="font-display text-[36px] font-bold">{{ p.price ? rupiah(p.price) : 'Gratis' }}</span>
+          <span v-if="p.price" class="text-muted"> {{ p.unit }}</span>
         </p>
         <ul class="grid gap-2 text-sm">
           <li v-for="perk in p.perks" :key="perk" class="flex gap-2"><Check class="size-5 flex-none text-ok" aria-hidden="true" /> {{ perk }}</li>
@@ -63,8 +63,11 @@ const list = computed(() => (scope.value === 'personal'
         <AppButton :variant="p.highlight ? 'primary' : 'secondary'" block :href="`${config.appUrl}/login`">{{ p.cta }}</AppButton>
       </article>
     </div>
-    <p class="text-sm text-muted">
+    <p v-if="scope === 'personal'" class="text-sm text-muted">
       Bayar bulanan atau tahunan (hemat setara 2 bulan) lewat QRIS — semua e-wallet & mobile banking. Batalkan kapan saja; paket berjalan sampai akhir periode.
+    </p>
+    <p v-else class="text-sm text-muted">
+      Langganan workspace & subdomain per 6 bulan lewat QRIS. Kartu fisik dipesan terpisah sesuai kebutuhan, sampai batas paket.
     </p>
   </div>
 </template>

@@ -62,6 +62,13 @@ class Tenant extends Model
         return $this->status === TenantStatus::Suspended;
     }
 
+    /** Perusahaan yang masa aktifnya habis: dashboard terkunci sampai diperpanjang (kartu tetap jalan). */
+    public function isExpired(): bool
+    {
+        return $this->type !== TenantType::Personal
+            && Subscription::acrossTenants()->where('tenant_id', $this->id)->value('status') === 'expired';
+    }
+
     public function setting(string $key): mixed
     {
         return data_get($this->settings, $key, self::DEFAULT_SETTINGS[$key] ?? null);

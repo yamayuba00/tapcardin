@@ -28,6 +28,9 @@ final class CreateCheckout
         if (! $plan->is_public || $plan->tenant_type !== $tenant->type->value) {
             throw new ApiError('plan_unavailable', 'Paket ini tidak tersedia untuk workspace Anda.');
         }
+        if (! in_array($cycle, $plan->cycles(), true)) {
+            throw new ApiError('cycle_unavailable', $plan->tenant_type === 'company' ? 'Paket perusahaan dibayar per 6 bulan.' : 'Siklus tagihan ini tidak tersedia.');
+        }
         $amount = PaymentService::price($plan, $cycle);
         if ($amount <= 0) {
             throw new ApiError('plan_free', 'Paket gratis tidak perlu dibayar.');
@@ -48,7 +51,7 @@ final class CreateCheckout
 
             $sub = Subscription::where('tenant_id', $tenant->id)->first();
             $months = PaymentService::CYCLES[$cycle];
-            $label = "Paket {$plan->name} — ".($cycle === 'yearly' ? '1 tahun' : '1 bulan');
+            $label = "Paket {$plan->name} — ".PaymentService::CYCLE_LABELS[$cycle];
             $lines = [['code' => "{$plan->key}-{$cycle}", 'label' => $label, 'qty' => 1, 'amount' => $amount]];
             if ($cycle === 'yearly' && ($save = PaymentService::yearlySaving($plan)) > 0) {
                 $lines[0]['note'] = 'Hemat '.number_format($save, 0, ',', '.').' dibanding bulanan';

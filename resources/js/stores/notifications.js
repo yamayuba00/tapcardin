@@ -5,7 +5,7 @@ import { useToastStore } from './toast'
 import { config } from '@/config'
 import { connectRealtime } from '@/lib/realtime'
 
-const TYPES = ['tap', 'lead_new', 'lost_card_tapped', 'saved_back', 'reminder_due', 'import_done', 'invoice_paid', 'invoice_due', 'plan_changed', 'order_status', 'announcement', 'tap_quota', 'subscription_past_due', 'grace_ending', 'order_unpaid']
+const TYPES = ['tap', 'lead_new', 'lost_card_tapped', 'saved_back', 'reminder_due', 'import_done', 'invoice_paid', 'invoice_due', 'plan_changed', 'workspace_expired', 'order_status', 'announcement', 'tap_quota', 'subscription_past_due', 'grace_ending', 'order_unpaid']
 
 const messages = {
   tap: (d) => `Seseorang membuka profil Anda${d.city ? ' · ' + d.city : ''}`,
@@ -20,7 +20,10 @@ const messages = {
   invoice_due: (d) => `Tagihan perpanjangan ${d.number} sudah terbit`,
   plan_changed: (d) => `Paket workspace kini ${d.plan}`,
   subscription_past_due: (d) => `Paket ${d.plan} masuk masa tenggang — bayar tagihan agar fitur tidak terkunci`,
-  grace_ending: (d) => `Masa tenggang paket ${d.plan} hampir berakhir — bayar sekarang agar tidak turun ke paket gratis`,
+  grace_ending: (d) => (d.company
+    ? `Masa tenggang paket ${d.plan} hampir berakhir — bayar sekarang agar dashboard tidak terkunci`
+    : `Masa tenggang paket ${d.plan} hampir berakhir — bayar sekarang agar tidak turun ke paket gratis`),
+  workspace_expired: (d) => `Masa aktif paket ${d.plan} habis — dashboard terkunci sampai diperpanjang`,
   order_unpaid: (d) => `Pesanan ${d.number} belum dibayar — batal otomatis bila tidak dibayar tepat waktu`,
   order_status: (d) => `Pesanan ${d.number}: ${d.label}${d.tracking ? ' · resi ' + d.tracking : ''}`,
   announcement: (d) => `${d.title} — ${d.body}`,

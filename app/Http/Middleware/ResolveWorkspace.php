@@ -75,6 +75,10 @@ class ResolveWorkspace
         if ($tenant->isSuspended() && ! $request->is('api/me', 'api/me/*')) {
             throw new ApiError('tenant_suspended', $tenant->suspend_reason ?: 'Workspace sementara dinonaktifkan. Data Anda tetap tersimpan.', 423);
         }
+        // masa aktif habis: hanya akun, tagihan, & notifikasi yang terbuka agar bisa memperpanjang
+        if (! $request->is('api/me', 'api/me/*', 'api/billing', 'api/billing/*', 'api/auth/*', 'api/notifications*') && $tenant->isExpired()) {
+            throw new ApiError('workspace_expired', 'Masa aktif workspace habis. Perpanjang untuk membuka kembali.', 402);
+        }
 
         return $next($request);
     }

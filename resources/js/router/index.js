@@ -28,6 +28,10 @@ router.beforeEach(async (to) => {
   if (to.meta.guest && auth.isLoggedIn) {
     return { name: 'dashboard' }
   }
+  // masa aktif workspace perusahaan habis: hanya halaman tagihan yang terbuka
+  if (context === 'workspace' && auth.workspace?.expired && to.matched.some((r) => r.meta.auth) && !to.path.startsWith('/billing')) {
+    return { path: '/billing' }
+  }
   if (context === 'admin' && to.meta.perm && !auth.can(to.meta.perm)) {
     return to.name === 'dashboard' ? true : { name: 'dashboard' }
   }

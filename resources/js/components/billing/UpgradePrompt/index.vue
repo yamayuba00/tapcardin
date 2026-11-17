@@ -18,6 +18,7 @@ const props = defineProps({
 const auth = useAuthStore()
 const { data: billing } = useAsync(() => billingApi.get())
 const target = computed(() => billing.value?.plans.find((p) => p.key === props.plan))
+const semiannual = computed(() => target.value?.cycles?.[0] === 'semiannual')
 const rupiah = (n) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n ?? 0)
 const canBuy = computed(() => auth.can('billing.manage'))
 // pola QR dekoratif (bukan QR sungguhan) untuk ilustrasi terkunci
@@ -47,10 +48,15 @@ const cells = Array.from({ length: 81 }, (_, i) => ((i * 37 + (i % 7) * 11) % 5 
 
     <AppSkeleton v-if="!billing" class="!h-24" />
     <div v-else-if="target" class="grid gap-3 rounded-md bg-surface-2 p-4 text-center">
-      <p>
-        <span class="font-display text-[32px] font-bold">{{ rupiah(target.price_monthly) }}</span><span class="text-muted"> /bulan</span>
+      <p v-if="semiannual">
+        <span class="font-display text-[32px] font-bold">{{ rupiah(target.price_semiannual) }}</span><span class="text-muted"> /6 bulan</span>
       </p>
-      <p class="text-sm text-muted">atau {{ rupiah(target.price_yearly) }}/tahun — hemat {{ rupiah(target.yearly_saving) }}</p>
+      <template v-else>
+        <p>
+          <span class="font-display text-[32px] font-bold">{{ rupiah(target.price_monthly) }}</span><span class="text-muted"> /bulan</span>
+        </p>
+        <p class="text-sm text-muted">atau {{ rupiah(target.price_yearly) }}/tahun — hemat {{ rupiah(target.yearly_saving) }}</p>
+      </template>
       <ul class="grid gap-1 text-left text-sm">
         <li v-for="c in target.compare.filter((x) => x.value)" :key="c.label" class="flex justify-between gap-3 border-t border-line pt-1 first:border-t-0 first:pt-0">
           <span class="text-muted">{{ c.label }}</span><span class="font-medium">{{ c.value === true ? 'Termasuk' : c.value }}</span>
@@ -59,7 +65,7 @@ const cells = Array.from({ length: 81 }, (_, i) => ((i * 37 + (i % 7) * 11) % 5 
     </div>
 
     <div class="grid gap-2">
-      <AppButton v-if="canBuy" size="lg" block :to="{ path: '/billing', query: { plan, cycle: 'monthly' } }">Upgrade ke {{ target?.name ?? 'Pro' }} <ArrowRight class="size-5" /></AppButton>
+      <AppButton v-if="canBuy" size="lg" block :to="{ path: '/billing', query: { plan, cycle: semiannual ? 'semiannual' : 'monthly' } }">Upgrade ke {{ target?.name ?? 'Pro' }} <ArrowRight class="size-5" /></AppButton>
       <p v-else class="text-center text-sm text-muted">Minta pemilik workspace meng-upgrade paket.</p>
       <AppButton variant="ghost" block to="/billing">Bandingkan semua paket</AppButton>
     </div>

@@ -15,6 +15,7 @@ use Illuminate\Support\Str;
 /**
  * BSD `tapcard:subscriptions` (harian): invoice perpanjangan H-7, jatuh tempo → past_due + tenggang 14 hari,
  * dibatalkan / lewat tenggang → kembali ke paket gratis, invoice checkout yang ditinggal (lewat 24 jam) → void.
+ * Perusahaan: tidak turun paket, langganan `expired` (uji coba habis langsung expired, tanpa tenggang).
  */
 class Subscriptions extends Command
 {
@@ -26,7 +27,7 @@ class Subscriptions extends Command
 
     public function handle(): int
     {
-        $n = ['renewal' => 0, 'past_due' => 0, 'grace_ending' => 0, 'downgraded' => 0]; // invoice kedaluwarsa: tapcard:expire-invoices
+        $n = ['renewal' => 0, 'past_due' => 0, 'grace_ending' => 0, 'downgraded' => 0, 'expired' => 0]; // invoice kedaluwarsa: tapcard:expire-invoices
 
         // invoice perpanjangan 7 hari sebelum periode berakhir
         Subscription::acrossTenants()->with('plan')->where('status', 'active')->where('cancel_at_period_end', false)
@@ -36,7 +37,7 @@ class Subscriptions extends Command
                 if ($exists || $amount <= 0) {
                     return;
                 }
-                $label = "Perpanjangan {$s->plan->name} — ".($s->cycle === 'yearly' ? '1 tahun' : '1 bulan');
+                $label = "Perpanjangan {$s->plan->name} — ".PaymentService::CYCLE_LABELS[$s->cycle];
                 $inv = Invoice::create([
                     'tenant_id' => $s->tenant_id, 'number' => 'TMP-'.Str::random(16), 'type' => 'subscription', 'status' => 'issued',
                     'subscription_id' => $s->id, 'plan_id' => $s->plan_id, 'cycle' => $s->cycle,
@@ -52,7 +53,14 @@ class Subscriptions extends Command
             });
 
         // periode berakhir
-        Subscription::acrossTenants()->whereIn('status', ['active', 'trialing'])->where('current_period_end', '<', now())->each(function (Subscription $s) use (&$n) {
+        Subscription::acrossTenants()->with('plan')->whereIn('status', ['active', 'trialing'])->where('current_period_end', '<', now())->each(function (Subscription $s) use (&$n) {
+            $company = $s->plan?->tenant_type === 'company';
+            if ($company && ($s->cancel_at_period_end || $s->status === 'trialing')) {
+                $this->expire($s, $s->status === 'trialing' ? 'trial' : 'cancelled'); // uji coba habis: langsung terkunci, tanpa tenggang
+                $n['expired']++;
+
+                return;
+            }
             if ($s->cancel_at_period_end) {
                 $this->downgrade($s, 'cancelled');
                 $n['downgraded']++;
@@ -74,7 +82,13 @@ class Subscriptions extends Command
             });
 
         // lewat masa tenggang
-        Subscription::acrossTenants()->where('status', 'past_due')->where('grace_until', '<', now())->each(function (Subscription $s) use (&$n) {
+        Subscription::acrossTenants()->with('plan')->where('status', 'past_due')->where('grace_until', '<', now())->each(function (Subscription $s) use (&$n) {
+            if ($s->plan?->tenant_type === 'company') {
+                $this->expire($s, 'expired');
+                $n['expired']++;
+
+                return;
+            }
             $this->downgrade($s, 'expired');
             $n['downgraded']++;
         });
@@ -93,9 +107,22 @@ class Subscriptions extends Command
         }
         $inv = Invoice::acrossTenants()->where('subscription_id', $s->id)->whereIn('status', ['issued', 'overdue'])->latest('id')->first();
         Notify::user($owner, $s->tenant_id, $type, array_filter([
-            'plan' => $s->plan?->name, 'grace_until' => $s->grace_until?->toIso8601String(),
+            'plan' => $s->plan?->name, 'grace_until' => $s->grace_until?->toIso8601String(), 'company' => $s->plan?->tenant_type === 'company',
             'id' => $inv?->public_id, 'number' => $inv?->number,
         ]));
+    }
+
+    /** Perusahaan tidak turun ke paket gratis: langganan berakhir, dashboard terkunci (ResolveWorkspace), kartu tetap jalan. */
+    private function expire(Subscription $s, string $reason): void
+    {
+        $tenant = Tenant::find($s->tenant_id);
+        $s->update(['status' => 'expired', 'cancelled_at' => now()]);
+        Invoice::acrossTenants()->where('subscription_id', $s->id)->whereIn('status', ['issued', 'overdue'])->update(['status' => 'void']);
+        $tenant->update(['status' => 'active']);
+        PlanFeatures::forget($tenant);
+        if ($tenant->owner_user_id) {
+            Notify::user($tenant->owner_user_id, $tenant->id, 'workspace_expired', ['plan' => $s->plan?->name, 'reason' => $reason]);
+        }
     }
 
     private function downgrade(Subscription $s, string $status): void

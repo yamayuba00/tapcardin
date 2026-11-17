@@ -27,7 +27,8 @@ final class GrantPlan
             $sub = Subscription::acrossTenants()->where('tenant_id', $tenant->id)->lockForUpdate()->first();
             $extend = $sub && $sub->plan_id === $plan->id && $sub->current_period_end->isFuture() && $sub->status !== 'expired';
             $end = ($extend ? $sub->current_period_end : now())->copy()->addMonthsNoOverflow($months);
-            $attrs = ['plan_id' => $plan->id, 'cycle' => $sub->cycle ?? 'monthly', 'status' => 'active', 'current_period_start' => $extend ? $sub->current_period_start : now(),
+            $cycle = $plan->tenant_type === 'company' ? 'semiannual' : ($sub->cycle ?? 'monthly');
+            $attrs = ['plan_id' => $plan->id, 'cycle' => $cycle, 'status' => 'active', 'current_period_start' => $extend ? $sub->current_period_start : now(),
                 'current_period_end' => $end, 'grace_until' => null, 'cancel_at_period_end' => false, 'cancelled_at' => null];
             $sub ? $sub->update($attrs) : $sub = Subscription::create(['tenant_id' => $tenant->id] + $attrs);
             $inv = Invoice::create([

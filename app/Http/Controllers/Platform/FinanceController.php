@@ -10,6 +10,7 @@ use App\Models\PaymentEvent;
 use App\Models\Plan;
 use App\Models\Subscription;
 use App\Models\Tenant;
+use App\Services\Payment\PaymentService;
 use App\Support\Http\Table;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -33,7 +34,7 @@ class FinanceController extends PlatformController
     {
         $tz = 'Asia/Jakarta';
         $active = Subscription::acrossTenants()->with('plan')->whereIn('status', ['active', 'past_due'])->get();
-        $mrr = (int) round($active->sum(fn ($s) => $s->cycle === 'yearly' ? $s->plan->price_yearly / 12 : $s->plan->price_monthly));
+        $mrr = (int) round($active->sum(fn ($s) => PaymentService::monthly($s->plan, $s->cycle)));
         $paid = fn ($from, $to) => (int) Invoice::acrossTenants()->where('status', 'paid')->whereBetween('paid_at', [$from->copy()->utc(), $to->copy()->utc()])->sum('total');
         $series = Invoice::acrossTenants()->where('status', 'paid')->where('paid_at', '>=', now($tz)->subDays(29)->startOfDay()->utc())
             ->selectRaw('(paid_at at time zone ?)::date as d, sum(total) as v', [$tz])->groupBy('d')->pluck('v', 'd');
@@ -151,6 +152,9 @@ class FinanceController extends PlatformController
         $plan = Plan::where('key', $data['plan'])->firstOrFail();
         if ($plan->tenant_type !== $tenant->type->value) {
             throw new ApiError('plan_unavailable', 'Paket ini untuk tipe workspace lain.');
+        }
+        if ($plan->tenant_type === 'company' && $data['months'] % 6 !== 0) {
+            throw new ApiError('grant_semiannual', 'Paket perusahaan diberikan per 6 bulan (6, 12, 18, …).', 422);
         }
         $a = Approvals::submit('plan.grant', ['tenant' => $tenant->public_id, 'plan' => $plan->key, 'months' => (int) $data['months']],
             "Beri paket {$plan->name} {$data['months']} bulan ke {$tenant->name}", $data['reference'], $data['reason'], null, auth()->user());

@@ -39,14 +39,36 @@ class TenantController extends PlatformController
         $tenants = Tenant::with(['owner', 'plan'])
             ->when($q, fn ($w) => $w->where(fn ($x) => $x->where('name', 'ilike', "%$q%")->orWhere('slug', 'ilike', "%$q%")
                 ->orWhereHas('owner', fn ($o) => $o->where('email', 'ilike', "%$q%"))))
-            ->when($request->query('type'), fn ($w, $t) => $w->where('type', $t))
+            // tab Perusahaan mencakup semua workspace organisasi (company & partner)
+            ->when($request->query('type'), fn ($w, $t) => $t === 'company' ? $w->where('type', '!=', TenantType::Personal->value) : $w->where('type', $t))
             ->when($request->query('status'), fn ($w, $s) => $w->where('status', $s));
         $sorts = ['name' => 'name', 'type' => 'type', 'status' => 'status', 'created_at' => 'created_at'];
+        $page = Table::paginate($tenants, $request, $sorts, '-created_at');
 
-        return Table::json(Table::paginate($tenants, $request, $sorts, '-created_at'), fn (Tenant $t) => self::summary($t), $request);
+        // kartu aktif & langganan untuk satu halaman sekaligus (tanpa N+1)
+        $ids = $page->getCollection()->pluck('id');
+        $cards = Card::acrossTenants()->whereIn('tenant_id', $ids)->where('form', Card::PHYSICAL)->whereIn('status', ['active', 'paused'])
+            ->selectRaw('tenant_id, count(*) as n')->groupBy('tenant_id')->pluck('n', 'tenant_id');
+        $subs = Subscription::acrossTenants()->whereIn('tenant_id', $ids)->get()->keyBy('tenant_id');
+
+        return Table::json($page, fn (Tenant $t) => self::summary($t) + self::billing($t, (int) ($cards[$t->id] ?? 0), $subs[$t->id] ?? null), $request);
     }
 
-    /** POST /api/tenants — buat workspace perusahaan; alamat {slug}.domain aktif langsung (tanpa DNS). Owner = pengguna yang sudah terdaftar. */
+    /** Kartu aktif / maksimal & masa aktif (akhir periode langganan atau uji coba). */
+    public static function billing(Tenant $t, int $cardsActive, ?Subscription $sub): array
+    {
+        return [
+            'cards_active' => $cardsActive,
+            'cards_max' => PlanFeatures::limit($t, 'cards_active'),
+            'subscription_status' => $sub?->status,
+            'active_until' => self::dt($sub?->status === 'trialing' ? ($sub->trial_ends_at ?? $sub->current_period_end) : $sub?->current_period_end),
+        ];
+    }
+
+    /**
+     * POST /api/tenants — buat workspace perusahaan; alamat {slug}.domain aktif langsung (tanpa DNS), mulai uji coba
+     * paket (14 hari). Owner = pengguna yang sudah terdaftar.
+     */
     public function store(Request $request): JsonResponse
     {
         $this->can('tenants.manage');
@@ -65,16 +87,21 @@ class TenantController extends PlatformController
             throw new ApiError('owner_not_found', 'Owner belum terdaftar. Minta yang bersangkutan mendaftar dulu.', 422);
         }
 
-        $tenant = DB::transaction(function () use ($data, $owner) {
+        $plan = Plan::where('key', $data['plan'])->firstOrFail();
+        $tenant = DB::transaction(function () use ($data, $owner, $plan) {
             $tenant = Tenant::create([
                 'type' => TenantType::Company, 'name' => $data['name'], 'slug' => $data['slug'], 'owner_user_id' => $owner->id,
-                'status' => TenantStatus::Active, 'plan_id' => Plan::where('key', $data['plan'])->value('id'), 'settings' => Tenant::DEFAULT_SETTINGS,
+                'status' => TenantStatus::Active, 'plan_id' => $plan->id, 'settings' => Tenant::DEFAULT_SETTINGS,
             ]);
-            app(CurrentTenant::class)->run($tenant, function () use ($tenant, $owner) {
+            app(CurrentTenant::class)->run($tenant, function () use ($tenant, $owner, $plan) {
                 TenantMember::create(['tenant_id' => $tenant->id, 'user_id' => $owner->id, 'role_id' => Role::system('owner')->id, 'status' => 'active']);
                 foreach (LeadStage::DEFAULTS as $i => $stage) {
                     LeadStage::create([...$stage, 'sort' => $i]);
                 }
+                // uji coba gratis; setelah itu bayar per 6 bulan dari halaman Paket workspace
+                $end = now()->addDays($plan->trial_days ?: 14);
+                Subscription::create(['tenant_id' => $tenant->id, 'plan_id' => $plan->id, 'cycle' => 'semiannual', 'status' => 'trialing',
+                    'trial_ends_at' => $end, 'current_period_start' => now(), 'current_period_end' => $end]);
             });
 
             return $tenant;

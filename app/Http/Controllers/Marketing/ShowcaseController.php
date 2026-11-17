@@ -33,7 +33,7 @@ class ShowcaseController extends Controller
 
     public function __invoke(): JsonResponse
     {
-        $data = Cache::remember('showcase:v9', now()->addHour(), function () {
+        $data = Cache::remember('showcase:v10', now()->addHour(), function () {
             $qr = QrEncoder::encode(config('tapcard.resolver_url').'/c/XXXXXXXXXX?src=qr');
 
             return [
@@ -52,12 +52,12 @@ class ShowcaseController extends Controller
                         'cards' => $p->limits['cards_active'] ?? null, 'connections' => $p->limits['connections'] ?? null,
                         'analytics_days' => $p->limits['analytics_days'] ?? null,
                     ])->values()->all(),
-                // paket Tim & Perusahaan: harga per anggota / bulan, uji coba gratis
+                // paket perusahaan: harga tetap per 6 bulan, dibedakan batas kartu aktif, uji coba gratis
                 'company_plans' => Plan::where('is_public', true)->where('tenant_type', 'company')->orderBy('sort')->get()
                     ->map(fn (Plan $p) => [
-                        'key' => $p->key, 'name' => $p->name, 'price_monthly' => $p->price_monthly, 'per_seat' => (bool) $p->per_seat,
+                        'key' => $p->key, 'name' => $p->name, 'price_semiannual' => (int) $p->price_semiannual,
                         'trial_days' => $p->trial_days, 'members' => $p->limits['members'] ?? null,
-                        'cards_per_member' => $p->limits['cards_per_member'] ?? null, 'analytics_days' => $p->limits['analytics_days'] ?? null,
+                        'cards' => $p->limits['cards_active'] ?? null, 'analytics_days' => $p->limits['analytics_days'] ?? null,
                         'features' => array_keys(array_filter($p->features ?? [])),
                     ])->values()->all(),
                 // paket kartu digital (terpisah dari paket workspace)
