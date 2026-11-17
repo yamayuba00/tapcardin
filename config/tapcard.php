@@ -36,6 +36,9 @@ return [
 
     // Tap berulang dari pengunjung yang sama (IP + browser) ke kartu yang sama dalam N menit dihitung sekali —
     // refresh/spam tidak menggelembungkan statistik & tidak mengirim notifikasi berulang. 0 = hitung semua.
+    // editor merchandise (jaket, kaos, mug, ...) — false = tampil "Segera hadir", belum bisa dipakai
+    'merch_enabled' => (bool) env('MERCH_ENABLED', false),
+
     'tap_dedupe_minutes' => (int) env('TAP_DEDUPE_MINUTES', 30),
 
     // Alarm email ke pemilik platform (tapcard:alert, tiap 5 menit) saat pemeriksaan tapcard:health gagal.

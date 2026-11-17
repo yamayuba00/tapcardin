@@ -35,6 +35,8 @@ const router = useRouter()
 const toast = useToastStore()
 const id = route.params.id
 const ed = useDesignEditor(id)
+// merchandise belum dibuka (MERCH_ENABLED) — editor tidak bisa dipakai, kembali ke daftar desain
+watch(() => ed.catalog.value, (c) => c && !c.merch_enabled && router.replace('/designs?tab=merch'), { immediate: true })
 const { catalog, design, sides, side, active, selection, selected, issues, errors, saving, dirty, grid, snap, kit, vars } = ed
 async function saveAndLeave() {
   if (await ed.save()) ed.leaveGuard.leave()

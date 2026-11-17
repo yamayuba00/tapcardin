@@ -1,7 +1,7 @@
 <script setup>
 // U-12 — desain kartu, lanyard, & merchandise milik pengguna. Kartu baru dari kartu kosong / 8 template / template saya;
 // lanyard baru berdiri sendiri atau berpasangan dengan kartu (brand kit bersama, pratinjau gabungan);
-// merchandise (jaket, kaos, tote bag, mug, topi) sudah bisa didesain — pemesanan cetaknya segera hadir.
+// merchandise (jaket, kaos, tote bag, mug, topi) masih "Segera hadir" sampai MERCH_ENABLED=true di server.
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Link2, Pencil, Plus, ShoppingCart, Trash2 } from 'lucide-vue-next'
@@ -31,6 +31,9 @@ const picking = ref(false)
 const picker = ref(null)
 const tab = ref(['lanyard', 'merch'].includes(route.query.tab) ? route.query.tab : 'card')
 const choosingMerch = ref(false)
+// merchandise belum dibuka: tab tetap terlihat dengan keterangan "Segera hadir", tanpa tombol buat
+const merchOn = computed(() => !!catalog.value?.merch_enabled)
+const merchSoon = computed(() => tab.value === 'merch' && !merchOn.value)
 const list = computed(() => (designs.value ?? []).filter((d) => d.kind === tab.value))
 const counts = computed(() => Object.fromEntries(['card', 'lanyard', 'merch'].map((k) => [k, (designs.value ?? []).filter((d) => d.kind === k).length])))
 const merchGroups = computed(() => [
@@ -52,7 +55,7 @@ const EMPTY = {
 function startEmpty() {
   if (tab.value === 'card') picking.value = true
   else if (tab.value === 'lanyard') createLanyard()
-  else choosingMerch.value = true
+  else if (merchOn.value) choosingMerch.value = true
 }
 const vars = (d) => ({ ...(catalog.value?.variables ?? {}), ...kitVars(d.kit) })
 
@@ -81,17 +84,23 @@ const open = (d) => ({ lanyard: `/lanyards/${d.id}`, merch: `/merch/${d.id}` })[
 <template>
   <PageHeader eyebrow="Design Studio" title="Desain kartu, lanyard & merchandise">
     <!-- ponsel: satu tombol sesuai tab aktif; desktop: ketiganya -->
-    <AppButton class="sm:!hidden" :loading="busy" :disabled="!catalog" @click="startEmpty"><Plus class="size-5" /> {{ { card: 'Kartu', lanyard: 'Lanyard', merch: 'Merchandise' }[tab] }} baru</AppButton>
-    <AppButton variant="secondary" class="max-sm:!hidden" :disabled="!catalog" @click="choosingMerch = true"><Plus class="size-5" /> Merchandise baru</AppButton>
+    <AppButton v-if="!merchSoon" class="sm:!hidden" :loading="busy" :disabled="!catalog" @click="startEmpty"><Plus class="size-5" /> {{ { card: 'Kartu', lanyard: 'Lanyard', merch: 'Merchandise' }[tab] }} baru</AppButton>
+    <AppButton v-if="merchOn" variant="secondary" class="max-sm:!hidden" :disabled="!catalog" @click="choosingMerch = true"><Plus class="size-5" /> Merchandise baru</AppButton>
     <AppButton variant="secondary" class="max-sm:!hidden" :loading="busy && tab === 'lanyard'" :disabled="!catalog" @click="createLanyard"><Plus class="size-5" /> Lanyard baru</AppButton>
     <AppButton class="max-sm:!hidden" :disabled="!catalog" @click="picking = true"><Plus class="size-5" /> Kartu baru</AppButton>
   </PageHeader>
   <div class="flex flex-wrap items-center justify-between gap-3">
-    <AppSegmented v-model="tab" label="Jenis desain" :options="[{ value: 'card', label: `Kartu (${counts.card})` }, { value: 'lanyard', label: `Lanyard (${counts.lanyard})` }, { value: 'merch', label: `Merchandise (${counts.merch})` }]" />
-    <p class="text-sm text-muted">{{ TAB_TEXT[tab] }}</p>
+    <AppSegmented v-model="tab" label="Jenis desain" :options="[{ value: 'card', label: `Kartu (${counts.card})` }, { value: 'lanyard', label: `Lanyard (${counts.lanyard})` }, { value: 'merch', label: merchOn ? `Merchandise (${counts.merch})` : 'Merchandise · segera hadir' }]" />
+    <p v-if="!merchSoon" class="text-sm text-muted">{{ TAB_TEXT[tab] }}</p>
   </div>
 
-  <div v-if="!designs" class="grid gap-4 md:grid-cols-3"><AppSkeleton v-for="i in 3" :key="i" class="!h-56" /></div>
+  <div v-if="merchSoon" class="grid justify-items-center gap-3 rounded-md border border-dashed border-line-strong px-6 py-12 text-center">
+    <AppBadge tone="info">Segera hadir</AppBadge>
+    <h2 class="font-display text-xl font-bold">Desain merchandise segera hadir</h2>
+    <p class="max-w-md text-sm text-muted">Jaket, kaos, tote bag, mug, dan topi dengan brand kit Anda sedang kami siapkan. Untuk sekarang, desain kartu dan lanyard sudah bisa dipakai dan dipesan.</p>
+    <AppButton variant="secondary" @click="tab = 'card'">Desain kartu</AppButton>
+  </div>
+  <div v-else-if="!designs" class="grid gap-4 md:grid-cols-3"><AppSkeleton v-for="i in 3" :key="i" class="!h-56" /></div>
   <AppEmpty
     v-else-if="!list.length"
     :text="EMPTY[tab][0]"

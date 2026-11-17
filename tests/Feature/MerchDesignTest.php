@@ -16,6 +16,22 @@ class MerchDesignTest extends TestCase
 
     protected bool $seed = true;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        config(['tapcard.merch_enabled' => true]); // editor diuji dalam keadaan dibuka (MERCH_ENABLED=true)
+    }
+
+    public function test_merch_is_coming_soon_until_enabled(): void
+    {
+        config(['tapcard.merch_enabled' => false]);
+        $this->actingAs($this->makeUser());
+        $this->api('GET', '/studio/templates')->assertOk()->assertJsonPath('data.merch_enabled', false);
+        $product = MerchProduct::query()->value('key');
+        $this->api('POST', '/designs', ['kind' => 'merch', 'product' => $product])->assertForbidden()->assertJsonPath('error.code', 'coming_soon');
+        $this->assertSame(0, Design::withoutGlobalScope(TenantScope::class)->where('kind', 'merch')->count());
+    }
+
     private function api(string $method, string $path, array $data = [])
     {
         return $this->json($method, $this->host('app', "/api$path"), $data);

@@ -60,6 +60,7 @@ class DesignController extends WorkspaceController
             'kits' => $this->kits()->orderByDesc('is_workspace')->latest('updated_at')->get()->map(fn (BrandKit $k) => $k->toKit()),
             'lanyard' => LanyardPricing::catalog(),
             'merch' => MerchProduct::catalog(),
+            'merch_enabled' => (bool) config('tapcard.merch_enabled'),
             'limits' => ['min_text_pt' => DesignValidator::MIN_TEXT_PT, 'max_layers' => DesignNormalizer::MAX_LAYERS, 'safe' => CardGeometry::SAFE, 'bleed' => CardGeometry::BLEED],
         ]]);
     }
@@ -89,6 +90,9 @@ class DesignController extends WorkspaceController
         ]);
 
         if (($data['kind'] ?? 'card') === 'merch') {
+            if (! config('tapcard.merch_enabled')) {
+                throw new ApiError('coming_soon', 'Desain merchandise segera hadir.', 403);
+            }
             return response()->json(['data' => $this->present($this->loaded($this->createMerch($data['product'], $data['name'] ?? null)))], 201);
         }
         if (($data['kind'] ?? 'card') === 'lanyard') {
