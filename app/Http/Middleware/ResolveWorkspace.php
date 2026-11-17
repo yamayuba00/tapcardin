@@ -53,7 +53,7 @@ class ResolveWorkspace
             $tenant = $domainTenant;
             $isMember = TenantMember::withoutGlobalScope(TenantScope::class)
                 ->where(['tenant_id' => $tenant->id, 'user_id' => $user->id, 'status' => 'active'])->exists();
-            abort_unless($isMember, 403, 'Anda bukan anggota workspace ini.');
+            $isMember || self::notMember($tenant);
         } elseif ($slug === 'app') {
             $tenant = $user->personalTenant;
         } else {
@@ -63,7 +63,7 @@ class ResolveWorkspace
             }
             $isMember = TenantMember::withoutGlobalScope(TenantScope::class)
                 ->where(['tenant_id' => $tenant->id, 'user_id' => $user->id, 'status' => 'active'])->exists();
-            abort_unless($isMember, 403, 'Anda bukan anggota workspace ini.');
+            $isMember || self::notMember($tenant);
         }
 
         abort_if($tenant === null, 404);
@@ -81,6 +81,12 @@ class ResolveWorkspace
         }
 
         return $next($request);
+    }
+
+    /** Login berhasil tetapi belum jadi anggota → pesan jelas (SPA menampilkannya di halaman login). */
+    private static function notMember(Tenant $tenant): never
+    {
+        throw new ApiError('not_member', "Anda belum terdaftar sebagai anggota {$tenant->name}. Minta owner menambahkan email Anda.", 403);
     }
 
     /** Domain kustom aktif → tenant (cache 5 menit; dihapus saat domain diubah di panel). */

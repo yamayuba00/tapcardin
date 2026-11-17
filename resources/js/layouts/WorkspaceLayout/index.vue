@@ -6,7 +6,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import {
-  BellRing, Blocks, CalendarDays, ChartColumn, ChevronsUpDown, CreditCard, Gem, House, LayoutDashboard, LogOut, Moon, Package, Palette, Settings, User, Users,
+  BellRing, Blocks, Building2, CalendarDays, ChartColumn, ChevronsUpDown, CreditCard, Gem, House, LayoutDashboard, LogOut, Moon, Package, Palette, Settings, User, Users,
 } from 'lucide-vue-next'
 import BrandLogo from '@/components/common/BrandLogo/index.vue'
 import InstallApp from '@/components/common/InstallApp/index.vue'
@@ -24,6 +24,9 @@ const { toggle } = useTheme()
 
 const groups = computed(() => [
   { label: null, items: [{ key: 'dashboard', label: 'Beranda', icon: House, to: '/dashboard' }] },
+  // workspace perusahaan: kelola karyawan, kartu karyawan, rekap lead (owner/admin)
+  ...(auth.workspace && auth.workspace.type !== 'personal' && auth.can('members.invite')
+    ? [{ label: 'Perusahaan', items: [{ key: 'members', label: 'Karyawan', icon: Building2, to: '/members' }] }] : []),
   { label: 'Kartu', items: [
     { key: 'cards', label: 'Kartu saya', icon: CreditCard, to: '/cards' },
     { key: 'designs', label: 'Desain & merchandise', icon: Palette, to: '/designs' },

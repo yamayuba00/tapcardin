@@ -1,5 +1,6 @@
 <script setup>
 // Kerangka halaman masuk / daftar / lupa password di app.: merek, judul, isi formulir, tautan kaki.
+// Di subdomain / domain kustom perusahaan: logo & nama perusahaan menggantikan merek TapCard.
 import BrandLogo from '@/components/common/BrandLogo/index.vue'
 import { config } from '@/config'
 
@@ -10,7 +11,11 @@ const home = config.marketingUrl || '/'
 <template>
   <main class="grid min-h-dvh place-items-center px-4 py-8">
     <div class="grid w-full max-w-[420px] gap-6">
-      <a :href="home" class="justify-self-start no-underline" aria-label="TapCard"><BrandLogo /></a>
+      <div v-if="config.tenant" class="flex items-center gap-3">
+        <img v-if="config.tenant.logo" :src="config.tenant.logo" alt="" class="size-12 rounded-md object-contain" />
+        <span class="font-display text-xl font-bold">{{ config.tenant.name }}</span>
+      </div>
+      <a v-else :href="home" class="justify-self-start no-underline" aria-label="TapCard"><BrandLogo /></a>
       <div class="grid gap-2">
         <h1>{{ title }}</h1>
         <p v-if="subtitle" class="text-muted">{{ subtitle }}</p>

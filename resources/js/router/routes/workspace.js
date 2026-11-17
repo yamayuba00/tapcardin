@@ -47,6 +47,7 @@ export default [
       { path: 'billing/invoices/:id', name: 'billing-invoice', component: page('BillingInvoice'), meta: { title: 'Invoice', nav: 'billing' } },
       { path: 'billing/pay/:id', name: 'billing-pay', component: page('BillingPay'), meta: { title: 'Pembayaran', nav: 'billing', fullscreen: true } },
       { path: 'addons', name: 'addons', component: page('Addons'), meta: { title: 'Add-on', nav: 'addons' } },
+      { path: 'members', name: 'members', component: page('Members'), meta: { title: 'Karyawan', nav: 'members' } },
       { path: 'settings', name: 'settings', component: page('Settings'), meta: { title: 'Pengaturan', nav: 'settings' } },
     ],
   },

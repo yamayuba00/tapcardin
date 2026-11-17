@@ -6,7 +6,7 @@ import { adminApi } from '@/api/admin'
 
 /** Sesi pengguna (workspace) atau staf (admin). `me` = null berarti tamu. */
 export const useAuthStore = defineStore('auth', {
-  state: () => ({ me: null, loaded: false, confirmingLogout: false }),
+  state: () => ({ me: null, loaded: false, confirmingLogout: false, notMember: null }),
   getters: {
     isLoggedIn: (s) => !!s.me,
     permissions: (s) => new Set(s.me?.permissions ?? []),
@@ -19,8 +19,11 @@ export const useAuthStore = defineStore('auth', {
       try {
         const res = context === 'admin' ? await adminApi.me() : await meApi.get()
         this.me = res.data
-      } catch {
+        this.notMember = null
+      } catch (e) {
         this.me = null
+        // sudah login tetapi belum jadi anggota workspace perusahaan ini → pesan di halaman login
+        this.notMember = e?.code === 'not_member' ? e.message : null
       }
       this.loaded = true
       return this.me

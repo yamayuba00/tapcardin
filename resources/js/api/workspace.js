@@ -183,3 +183,17 @@ export const workspaceBrandApi = {
   },
   removeLogo: () => http.del('/api/workspace/brand/logo'),
 }
+
+/** Area perusahaan (subdomain / domain kustom): ringkasan, karyawan, kartu karyawan, rekap lead. */
+export const companyApi = {
+  summary: () => http.get('/api/company/summary'),
+  members: (params) => http.get('/api/company/members', params),
+  addMember: (email, role) => http.post('/api/company/members', { email, role }),
+  setRole: (user, role) => http.patch(`/api/company/members/${user}`, { role }),
+  deactivate: (user) => http.post(`/api/company/members/${user}/deactivate`),
+  reactivate: (user) => http.post(`/api/company/members/${user}/reactivate`),
+  cards: (params) => http.get('/api/company/cards', params),
+  assignCard: (token, user) => http.put(`/api/company/cards/${token}/assign`, { user }),
+  unassignCard: (token) => http.del(`/api/company/cards/${token}/assign`),
+  leads: () => http.get('/api/company/leads'),
+}

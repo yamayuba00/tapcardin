@@ -12,6 +12,8 @@ export const config = {
   /** halaman status publik (status.{base}) */
   statusUrl: '',
   googleEnabled: false,
+  /** @type {null | {name: string, logo: string|null}} subdomain / domain kustom perusahaan: merek halaman login */
+  tenant: null,
   /** @type {null | {code: string, password: string, accounts: {email: string, name: string, staff: boolean}[]}} hanya di APP_ENV=local */
   devLogin: null,
   /** Data awal yang disisipkan server untuk halaman sensitif kecepatan (mis. `card` di /c/{token}). */

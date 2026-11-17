@@ -11,6 +11,7 @@ use App\Http\Controllers\Workspace\BrandKitController;
 use App\Http\Controllers\Workspace\CardController;
 use App\Http\Controllers\Workspace\CardLoginKeyController;
 use App\Http\Controllers\Workspace\CartController;
+use App\Http\Controllers\Workspace\CompanyController;
 use App\Http\Controllers\Workspace\ConnectionController;
 use App\Http\Controllers\Workspace\DashboardController;
 use App\Http\Controllers\Workspace\DesignController;
@@ -41,6 +42,7 @@ Route::controller(AuthController::class)->prefix('api/auth')->group(function () 
 });
 Route::get('/auth/google/redirect', [GoogleController::class, 'redirect'])->name('google.redirect');
 Route::get('/auth/google/callback', [GoogleController::class, 'callback'])->name('google.callback');
+Route::get('/auth/handoff', [GoogleController::class, 'handoff'])->middleware('throttle:30,1')->name('google.handoff');
 
 Route::middleware('auth')->prefix('api')->name('api.')->group(function () {
     Route::get('/me', [MeController::class, 'show'])->name('me');
@@ -166,6 +168,20 @@ Route::middleware('auth')->prefix('api')->name('api.')->group(function () {
     Route::post('/billing/invoices/{invoice}/pay', [BillingController::class, 'pay'])->name('billing.pay');
     Route::post('/billing/invoices/{invoice}/check', [BillingController::class, 'check'])->middleware('throttle:30,1')->name('billing.check');
     Route::post('/billing/invoices/{invoice}/simulate', [BillingController::class, 'simulate'])->name('billing.simulate');
+
+    // Area perusahaan (subdomain / domain kustom) — owner & admin
+    Route::controller(CompanyController::class)->prefix('company')->name('company.')->group(function () {
+        Route::get('/summary', 'summary')->name('summary');
+        Route::get('/members', 'members')->name('members');
+        Route::post('/members', 'add')->middleware('throttle:30,1')->name('members.add');
+        Route::patch('/members/{user}', 'role')->name('members.role');
+        Route::post('/members/{user}/deactivate', 'deactivate')->name('members.deactivate');
+        Route::post('/members/{user}/reactivate', 'reactivate')->name('members.reactivate');
+        Route::get('/cards', 'cards')->name('cards');
+        Route::put('/cards/{token}/assign', 'assign')->name('cards.assign');
+        Route::delete('/cards/{token}/assign', 'unassign')->name('cards.unassign');
+        Route::get('/leads', 'leads')->name('leads');
+    });
 
     Route::get('/addons', [AddonController::class, 'index'])->name('addons');
     Route::post('/addons/{addon}/interest', [AddonController::class, 'interest'])->middleware('throttle:20,1')->name('addons.interest');

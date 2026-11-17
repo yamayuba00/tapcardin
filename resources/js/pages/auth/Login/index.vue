@@ -17,7 +17,7 @@ const router = useRouter()
 const auth = useAuthStore()
 const admin = context === 'admin'
 
-const GOOGLE_ERRORS = { google: 'Login Google dibatalkan atau gagal. Coba lagi.', google_unverified: 'Email Google Anda belum terverifikasi.' }
+const GOOGLE_ERRORS = { google: 'Login Google dibatalkan atau gagal. Coba lagi.', google_unverified: 'Email Google Anda belum terverifikasi.', handoff: 'Sesi login kedaluwarsa. Silakan masuk lagi.' }
 const error = ref(GOOGLE_ERRORS[route.query.error] ?? '')
 const busy = ref(false)
 const adminForm = ref(null)
@@ -54,15 +54,19 @@ async function quickLogin(account) {
 <template>
   <div v-if="admin" class="h-1 bg-info"></div>
   <AuthShell
-    :title="admin ? 'Masuk panel pemilik' : 'Masuk ke TapCard'"
-    :subtitle="admin ? 'Khusus staf aktif. Sesi berakhir setiap 12 jam.' : 'Kelola kartu, bio link, dan koneksi Anda.'"
+    :title="admin ? 'Masuk panel pemilik' : `Masuk ke ${config.tenant?.name ?? 'TapCard'}`"
+    :subtitle="admin ? 'Khusus staf aktif. Sesi berakhir setiap 12 jam.' : config.tenant ? 'Workspace perusahaan. Masuk dengan akun yang sudah ditambahkan owner.' : 'Kelola kartu, bio link, dan koneksi Anda.'"
   >
     <span v-if="admin" class="label -mt-4 !text-info">Panel pemilik</span>
 
     <AdminLoginForm v-if="admin" ref="adminForm" @success="done" />
 
     <div v-else class="grid gap-4">
-      <p v-if="error" class="rounded-md border border-line-strong bg-surface-2 px-3 py-2 text-sm text-danger" role="alert">{{ error }}</p>
+      <div v-if="auth.notMember" class="grid gap-3 rounded-md border border-line-strong bg-surface-2 px-3 py-3 text-sm" role="alert">
+        <p class="text-danger">{{ auth.notMember }}</p>
+        <AppButton variant="secondary" @click="auth.logout()">Masuk dengan akun lain</AppButton>
+      </div>
+      <p v-else-if="error" class="rounded-md border border-line-strong bg-surface-2 px-3 py-2 text-sm text-danger" role="alert">{{ error }}</p>
       <GoogleButton :redirect="redirect" label="Masuk dengan Google" />
       <AppButton variant="secondary" block :to="{ path: '/login/kartu', query: { redirect: route.query.redirect || undefined } }">
         <Nfc class="size-5" /> Masuk dengan kartu NFC

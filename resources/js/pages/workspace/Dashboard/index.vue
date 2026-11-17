@@ -9,6 +9,7 @@ import AppBadge from '@/components/ui/AppBadge/index.vue'
 import AppEmpty from '@/components/ui/AppEmpty/index.vue'
 import AppPanel from '@/components/ui/AppPanel/index.vue'
 import AppSkeleton from '@/components/ui/AppSkeleton/index.vue'
+import CompanySummary from '@/components/company/CompanySummary/index.vue'
 import KpiCard from '@/components/common/KpiCard/index.vue'
 import MiniChart from '@/components/common/MiniChart/index.vue'
 import PageHeader from '@/components/common/PageHeader/index.vue'
@@ -21,6 +22,8 @@ import { useNotificationStore } from '@/stores/notifications'
 
 const auth = useAuthStore()
 const notifications = useNotificationStore()
+// workspace perusahaan: owner/admin melihat ringkasan perusahaan di atas beranda pribadinya
+const companyAdmin = computed(() => auth.workspace && auth.workspace.type !== 'personal' && auth.can('analytics.view.all'))
 const { data, error, reload } = useAsync(() => dashboardApi.summary())
 const now = ref(new Date())
 const RECENT = 5 // aktivitas yang tampil sebelum "Tampilkan semua"
@@ -64,6 +67,8 @@ const empty = computed(() => data.value && data.value.kpi.taps_30 === 0 && data.
     <span class="min-w-0 flex-1"><b>Hubungkan akun Google Anda.</b> <span class="text-muted">Setelah terhubung, Anda bisa masuk dengan Google kapan saja — tanpa perlu kartu.</span></span>
     <AppButton variant="secondary" :href="`/auth/google/redirect?link=1&redirect=${encodeURIComponent('/settings')}`">Hubungkan Google</AppButton>
   </div>
+
+  <CompanySummary v-if="companyAdmin" />
 
   <div v-if="error" class="flex items-center gap-3 rounded-md border border-line-strong bg-surface-2 px-4 py-3 text-sm" role="alert">
     <CircleAlert class="size-5 text-danger" /><span class="flex-1">{{ error.message }}</span>

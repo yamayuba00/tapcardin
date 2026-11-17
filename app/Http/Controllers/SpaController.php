@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Auth\AuthController;
+use App\Support\HostTenant;
 use Database\Seeders\DummyAccountSeeder;
 use Illuminate\Http\Response;
 
@@ -51,6 +52,8 @@ class SpaController extends Controller
                 'marketingUrl' => "$scheme://$base$suffix",
                 'statusUrl' => "$scheme://status.$base$suffix",
                 'googleEnabled' => (bool) config('services.google.client_id'),
+                // subdomain / domain kustom perusahaan: nama & logo untuk halaman login bermerek
+                'tenant' => ! $panel && ($t = HostTenant::resolve($host)) ? HostTenant::brand($t) : null,
                 // Realtime (Reverb): alamat publik WebSocket untuk Echo; null → SSE/polling seperti sebelumnya
                 'realtime' => config('broadcasting.default') === 'reverb' && config('broadcasting.connections.reverb.key') ? [
                     'key' => config('broadcasting.connections.reverb.key'),
