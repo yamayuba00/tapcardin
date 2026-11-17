@@ -11,7 +11,7 @@
             padding: 0;
         }
         .error-container {
-            min-h: 100vh;
+            min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -20,6 +20,12 @@
         .error-content {
             text-align: center;
             max-width: 600px;
+            width: 100%;
+        }
+        .error-logo {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 1.5rem;
         }
         .error-code {
             font-size: 8rem;
@@ -79,6 +85,7 @@
 <body class="bg-bg text-fg">
     <div class="error-container">
         <div class="error-content">
+            <img src="/favicon.svg" alt="TapCard" class="error-logo">
             <h1 class="error-code">404</h1>
             <h2 class="error-title">Halaman Tidak Ditemukan</h2>
             <p class="error-message">Workspace yang Anda cari tidak ada atau belum tersedia. Periksa URL Anda atau kembali ke halaman utama.</p>

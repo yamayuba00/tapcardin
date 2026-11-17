@@ -11,7 +11,7 @@
             padding: 0;
         }
         .error-container {
-            min-h: 100vh;
+            min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -20,6 +20,12 @@
         .error-content {
             text-align: center;
             max-width: 600px;
+            width: 100%;
+        }
+        .error-logo {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 1.5rem;
         }
         .error-code {
             font-size: 8rem;
@@ -71,6 +77,7 @@
 <body class="bg-bg text-fg">
     <div class="error-container">
         <div class="error-content">
+            <img src="/favicon.svg" alt="TapCard" class="error-logo">
             <h1 class="error-code">503</h1>
             <h2 class="error-title">Layanan Sedang Tidak Tersedia</h2>
             <p class="error-message">Kami sedang melakukan pemeliharaan. Silakan coba lagi dalam beberapa saat.</p>
