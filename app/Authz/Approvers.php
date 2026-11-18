@@ -25,6 +25,7 @@ final class Approvers
     /** Tidak ada staf lain yang berwenang → staf ini satu-satunya yang bisa memutuskan. */
     public static function solo(string $permission, int $staffId): bool
     {
-        return self::staffIds($permission, $staffId) === [];
+        // dipanggil per baris di daftar refund/persetujuan → satu query per (izin, staf) per request
+        return once(fn () => self::staffIds($permission, $staffId) === []);
     }
 }

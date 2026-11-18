@@ -160,7 +160,7 @@ class MeController extends WorkspaceController
             'profiles' => $q(Profile::class)->where('user_id', $u->id)->with(['fields' => fn ($f) => $f->withoutGlobalScopes()])->get()
                 ->map(fn ($p) => Present::profile($p, true)),
             'cards' => $q(Card::class)->where('holder_user_id', $u->id)->get()->map(fn ($c) => Present::card($c)),
-            'connections' => $q(Connection::class)->with(['stage' => fn ($s) => $s->withoutGlobalScopes()])->get()->map(fn ($c) => Present::connection($c)),
+            'connections' => $q(Connection::class)->with(['stage' => fn ($s) => $s->withoutGlobalScopes(), 'assignee'])->get()->map(fn ($c) => Present::connection($c)),
             'taps' => $q(Tap::class)->where('holder_user_id', $u->id)->where('created_at', '>=', now()->subMonths(24))
                 ->orderBy('created_at')->get(['source', 'country', 'city', 'device', 'saved_contact', 'created_at']),
         ];

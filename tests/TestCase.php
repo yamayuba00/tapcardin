@@ -17,6 +17,7 @@ use App\Support\Crockford;
 use App\Tenancy\CurrentTenant;
 use App\Tenancy\TenantScope;
 use Illuminate\Contracts\Auth\Authenticatable;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Hash;
@@ -35,6 +36,8 @@ abstract class TestCase extends BaseTestCase
         if ($clock = getenv('TEST_CLOCK')) {
             $this->travelTo(Carbon::parse($clock));
         }
+        // relasi yang dimuat malas di dalam daftar (N+1) langsung menggagalkan tes
+        Model::preventLazyLoading();
     }
 
     protected function host(string $sub, string $path = '/'): string

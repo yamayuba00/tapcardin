@@ -5,6 +5,7 @@ namespace App\Http\Resources;
 use App\Actions\Cards\ShareQr;
 use App\Models\Card;
 use App\Models\Connection;
+use App\Models\ContactType;
 use App\Models\LeadActivity;
 use App\Models\LeadReminder;
 use App\Models\LeadStage;
@@ -87,7 +88,7 @@ final class Present
             'label' => $f->label,
             'value' => $f->value,
             'meta' => (object) ($f->meta ?? []),
-            'image_url' => ($f->contactType?->input ?? null) === 'image' ? Storage::disk('public')->url($f->value) : null,
+            'image_url' => ($f->relationLoaded('contactType') ? $f->contactType?->input : ContactType::inputOf($f->type)) === 'image' ? Storage::disk('public')->url($f->value) : null,
             'is_primary' => $f->is_primary,
             'is_visible' => $f->is_visible,
             'in_vcard' => $f->in_vcard,

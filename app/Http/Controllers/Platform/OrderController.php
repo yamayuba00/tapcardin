@@ -91,6 +91,8 @@ class OrderController extends PlatformController
         if ($o->review_status === 'rejected') {
             throw new ApiError('review_rejected', 'Pesanan ini ditolak saat tinjauan dan tidak bisa diproduksi.', 409);
         }
+        $o->loadMissing('items.cardProduct');
+        $o->items->each->setRelation('order', $o);
         DB::transaction(function () use ($o, $create) {
             foreach ($o->items->where('kind', 'card') as $item) {
                 if (! Batch::where('order_item_id', $item->id)->exists()) {

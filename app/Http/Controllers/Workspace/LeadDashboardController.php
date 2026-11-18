@@ -154,9 +154,9 @@ class LeadDashboardController extends WorkspaceController
             'top_tags' => ['bars' => DB::query()->fromSub($period()->selectRaw('unnest(tags) as tag'), 't')
                 ->selectRaw('tag as label, count(*) as value')->groupBy('tag')->orderByDesc('value')->limit(8)->get()
                 ->map(fn ($r) => ['label' => $r->label, 'value' => (int) $r->value])->all()],
-            'overdue_list' => ['rows' => $this->leads()->with('stage')->whereNull('closed_at')->where('next_followup_at', '<', now())
+            'overdue_list' => ['rows' => $this->leads()->with(['stage', 'assignee'])->whereNull('closed_at')->where('next_followup_at', '<', now())
                 ->orderBy('next_followup_at')->limit(8)->get()->map(fn ($c) => Present::connection($c))->all()],
-            'recent_list' => ['rows' => $this->leads()->with('stage')->latest('connections.created_at')->limit(8)->get()
+            'recent_list' => ['rows' => $this->leads()->with(['stage', 'assignee'])->latest('connections.created_at')->limit(8)->get()
                 ->map(fn ($c) => Present::connection($c))->all()],
         };
     }

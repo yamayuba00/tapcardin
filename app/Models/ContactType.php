@@ -23,6 +23,12 @@ class ContactType extends Model
         return $this->belongsTo(ContactTypeGroup::class, 'group_id');
     }
 
+    /** Jenis input per key (satu query per request, dipakai berulang saat menyajikan banyak field). */
+    public static function inputOf(string $key): ?string
+    {
+        return once(fn () => static::pluck('input', 'key')->all())[$key] ?? null;
+    }
+
     public function fields(): HasMany
     {
         return $this->hasMany(ProfileField::class, 'type', 'key');
