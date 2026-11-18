@@ -61,7 +61,7 @@ class TenantController extends PlatformController
             'cards_active' => $cardsActive,
             'cards_max' => PlanFeatures::limit($t, 'cards_active'),
             'subscription_status' => $sub?->status,
-            'active_until' => self::dt($sub?->status === 'trialing' ? ($sub->trial_ends_at ?? $sub->current_period_end) : $sub?->current_period_end),
+            'active_until' => $sub?->activePeriod()['end'],
         ];
     }
 
@@ -190,6 +190,7 @@ class TenantController extends PlatformController
                 ->get(['id', 'key', 'name'])->map(fn ($p) => ['id' => $p->id, 'key' => $p->key, 'name' => $p->name]),
             'features' => PlanFeatures::effective($tenant)['features'] ?? [],
             'subscription' => ($s = Subscription::acrossTenants()->with('plan')->where('tenant_id', $tenant->id)->first()) ? FinanceController::subscriptionRow($s) : null,
+            'active_period' => $s?->activePeriod(),
             'invoices' => Invoice::acrossTenants()->with('plan')->where('tenant_id', $tenant->id)->latest('id')->limit(5)->get()
                 ->map(fn (Invoice $i) => FinanceController::invoiceRow($i)),
             'domains' => TenantDomain::with('tenant')->where('tenant_id', $tenant->id)->orderBy('domain')->get()

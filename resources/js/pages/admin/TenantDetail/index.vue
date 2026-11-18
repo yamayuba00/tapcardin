@@ -5,6 +5,7 @@ import { reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { Copy, Gift } from 'lucide-vue-next'
 import AppBadge from '@/components/ui/AppBadge/index.vue'
+import ActivePeriod from '@/components/billing/ActivePeriod/index.vue'
 import AppButton from '@/components/ui/AppButton/index.vue'
 import AppField from '@/components/ui/AppField/index.vue'
 import AppInput from '@/components/ui/AppInput/index.vue'
@@ -156,6 +157,11 @@ async function doGrant() {
     <div class="grid gap-4 md:grid-cols-2">
       <AppPanel title="Langganan">
         <template v-if="auth.can('finance.invoices')" #actions><AppButton variant="ghost" @click="openGrant"><Gift class="size-4" /> Ajukan beri paket</AppButton></template>
+        <section v-if="t.type !== 'personal'" class="mb-4 grid gap-2 rounded-md border border-line bg-surface-2 p-4">
+          <h3 class="label">Masa aktif subdomain</h3>
+          <ActivePeriod :period="t.active_period" />
+          <p v-if="t.active_period" class="text-xs text-muted">Pengingat otomatis H-30, H-7, dan H-1 ke owner &amp; peran Billing (aplikasi + email).</p>
+        </section>
         <dl v-if="t.subscription" class="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-2 text-sm">
           <dt class="text-muted">Paket</dt><dd>{{ t.subscription.plan }} · {{ cycleLabel(t.subscription.cycle) }}</dd>
           <dt class="text-muted">Status</dt>

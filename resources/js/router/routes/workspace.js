@@ -48,6 +48,7 @@ export default [
       { path: 'billing/pay/:id', name: 'billing-pay', component: page('BillingPay'), meta: { title: 'Pembayaran', nav: 'billing', fullscreen: true } },
       { path: 'addons', name: 'addons', component: page('Addons'), meta: { title: 'Add-on', nav: 'addons' } },
       { path: 'members', name: 'members', component: page('Members'), meta: { title: 'Karyawan', nav: 'members' } },
+      { path: 'webhooks', name: 'webhooks', component: page('Webhooks'), meta: { title: 'Webhook', nav: 'webhooks' } },
       { path: 'settings', name: 'settings', component: page('Settings'), meta: { title: 'Pengaturan', nav: 'settings' } },
     ],
   },

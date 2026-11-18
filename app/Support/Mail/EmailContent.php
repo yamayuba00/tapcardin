@@ -16,7 +16,7 @@ final class EmailContent
      */
     public const DEFAULT_ON = [
         'invoice_due' => true, 'invoice_paid' => true, 'plan_changed' => true, 'workspace_expired' => true, 'subscription_past_due' => true,
-        'grace_ending' => true, 'order_status' => true, 'order_unpaid' => true, 'tap_quota' => true, 'lost_card_tapped' => true,
+        'grace_ending' => true, 'subscription_reminder' => true, 'trial_ending' => true, 'order_status' => true, 'order_unpaid' => true, 'tap_quota' => true, 'lost_card_tapped' => true,
     ];
 
     /** Selalu dikirim, tidak bisa dimatikan (tidak tampil di daftar preferensi). */
@@ -107,6 +107,27 @@ final class EmailContent
                     "Workspace Anda sekarang memakai paket **{$d['plan']}**. Data tetap aman; fitur di luar paket ini terkunci sampai Anda berlangganan lagi.",
                 ])),
                 'action' => ['label' => 'Lihat pilihan paket', 'path' => '/billing'],
+                'tone' => 'warn',
+            ],
+            'subscription_reminder' => [
+                'subject' => 'Masa aktif '.($d['workspace'] ?? 'workspace').' berakhir '.$date($d['end'] ?? null),
+                'title' => ($d['days'] ?? 0) <= 1 ? 'Masa aktif berakhir besok' : "Masa aktif berakhir {$d['days']} hari lagi",
+                'lines' => array_values(array_filter([
+                    'Masa aktif paket **'.($d['plan'] ?? '-').'** untuk **'.($d['workspace'] ?? 'workspace Anda').'** berakhir pada **'.$date($d['end'] ?? null).'**.',
+                    isset($d['number']) ? "Tagihan perpanjangan **{$d['number']}** sudah terbit." : null,
+                    'Perpanjang sebelum tanggal itu agar dashboard dan subdomain tidak terkunci. Kartu karyawan tetap bisa di-tap.',
+                ])),
+                'action' => isset($d['id']) ? ['label' => 'Bayar tagihan', 'path' => '/billing/invoices/'.$d['id']] : ['label' => 'Perpanjang sekarang', 'path' => '/billing'],
+                'tone' => ($d['days'] ?? 0) <= 1 ? 'danger' : (($d['days'] ?? 0) <= 7 ? 'warn' : 'default'),
+            ],
+            'trial_ending' => [
+                'subject' => 'Uji coba '.($d['workspace'] ?? 'workspace').' berakhir besok',
+                'title' => 'Uji coba berakhir besok',
+                'lines' => [
+                    'Masa uji coba paket **'.($d['plan'] ?? '-').'** untuk **'.($d['workspace'] ?? 'workspace Anda').'** berakhir pada **'.$date($d['end'] ?? null).'**.',
+                    'Pilih paket dan bayar per 6 bulan agar dashboard dan subdomain tetap terbuka. Kartu karyawan tetap bisa di-tap.',
+                ],
+                'action' => ['label' => 'Pilih paket', 'path' => '/billing'],
                 'tone' => 'warn',
             ],
             'workspace_expired' => [

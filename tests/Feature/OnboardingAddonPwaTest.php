@@ -12,7 +12,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
-/** Onboarding pengguna baru, add-on "segera hadir" (Integrasi CRM), dan PWA. */
+/** Onboarding pengguna baru, add-on "segera hadir" (integrasi CRM per alat), dan PWA. */
 class OnboardingAddonPwaTest extends TestCase
 {
     use RefreshDatabase;
@@ -64,33 +64,38 @@ class OnboardingAddonPwaTest extends TestCase
     {
         $rina = $this->makeUser();
         $this->actingAs($rina);
-        $a = $this->api('GET', '/addons')->assertOk()->json('data.0');
-        $this->assertSame(['crm', 'coming_soon', null], [$a['key'], $a['status'], $a['interested_at']]);
+        $list = collect($this->api('GET', '/addons')->assertOk()->json('data'));
+        // CRM dipecah per alat, semuanya segera hadir; add-on lama dipensiunkan; webhook tidak ada di halaman Add-on
+        $this->assertSame(['whatsapp', 'telegram', 'hubspot', 'google_sheets', 'zoho', 'salesforce', 'crm_other'], $list->pluck('key')->all());
+        $this->assertSame(['coming_soon'], $list->pluck('status')->unique()->values()->all());
+        $this->assertSame(['crm'], $list->pluck('group')->unique()->values()->all());
 
-        $this->api('POST', '/addons/crm/interest', ['note' => 'HubSpot'])->assertOk()->assertJsonPath('data.interested_at', fn ($v) => $v !== null);
-        $this->api('POST', '/addons/crm/interest')->assertOk(); // idempoten
-        $this->assertDatabaseCount('addon_interests', 1);
-        $this->assertDatabaseHas('addon_interests', ['tenant_id' => $rina->personal_tenant_id, 'note' => 'HubSpot']);
+        $this->api('POST', '/addons/crm_other/interest', ['note' => 'Pipedrive'])->assertOk()->assertJsonPath('data.interested_at', fn ($v) => $v !== null);
+        $this->api('POST', '/addons/crm_other/interest')->assertOk(); // idempoten
+        $this->api('POST', '/addons/telegram/interest')->assertOk(); // minat terpisah per alat
+        $this->assertDatabaseCount('addon_interests', 2);
+        $this->assertDatabaseHas('addon_interests', ['tenant_id' => $rina->personal_tenant_id, 'note' => 'Pipedrive']);
+        $this->api('POST', '/addons/crm/interest')->assertJsonPath('error.code', 'addon_not_coming_soon');
 
         $this->expectException(QueryException::class);
-        Addon::where('key', 'crm')->update(['status' => 'beta']); // CHECK constraint
+        Addon::where('key', 'hubspot')->update(['status' => 'beta']); // CHECK constraint
     }
 
     public function test_panel_manages_addon_and_sees_interest_count(): void
     {
         $rina = $this->makeUser();
-        $this->actingAs($rina)->api('POST', '/addons/crm/interest');
+        $this->actingAs($rina)->api('POST', '/addons/hubspot/interest');
 
         $owner = $this->makeStaff('platform_owner', 'pemilik-addon@tapcard.test', 'Owner');
         $this->actingAs($owner);
-        $addon = collect($this->getJson($this->host('panel', '/api/catalog'))->assertOk()->json('data.addons'))->firstWhere('key', 'crm');
+        $addon = collect($this->getJson($this->host('panel', '/api/catalog'))->assertOk()->json('data.addons'))->firstWhere('key', 'hubspot');
         $this->assertSame(1, $addon['interests']);
 
         $this->patchJson($this->host('panel', "/api/catalog/addons/{$addon['public_id']}"), ['price_monthly' => 39000, 'status' => 'available'])->assertOk();
-        $this->assertDatabaseHas('addons', ['key' => 'crm', 'price_monthly' => 39000, 'status' => 'available']);
+        $this->assertDatabaseHas('addons', ['key' => 'hubspot', 'price_monthly' => 39000, 'status' => 'available']);
 
         $this->actingAs($rina);
-        $this->api('POST', '/addons/crm/interest')->assertJsonPath('error.code', 'addon_not_coming_soon');
+        $this->api('POST', '/addons/hubspot/interest')->assertJsonPath('error.code', 'addon_not_coming_soon');
     }
 
     public function test_pwa_manifest_on_app_and_panel_hosts_and_assets_exist(): void

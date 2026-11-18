@@ -11,7 +11,7 @@ export const meApi = {
 }
 
 export const addonsApi = {
-  list: () => http.get('/api/addons'),
+  list: (group = null) => http.get('/api/addons', group ? { group } : undefined),
   interest: (key, note = null) => http.post(`/api/addons/${key}/interest`, { note }),
   withdraw: (key) => http.del(`/api/addons/${key}/interest`),
 }

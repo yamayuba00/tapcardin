@@ -46,10 +46,7 @@ class CompanyController extends WorkspaceController
             'cards_max' => PlanFeatures::limit($t, 'cards_active'),
             'cards_pool' => Card::where('form', Card::PHYSICAL)->where('status', CardStatus::Unclaimed->value)->whereNull('assigned_user_id')->count(),
             'members' => TenantMember::where('status', MemberStatus::Active->value)->count(),
-            'subscription' => $sub ? [
-                'status' => $sub->status,
-                'active_until' => ($sub->status === 'trialing' ? ($sub->trial_ends_at ?? $sub->current_period_end) : $sub->current_period_end)?->toIso8601String(),
-            ] : null,
+            'subscription' => $sub ? ['active_until' => $sub->activePeriod()['end']] + $sub->activePeriod() : null,
             'plan' => $t->plan?->name,
             'taps_30' => Tap::where('created_at', '>=', $since)->count(),
             'leads_30' => Connection::where('created_at', '>=', $since)->count(),

@@ -1,9 +1,9 @@
 <script setup>
-// Add-on — menu sendiri, terpisah dari Paket & tagihan. Fitur berbayar di luar paket (mis. Integrasi CRM).
+// Add-on — menu sendiri, terpisah dari Paket & tagihan. Fitur berbayar di luar paket: integrasi CRM & pesan per alat.
 // Status "Segera hadir": workspace mendaftar minat dan dikabari saat add-on bisa dibeli. Satu pendaftaran per
 // workspace; bisa dibatalkan.
-import { reactive, ref } from 'vue'
-import { BellRing, Check } from 'lucide-vue-next'
+import { computed, reactive, ref } from 'vue'
+import { BellRing, Blocks, Check, Cloud, Database, MessageCircle, Orbit, Plus, Send, Sheet } from 'lucide-vue-next'
 import AppBadge from '@/components/ui/AppBadge/index.vue'
 import AppButton from '@/components/ui/AppButton/index.vue'
 import AppField from '@/components/ui/AppField/index.vue'
@@ -19,6 +19,11 @@ const { data: addons } = useAsync(() => addonsApi.list())
 const { busy, run } = useAction()
 const asking = ref(null) // add-on yang sedang didaftarkan
 const form = reactive({ note: '' })
+const ICONS = { whatsapp: MessageCircle, telegram: Send, hubspot: Orbit, google_sheets: Sheet, zoho: Database, salesforce: Cloud, crm_other: Plus }
+const sections = computed(() => [
+  { key: 'crm', title: 'Integrasi CRM & pesan', hint: 'Kirim koneksi & lead otomatis ke alat yang sudah tim Anda pakai.', items: (addons.value ?? []).filter((a) => a.group === 'crm') },
+  { key: 'addon', title: 'Add-on lain', hint: null, items: (addons.value ?? []).filter((a) => a.group !== 'crm') },
+].filter((s) => s.items.length))
 
 function replace(a) {
   addons.value = addons.value.map((x) => (x.key === a.key ? a : x))
@@ -40,32 +45,45 @@ async function withdraw(a) {
 
   <AppSkeleton v-if="!addons" class="!h-48" />
   <p v-else-if="!addons.length" class="rounded-md border border-line bg-surface p-5 text-muted">Belum ada add-on yang ditawarkan.</p>
-  <div v-else class="grid gap-4 md:grid-cols-2">
-    <article v-for="a in addons" :key="a.key" class="grid content-start gap-4 rounded-md border border-line bg-surface p-5">
-      <div class="flex items-start justify-between gap-3">
-        <div class="grid gap-1">
-          <h2 class="font-display text-xl font-bold">{{ a.name }}</h2>
-          <span v-if="a.price_monthly" class="text-sm text-muted">Perkiraan {{ rupiah(a.price_monthly) }} / bulan per workspace</span>
+  <template v-else>
+  <section v-for="sec in sections" :key="sec.key" class="grid gap-3">
+    <div class="grid gap-1">
+      <h2 class="font-display text-xl font-bold">{{ sec.title }}</h2>
+      <p v-if="sec.hint" class="text-sm text-muted">{{ sec.hint }}</p>
+    </div>
+    <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <article v-for="a in sec.items" :key="a.key" class="grid content-start gap-4 rounded-md border border-line bg-surface p-5">
+        <div class="flex items-start justify-between gap-3">
+          <div class="flex items-center gap-3">
+            <span class="grid size-10 flex-none place-items-center rounded-md bg-surface-2 text-accent-text"><component :is="ICONS[a.key] ?? Blocks" class="size-5" /></span>
+            <div class="grid gap-0.5">
+              <h3 class="font-semibold">{{ a.name }}</h3>
+              <span v-if="a.price_monthly" class="text-sm text-muted">Perkiraan {{ rupiah(a.price_monthly) }} / bulan per workspace</span>
+            </div>
+          </div>
+          <AppBadge :tone="a.status === 'coming_soon' ? 'info' : 'ok'">{{ a.status === 'coming_soon' ? 'Segera hadir' : 'Tersedia' }}</AppBadge>
         </div>
-        <AppBadge :tone="a.status === 'coming_soon' ? 'info' : 'ok'">{{ a.status === 'coming_soon' ? 'Segera hadir' : 'Tersedia' }}</AppBadge>
-      </div>
-      <p class="text-muted">{{ a.description }}</p>
-      <ul class="grid gap-2 text-sm">
-        <li v-for="f in a.features" :key="f" class="flex gap-2"><Check class="size-4 flex-none translate-y-0.5 text-ok" /> {{ f }}</li>
-      </ul>
-      <div v-if="a.status === 'coming_soon'" class="flex flex-wrap items-center gap-3 border-t border-line pt-4">
-        <template v-if="a.interested_at">
-          <span class="flex items-center gap-2 text-sm text-ok"><BellRing class="size-4" /> Anda akan dikabari saat tersedia</span>
-          <AppButton variant="ghost" :loading="busy" @click="withdraw(a)">Batalkan</AppButton>
-        </template>
-        <AppButton v-else @click="asking = a"><BellRing class="size-5" /> Beri tahu saya</AppButton>
-      </div>
-    </article>
-  </div>
+        <p class="text-sm text-muted">{{ a.description }}</p>
+        <ul class="grid gap-2 text-sm">
+          <li v-for="f in a.features" :key="f" class="flex gap-2"><Check class="size-4 flex-none translate-y-0.5 text-ok" /> {{ f }}</li>
+        </ul>
+        <div v-if="a.status === 'coming_soon'" class="flex flex-wrap items-center gap-3 border-t border-line pt-4">
+          <template v-if="a.interested_at">
+            <span class="flex items-center gap-2 text-sm text-ok"><BellRing class="size-4" /> Anda akan dikabari saat tersedia</span>
+            <AppButton variant="ghost" :loading="busy" @click="withdraw(a)">Batalkan</AppButton>
+          </template>
+          <AppButton v-else variant="secondary" @click="asking = a"><BellRing class="size-5" /> Beri tahu saya</AppButton>
+        </div>
+      </article>
+    </div>
+  </section>
+  </template>
 
   <AppModal v-if="asking" size="sm" :title="`Kabari saya: ${asking.name}`" description="Kami kirim notifikasi & email ke workspace ini begitu add-on bisa dibeli. Belum ada tagihan apa pun." @close="asking = null">
     <form id="addon-interest" @submit.prevent="register">
-      <AppField label="CRM / alat yang Anda pakai (opsional)" hint="mis. HubSpot, Google Sheets, Zoho"><AppInput v-model="form.note" maxlength="200" /></AppField>
+      <AppField :label="asking.key === 'crm_other' ? 'Alat yang Anda pakai' : 'Catatan (opsional)'" :hint="asking.key === 'crm_other' ? 'mis. Pipedrive, Odoo, Qontak' : 'mis. jumlah tim sales, kebutuhan khusus'">
+        <AppInput v-model="form.note" maxlength="200" :required="asking.key === 'crm_other'" />
+      </AppField>
     </form>
     <template #footer>
       <AppButton variant="secondary" @click="asking = null">Batal</AppButton>

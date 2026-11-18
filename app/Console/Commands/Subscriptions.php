@@ -5,15 +5,18 @@ namespace App\Console\Commands;
 use App\Authz\PlanFeatures;
 use App\Models\Invoice;
 use App\Models\Plan;
+use App\Models\RolePermission;
 use App\Models\Subscription;
 use App\Models\Tenant;
+use App\Models\TenantMember;
 use App\Services\Payment\PaymentService;
 use App\Support\Notify;
 use Illuminate\Console\Command;
 use Illuminate\Support\Str;
 
 /**
- * BSD `tapcard:subscriptions` (harian): invoice perpanjangan H-7, jatuh tempo → past_due + tenggang 14 hari,
+ * BSD `tapcard:subscriptions` (harian): pengingat perusahaan H-30 / H-1 (uji coba: H-1), invoice perpanjangan H-7,
+ * jatuh tempo → past_due + tenggang 14 hari,
  * dibatalkan / lewat tenggang → kembali ke paket gratis, invoice checkout yang ditinggal (lewat 24 jam) → void.
  * Perusahaan: tidak turun paket, langganan `expired` (uji coba habis langsung expired, tanpa tenggang).
  */
@@ -27,14 +30,40 @@ class Subscriptions extends Command
 
     public function handle(): int
     {
-        $n = ['renewal' => 0, 'past_due' => 0, 'grace_ending' => 0, 'downgraded' => 0, 'expired' => 0]; // invoice kedaluwarsa: tapcard:expire-invoices
+        $n = ['renewal' => 0, 'reminders' => 0, 'past_due' => 0, 'grace_ending' => 0, 'downgraded' => 0, 'expired' => 0]; // invoice kedaluwarsa: tapcard:expire-invoices
+
+        // pengingat masa aktif perusahaan: H-30 & H-1 (H-7 = invoice perpanjangan di bawah); uji coba: H-1 saja
+        Subscription::acrossTenants()->with('plan')->whereIn('status', ['active', 'trialing'])->where('cancel_at_period_end', false)
+            ->whereBetween('current_period_end', [now(), now()->addDays(30)])->each(function (Subscription $s) use (&$n) {
+                if ($s->plan?->tenant_type !== 'company') {
+                    return;
+                }
+                $daysLeft = now()->diffInSeconds($s->current_period_end) / 86400;
+                $stage = match (true) {
+                    $s->status === 'trialing' => $daysLeft <= 1 ? 'trial' : null,
+                    $daysLeft <= 1 => 'h1',
+                    $daysLeft > 7 => 'h30',
+                    default => null,
+                };
+                if ($stage && ! $s->reminded($stage)) {
+                    $this->remind($s, $stage);
+                    $n['reminders']++;
+                }
+            });
 
         // invoice perpanjangan 7 hari sebelum periode berakhir
         Subscription::acrossTenants()->with('plan')->where('status', 'active')->where('cancel_at_period_end', false)
             ->whereBetween('current_period_end', [now(), now()->addDays(7)])->each(function (Subscription $s) use (&$n) {
                 $exists = Invoice::acrossTenants()->where('subscription_id', $s->id)->whereIn('status', ['issued', 'overdue'])->exists();
                 $amount = PaymentService::price($s->plan, $s->cycle);
+                $company = $s->plan?->tenant_type === 'company';
                 if ($exists || $amount <= 0) {
+                    // perusahaan tetap diingatkan H-7 walau invoice sudah dibuat sendiri / paket tanpa harga
+                    if ($company && ! $s->reminded('h7')) {
+                        $this->remind($s, 'h7');
+                        $n['reminders']++;
+                    }
+
                     return;
                 }
                 $label = "Perpanjangan {$s->plan->name} — ".PaymentService::CYCLE_LABELS[$s->cycle];
@@ -45,9 +74,14 @@ class Subscriptions extends Command
                     'subtotal' => $amount, 'total' => $amount, 'issued_at' => now(), 'due_at' => $s->current_period_end,
                 ]);
                 $inv->update(['number' => sprintf('INV/%s/%06d', now('Asia/Jakarta')->format('Y/m'), $inv->id)]);
-                $owner = Tenant::find($s->tenant_id)?->owner_user_id;
-                if ($owner) {
-                    Notify::user($owner, $s->tenant_id, 'invoice_due', ['id' => $inv->public_id, 'number' => $inv->number, 'due' => $inv->due_at->toIso8601String(), 'total' => $amount]);
+                $data = ['id' => $inv->public_id, 'number' => $inv->number, 'due' => $inv->due_at->toIso8601String(), 'total' => $amount];
+                // perusahaan: owner + peran tagihan, ditandai h7 agar tidak dobel; personal: pemilik saja seperti sebelumnya
+                $recipients = $company ? self::billingRecipients($s->tenant_id) : array_filter([Tenant::find($s->tenant_id)?->owner_user_id]);
+                foreach ($recipients as $uid) {
+                    Notify::user($uid, $s->tenant_id, 'invoice_due', $data);
+                }
+                if ($company) {
+                    $s->markReminded('h7');
                 }
                 $n['renewal']++;
             });
@@ -96,6 +130,31 @@ class Subscriptions extends Command
         $this->info(json_encode($n));
 
         return self::SUCCESS;
+    }
+
+    /** Pengingat masa aktif perusahaan (h30 / h7 / h1 / trial) ke owner + peran tagihan, lalu tandai agar tidak terkirim ulang. */
+    private function remind(Subscription $s, string $stage): void
+    {
+        $tenant = Tenant::find($s->tenant_id);
+        $inv = Invoice::acrossTenants()->where('subscription_id', $s->id)->whereIn('status', ['issued', 'overdue'])->latest('id')->first();
+        $data = array_filter([
+            'stage' => $stage, 'days' => max(1, (int) ceil(now()->diffInSeconds($s->current_period_end) / 86400)), 'plan' => $s->plan?->name,
+            'workspace' => $tenant?->name, 'end' => $s->current_period_end->toIso8601String(), 'id' => $inv?->public_id, 'number' => $inv?->number,
+        ]);
+        foreach (self::billingRecipients($s->tenant_id) as $uid) {
+            Notify::user($uid, $s->tenant_id, $stage === 'trial' ? 'trial_ending' : 'subscription_reminder', $data);
+        }
+        $s->markReminded($stage);
+    }
+
+    /** Owner + anggota aktif yang perannya punya izin `billing.manage` (mis. Billing). Anggota biasa tidak. */
+    public static function billingRecipients(int $tenantId): array
+    {
+        $owner = Tenant::whereKey($tenantId)->value('owner_user_id');
+        $billing = TenantMember::acrossTenants()->where('tenant_id', $tenantId)->where('status', 'active')
+            ->whereIn('role_id', RolePermission::where('permission_key', 'billing.manage')->select('role_id'))->pluck('user_id')->all();
+
+        return array_values(array_unique(array_filter([$owner, ...$billing])));
     }
 
     /** Masa tenggang dimulai / hampir habis → pemilik workspace (in-app + email), dengan tautan ke tagihan yang terbuka. */

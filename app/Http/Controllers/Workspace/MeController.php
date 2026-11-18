@@ -37,6 +37,8 @@ class MeController extends WorkspaceController
         'invoice_due' => 'Tagihan perpanjangan paket',
         'subscription_past_due' => 'Paket masuk masa tenggang',
         'grace_ending' => 'Masa tenggang hampir berakhir',
+        'subscription_reminder' => 'Pengingat masa aktif workspace (H-30, H-7, H-1)',
+        'trial_ending' => 'Uji coba workspace hampir berakhir',
         'plan_changed' => 'Perubahan paket',
         'workspace_expired' => 'Masa aktif workspace habis',
         'order_status' => 'Status pesanan kartu',
