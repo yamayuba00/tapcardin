@@ -128,7 +128,7 @@ php artisan storage:link
 npm run build                                       # atau `npm run dev` untuk hot reload
 
 php artisan serve --port=8000
-php artisan queue:work --queue=taps,notify,leads,default,render   # wajib: tap & notifikasi lewat antrean
+php artisan queue:work --queue=taps,notify,leads,default,render,broadcast   # wajib: tap, notifikasi & siaran realtime lewat antrean
 php artisan schedule:work                                          # pengingat, statistik, langganan
 ```
 

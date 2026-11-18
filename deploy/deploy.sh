@@ -56,6 +56,12 @@ ln -sfn "$NEW" "$APP/current.tmp" && mv -Tf "$APP/current.tmp" "$APP/current"
 # OPcache validate_timestamps=0 → reload agar kode baru terbaca; worker antrean mulai ulang setelah job berjalan selesai.
 systemctl reload "php${PHP_VERSION:-8.3}-fpm"
 as_app php "$APP/current/artisan" queue:restart
+# konfigurasi worker berubah (mis. worker baru tapcard-broadcast) → pasang & jalankan tanpa langkah manual
+if ! cmp -s "$APP/current/deploy/supervisor/tapcard.conf" /etc/supervisor/conf.d/tapcard.conf; then
+  cp "$APP/current/deploy/supervisor/tapcard.conf" /etc/supervisor/conf.d/tapcard.conf
+  supervisorctl reread >/dev/null && supervisorctl update >/dev/null
+  echo "→ Konfigurasi Supervisor diperbarui"
+fi
 supervisorctl restart tapcard-schedule >/dev/null 2>&1 || true
 supervisorctl restart tapcard-reverb >/dev/null 2>&1 || true   # realtime: muat kode & config baru
 

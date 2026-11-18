@@ -3,7 +3,7 @@
 namespace App\Support;
 
 use App\Enums\TenantType;
-use App\Events\NotificationCreated;
+use App\Jobs\BroadcastNotification;
 use App\Mail\NotificationMail;
 use App\Models\Notification;
 use App\Models\Tenant;
@@ -33,8 +33,8 @@ final class Notify
                 'type' => $type,
                 'data' => $data,
             ]);
-            // siaran gagal (mis. server WebSocket mati) tidak boleh menggagalkan aksi; notifikasi tetap tersimpan
-            rescue(fn () => broadcast(new NotificationCreated($n, $user->public_id, $tenant?->public_id)), report: true);
+            // siaran lewat antrean `broadcast` setelah commit; gagal antre tidak boleh menggagalkan aksi
+            rescue(fn () => BroadcastNotification::dispatch($n->id, $user->public_id, $tenant?->public_id)->afterCommit(), report: true);
         }
         if ($user->wantsNotification($type, 'email', EmailContent::defaultOn($type)) && EmailContent::for($type, $data) !== null) {
             self::email($user->email, $user->name, $type, $data, $tenant);

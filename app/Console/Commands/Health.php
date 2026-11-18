@@ -14,7 +14,7 @@ use Throwable;
 class Health extends Command
 {
     /** Antrean yang dikerjakan worker (deploy/supervisor/tapcard.conf). */
-    private const QUEUES = ['taps', 'notify', 'leads', 'default', 'render'];
+    private const QUEUES = ['taps', 'notify', 'leads', 'default', 'render', 'broadcast'];
 
     protected $signature = 'tapcard:health {--json}';
 

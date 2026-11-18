@@ -41,8 +41,10 @@ return [
                 'scheme' => env('REVERB_SCHEME', 'https'),
                 'useTLS' => env('REVERB_SCHEME', 'https') === 'https',
             ],
+            // Batas waktu wajib: tanpa ini worker bisa tergantung selamanya saat Reverb macet (bukan mati).
             'client_options' => [
-                // Guzzle client options: https://docs.guzzlephp.org/en/stable/request-options.html
+                'connect_timeout' => (float) env('REVERB_CONNECT_TIMEOUT', 1),
+                'timeout' => (float) env('REVERB_TIMEOUT', 2),
             ],
         ],
 

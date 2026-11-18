@@ -4,18 +4,15 @@ namespace App\Events;
 
 use App\Models\Notification;
 use Illuminate\Broadcasting\PrivateChannel;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
-use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 
 /**
  * Notifikasi in-app baru → dikirim realtime lewat Reverb ke channel privat pemiliknya (`user.{public_id}`).
- * Dikirim setelah transaksi selesai & lewat antrean `notify`, jadi request tidak menunggu server WebSocket.
- * Klien memfilter `tenant` sesuai workspace yang sedang dibuka (sama dengan SSE).
+ * Disiarkan oleh job BroadcastNotification di antrean `broadcast` (worker sendiri), jadi Reverb lambat/mati
+ * tidak menahan pencatatan tap, lead, atau email. Klien memfilter `tenant` sesuai workspace (sama dengan SSE).
  */
-class NotificationCreated implements ShouldBroadcast, ShouldDispatchAfterCommit
+class NotificationCreated implements ShouldBroadcastNow
 {
-    public string $queue = 'notify';
-
     public function __construct(public readonly Notification $notification, public readonly string $userPublicId, public readonly ?string $tenantPublicId) {}
 
     public function broadcastOn(): array
