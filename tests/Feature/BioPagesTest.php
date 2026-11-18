@@ -6,6 +6,7 @@ use App\Enums\CardStatus;
 use App\Models\BioBlock;
 use App\Models\BioPage;
 use App\Models\Card;
+use App\Models\ProductEvent;
 use App\Models\User;
 use App\Support\Bio\BioBlocks;
 use Illuminate\Database\QueryException;
@@ -185,8 +186,11 @@ class BioPagesTest extends TestCase
         $this->assertSame(['email', 'instagram', 'linkedin'], array_column($order, 'type'));
     }
 
-    /** "Simpan ke Kontak HP" tidak terasa sebagai unduhan: Android → form kontak bawaan, iPhone → vCard inline. */
-    public function test_save_contact_opens_contact_form_instead_of_downloading(): void
+    /**
+     * "Simpan ke Kontak HP": semua peramban mendapat vCard inline (intent Android tidak bisa membuka form kontak dari
+     * Chrome, jadi tidak dipakai lagi); nama file = nama orangnya; metrik tercatat sekali per klik.
+     */
+    public function test_save_contact_serves_named_inline_vcard_and_counts_once(): void
     {
         $rina = $this->makeUser();
         $card = $this->makeCard(CardStatus::Active, $rina);
@@ -195,24 +199,19 @@ class BioPagesTest extends TestCase
             ['type' => 'whatsapp', 'value' => '081234567890', 'is_primary' => true], ['type' => 'email', 'value' => 'rina@example.com'],
         ]])->assertOk();
         $url = $this->host('tap', "/c/{$card->card_token}/vcard");
-        $chrome = 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Mobile Safari/537.36';
-
-        $intent = $this->withHeader('User-Agent', $chrome)->get($url)->assertRedirect()->headers->get('Location');
-        $this->assertStringStartsWith('intent:#Intent;action=android.intent.action.INSERT;type=vnd.android.cursor.dir/raw_contact;', $intent);
-        $this->assertStringContainsString('S.name=Rina%20Saputra;', $intent);
-        $this->assertStringContainsString('S.phone=%2B6281234567890;', $intent);
-        $this->assertStringContainsString('S.email=rina%40example.com;', $intent);
-        $this->assertStringContainsString('S.browser_fallback_url='.rawurlencode("$url?file=1").';', $intent);
-        $this->assertStringEndsWith(';end', $intent);
-
-        // WebView aplikasi (Instagram) & iPhone → vCard inline, bukan lampiran
-        $ig = 'Mozilla/5.0 (Linux; Android 14; wv) AppleWebKit/537.36 Chrome/130.0 Mobile Safari/537.36 Instagram 300.0';
-        $this->withHeader('User-Agent', $ig)->get($url)->assertOk()->assertHeader('Content-Type', 'text/vcard; charset=utf-8');
-        $iphone = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1';
-        $res = $this->withHeader('User-Agent', $iphone)->get($url)->assertOk();
-        $this->assertStringStartsWith('inline;', $res->headers->get('Content-Disposition'));
-        $this->assertStringContainsString('FN:Rina Saputra', $res->getContent());
-        $this->withHeader('User-Agent', $chrome)->get("$url?file=1")->assertOk()->assertHeader('Content-Type', 'text/vcard; charset=utf-8');
+        $uas = [
+            'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Mobile Safari/537.36',
+            'Mozilla/5.0 (Linux; Android 14; SM-S921B) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/26.0 Chrome/122.0 Mobile Safari/537.36',
+            'Mozilla/5.0 (Linux; Android 14; wv) AppleWebKit/537.36 Chrome/130.0 Mobile Safari/537.36 Instagram 300.0',
+            'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1',
+        ];
+        foreach ($uas as $i => $ua) {
+            $res = $this->withHeader('User-Agent', $ua)->get($url)->assertOk()->assertHeader('Content-Type', 'text/vcard; charset=utf-8');
+            $this->assertSame('inline; filename="Rina Saputra.vcf"; filename*=UTF-8\'\'Rina%20Saputra.vcf', $res->headers->get('Content-Disposition'), $ua);
+            $this->assertStringContainsString('FN:Rina Saputra', $res->getContent());
+            $this->assertStringContainsString('TEL;TYPE=CELL,WHATSAPP:+6281234567890', $res->getContent());
+            $this->assertSame($i + 1, ProductEvent::where('name', 'vcard_downloaded')->count(), 'satu klik = satu catatan');
+        }
     }
 
     public function test_bio_image_upload_endpoint_is_gone(): void

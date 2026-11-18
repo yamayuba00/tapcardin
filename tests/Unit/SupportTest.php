@@ -74,7 +74,11 @@ class SupportTest extends TestCase
             $this->assertLessThanOrEqual(75, strlen($line), "baris melebihi 75 oktet: $line");
         }
         $this->assertStringContainsString("\r\n ", $out, 'NOTE panjang harus dilipat');
-        $this->assertSame('rina-saputra.vcf', $v->filename());
+        $this->assertSame('Rina Saputra.vcf', $v->filename());
+        $this->assertSame('Dédé CEO.vcf', (new VCard("Dédé / CEO\x07"))->filename(), 'karakter terlarang & kontrol dibuang');
+        $this->assertSame('kontak.vcf', (new VCard('  ..  '))->filename());
+        $this->assertSame(64, mb_strlen((new VCard(str_repeat('a', 90)))->filename()), 'maks 60 karakter + .vcf');
+        $this->assertSame('inline; filename="Dede CEO.vcf"; filename*=UTF-8\'\'D%C3%A9d%C3%A9%20CEO.vcf', (new VCard('Dédé CEO'))->contentDisposition());
     }
 
     public function test_vcard_fold_does_not_split_multibyte_characters(): void

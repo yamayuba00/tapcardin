@@ -1,13 +1,14 @@
 <script setup>
 // P-04 / AFD F-08 — Tukar Kontak: nama*, WhatsApp atau email*, persetujuan*. Honeypot `website` + waktu render `t`.
 import { reactive, ref } from 'vue'
-import { CircleCheck, UserPlus } from 'lucide-vue-next'
+import { CircleCheck } from 'lucide-vue-next'
 import AppModal from '@/components/ui/AppModal/index.vue'
 import AppField from '@/components/ui/AppField/index.vue'
 import AppInput from '@/components/ui/AppInput/index.vue'
 import AppTextarea from '@/components/ui/AppTextarea/index.vue'
 import AppCheckbox from '@/components/ui/AppCheckbox/index.vue'
 import AppButton from '@/components/ui/AppButton/index.vue'
+import SaveContactButton from '@/components/profile/SaveContactButton/index.vue'
 import { publicApi } from '@/api/public'
 
 const props = defineProps({ profile: { type: Object, required: true }, preview: Boolean })
@@ -43,7 +44,7 @@ async function submit() {
       <CircleCheck class="size-14 text-ok" aria-hidden="true" />
       <h2>Terkirim!</h2>
       <p class="text-muted">{{ profile.display_name }} akan menghubungi Anda.</p>
-      <AppButton block :href="profile.vcard_url || undefined"><UserPlus class="size-5" /> Simpan ke Kontak HP</AppButton>
+      <SaveContactButton :href="profile.vcard_url" :name="profile.display_name" :preview="preview" class="inline-flex min-h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-md bg-accent px-5 text-[15px] font-semibold text-accent-ink no-underline hover:opacity-90" />
     </div>
     <form v-else class="grid gap-4" novalidate @submit.prevent="submit">
       <p class="text-sm text-muted">Kontak Anda hanya dikirim ke {{ profile.display_name }}.</p>

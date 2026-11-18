@@ -8,6 +8,7 @@ import { Mail, MessageCircle, Phone, UserPlus, Users } from 'lucide-vue-next'
 import BioBlock from '@/components/profile/BioBlock/index.vue'
 import ContactLink from '@/components/profile/ContactLink/index.vue'
 import ExchangeSheet from '@/components/profile/ExchangeSheet/index.vue'
+import SaveContactButton from '@/components/profile/SaveContactButton/index.vue'
 import { config } from '@/config'
 import { AVATAR_CLASS, BIO_DEFAULTS, CORNER_CLASS, FONT_CLASS, themeStyle } from '@/lib/bioTheme'
 import { initials } from '@/lib/format'
@@ -80,7 +81,7 @@ const nameCls = computed(() => [
       <div class="grid flex-1 content-start gap-6 px-4 pb-6">
         <div v-if="!profile.blocks || quick.length" class="grid gap-3">
           <!-- profil tanpa halaman bio: tombol simpan kontak tetap di sini; dengan halaman bio ia menjadi blok -->
-          <a v-if="!profile.blocks" :href="profile.vcard_url || undefined" :class="primaryBtn" :aria-disabled="preview || undefined"><UserPlus class="size-5" /> Simpan ke Kontak HP</a>
+          <SaveContactButton v-if="!profile.blocks" :href="profile.vcard_url" :name="profile.display_name" :preview="preview" :theme="t.mode" :vars="style" :class="primaryBtn" />
           <div v-if="quick.length" :class="['flex gap-3', t.header === 'left' ? 'justify-start' : 'justify-center']">
             <a
               v-for="q in quick"
@@ -103,9 +104,9 @@ const nameCls = computed(() => [
               <ContactLink :link="l" :variant="t.links" :corner="corner" :preview="preview" @image="(x) => (qris = x)" />
             </li>
           </ul>
-          <a v-else-if="b.type === 'save_contact'" :href="profile.vcard_url || undefined" :class="primaryBtn" :aria-disabled="preview || undefined">
+          <SaveContactButton v-else-if="b.type === 'save_contact'" :href="profile.vcard_url" :name="profile.display_name" :preview="preview" :theme="t.mode" :vars="style" :class="primaryBtn">
             <UserPlus class="size-5 flex-none" /> <span class="[overflow-wrap:anywhere]">{{ b.label }}</span>
-          </a>
+          </SaveContactButton>
           <BioBlock v-else-if="b.type !== 'contacts'" :block="b" :theme="t" :corner="corner" :preview="preview" :owner="profile.display_name" />
         </template>
 

@@ -2,6 +2,8 @@
 
 namespace App\Support;
 
+use Illuminate\Support\Str;
+
 /**
  * TRD §10.1 — vCard 3.0: CRLF, line folding 75 oktet, escape `\` `,` `;` newline.
  */
@@ -67,11 +69,23 @@ final class VCard
         return implode("\r\n", array_map(self::fold(...), $out))."\r\n";
     }
 
+    /** Nama file = nama orangnya ("Rina Saputra.vcf") agar unduhan tidak terlihat mencurigakan. */
     public function filename(): string
     {
-        $slug = trim(preg_replace('/[^a-z0-9]+/', '-', strtolower($this->fullName)), '-');
+        $name = preg_replace('/[\x00-\x1F\x7F\/\\\\:*?"<>|]+/u', ' ', $this->fullName) ?? '';
+        $name = trim(preg_replace('/\s+/u', ' ', $name) ?? '', " .\t");
+        $name = rtrim(mb_substr($name, 0, 60), ' .');
 
-        return ($slug !== '' ? $slug : 'kontak').'.vcf';
+        return ($name !== '' ? $name : 'kontak').'.vcf';
+    }
+
+    /** RFC 6266: `filename` ASCII untuk peramban lama + `filename*` UTF-8 untuk nama ber-aksen. */
+    public function contentDisposition(): string
+    {
+        $utf8 = $this->filename();
+        $ascii = trim(preg_replace('/[^\x20-\x7E]|["\\\\]/', '', Str::ascii($utf8)) ?? '');
+
+        return 'inline; filename="'.($ascii !== '' && $ascii !== '.vcf' ? $ascii : 'kontak.vcf').'"; filename*=UTF-8\'\''.rawurlencode($utf8);
     }
 
     private function add(string $name, string $value): self

@@ -13,6 +13,8 @@ const props = defineProps({
   wide: Boolean, // = size lg (kompatibel)
   size: { type: String, default: 'md' }, // sm | md | lg
   dismissible: { type: Boolean, default: true },
+  theme: { type: String, default: null }, // data-theme untuk dialog yang di-teleport (mis. tema bio publik)
+  vars: { type: Object, default: null }, // variabel CSS tema yang ikut dibawa ke body
 })
 const emit = defineEmits(['close'])
 const box = ref(null)
@@ -50,6 +52,7 @@ onBeforeUnmount(() => {
 
 <template>
   <Teleport to="body">
+    <div class="contents text-fg" :data-theme="theme || undefined" :style="vars || undefined">
     <div class="fixed inset-0 z-40 bg-scrim" aria-hidden="true" @click="close"></div>
     <section
       ref="box"
@@ -83,5 +86,6 @@ onBeforeUnmount(() => {
         <slot name="footer" />
       </footer>
     </section>
+    </div>
   </Teleport>
 </template>
