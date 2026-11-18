@@ -1,5 +1,6 @@
 // Logika murni Design Studio & editor lanyard (BSD §5): satuan, variabel, layer baru, posisi, kotak pembatas,
 // rotasi, perataan/distribusi, grup, brand kit, salin elemen antar-desain. Tanpa DOM agar bisa diuji `node --test`.
+import { fontMeta } from './fonts.js'
 
 export const PT_MM = 0.3528
 export const BLEED = 3
@@ -72,7 +73,121 @@ export function moveLayer(layer, dx, dy) {
   return l
 }
 
-const textWidth = (l, text, hgt) => text.length * hgt * (l.font === 'IBM Plex Mono' ? 0.6 : 0.55) * (1 + (l.tracking ?? 0))
+/** Jumlah karakter (code point) — sama dengan mb_strlen di server. */
+export const charCount = (s) => Array.from(String(s)).length
+/** Lebar teks perkiraan (mm) dari faktor lebar font — sama dengan App\Support\Design\TextLayout::width. */
+export const textWidth = (l, text, hgt) => charCount(text) * hgt * fontMeta(l.font).width * (1 + (l.tracking ?? 0))
+export const isBoxText = (l) => l?.type === 'text' && !!l.box && l.w > 0 && l.h > 0
+export const isCurved = (l) => l?.type === 'text' && (l.curve === 'up' || l.curve === 'down')
+
+/** Bungkus kata ke lebar `maxW` mm; paragraf (Enter) dipertahankan, kata yang terlalu panjang tetap satu baris. */
+export function wrapText(l, text, maxW, hgt) {
+  const out = []
+  for (const para of String(text).split('\n')) {
+    let line = ''
+    for (const word of para.split(' ')) {
+      const cand = line === '' ? word : `${line} ${word}`
+      if (line === '' || textWidth(l, cand, hgt) <= maxW + 0.01) line = cand
+      else { out.push(line); line = word }
+    }
+    out.push(line)
+  }
+  return out
+}
+
+/**
+ * Kotak teks: dibungkus ke lebar kotak lalu diperkecil 0,5 pt per langkah sampai muat (min 6 pt).
+ * Sama dengan App\Support\Design\TextLayout::fitBox. @returns {{size:number, lines:string[], overflow:boolean}}
+ */
+export function fitTextBox(l, vars = {}) {
+  const t = fillVars(l.text, vars)
+  const text = l.uppercase ? t.toUpperCase() : t
+  const lh = l.lineHeight ?? 1.25
+  let size = l.size
+  for (;;) {
+    const hgt = ptToMm(size)
+    const lines = wrapText(l, text, l.w, hgt)
+    const height = hgt + hgt * lh * (lines.length - 1)
+    const widest = Math.max(0, ...lines.map((line) => textWidth(l, line, hgt)))
+    const fits = height <= l.h + 0.01 && widest <= l.w + 0.01
+    if (fits || size <= MIN_TEXT_PT) return { size, lines, overflow: !fits }
+    size = Math.max(MIN_TEXT_PT, round(size - 0.5, 1))
+  }
+}
+
+/** Titik jangkar & garis dasar baris pertama (mm): kotak teks dihitung dari perataan; teks biasa = (x, y). */
+export function textAnchor(l, vars = {}) {
+  if (!isBoxText(l)) return { x: l.x, y: l.y }
+  const { size, lines } = fitTextBox(l, vars)
+  const hgt = ptToMm(size)
+  const height = hgt + hgt * (l.lineHeight ?? 1.25) * (lines.length - 1)
+  const top = l.valign === 'middle' ? l.y + (l.h - height) / 2 : l.valign === 'bottom' ? l.y + l.h - height : l.y
+  const x = l.align === 'center' ? l.x + l.w / 2 : l.align === 'right' ? l.x + l.w : l.x
+  return { x: round(x, 3), y: round(top + hgt * 0.8, 3) }
+}
+
+const rotAround = (p, c, deg) => {
+  if (!deg) return p
+  const r = (deg * Math.PI) / 180
+  return { x: c.x + (p.x - c.x) * Math.cos(r) - (p.y - c.y) * Math.sin(r), y: c.y + (p.x - c.x) * Math.sin(r) + (p.y - c.y) * Math.cos(r) }
+}
+/** Pusat lingkaran teks melengkung: tengah teks berada di puncak (up) atau dasar (down) lingkaran pada titik (x, y). */
+export const curveCenter = (l) => ({ x: l.x, y: l.curve === 'down' ? l.y - l.curveR : l.y + l.curveR })
+
+/** Jalur lingkaran penuh untuk textPath; titik 50% = posisi tengah teks (diputar `curveAngle`). */
+export function curvePath(l) {
+  const c = curveCenter(l)
+  const r = l.curveR
+  const up = l.curve !== 'down'
+  const p0 = rotAround({ x: c.x, y: up ? c.y + r : c.y - r }, c, l.curveAngle ?? 0)
+  const p1 = rotAround({ x: c.x, y: up ? c.y - r : c.y + r }, c, l.curveAngle ?? 0)
+  const sweep = up ? 1 : 0
+  const f = (n) => round(n, 3)
+  return `M${f(p0.x)} ${f(p0.y)}A${f(r)} ${f(r)} 0 1 ${sweep} ${f(p1.x)} ${f(p1.y)}A${f(r)} ${f(r)} 0 1 ${sweep} ${f(p0.x)} ${f(p0.y)}`
+}
+
+/** Kotak pembatas teks melengkung (17 titik sampel di busur, termasuk tinggi huruf) — sama dengan TextLayout::curveBox. */
+export function curveBox(l, vars = {}) {
+  const t = fillVars(l.text, vars).replace(/\n/g, ' ')
+  const hgt = ptToMm(l.size)
+  const wid = textWidth(l, l.uppercase ? t.toUpperCase() : t, hgt)
+  const r = l.curveR
+  const c = curveCenter(l)
+  const theta = Math.min(2 * Math.PI, wid / Math.max(r, 0.1))
+  const up = l.curve !== 'down'
+  const radii = up ? [r - hgt * 0.2, r + hgt * 0.8] : [r - hgt * 0.8, r + hgt * 0.2]
+  const xs = []
+  const ys = []
+  for (let k = 0; k <= 16; k++) {
+    const phi = -theta / 2 + (k * theta) / 16
+    for (const rr of radii) {
+      const p = rotAround({ x: c.x + rr * Math.sin(phi), y: up ? c.y - rr * Math.cos(phi) : c.y + rr * Math.cos(phi) }, c, l.curveAngle ?? 0)
+      xs.push(p.x)
+      ys.push(p.y)
+    }
+  }
+  const x = Math.min(...xs)
+  const y = Math.min(...ys)
+  return { x: round(x, 3), y: round(y, 3), w: round(Math.max(...xs) - x, 3), h: round(Math.max(...ys) - y, 3) }
+}
+
+/**
+ * Ganti mode teks: 'line' (satu titik jangkar), 'box' (kotak teks, dibungkus & diperkecil otomatis), 'curve' (melengkung).
+ * Posisi visual dipertahankan sebisanya.
+ */
+export function setTextMode(l, mode, vars = {}) {
+  const { box: _b, w: _w, h: _h, valign: _v, curve: _c, curveR: _r, curveAngle: _a, ...base } = l
+  const b = rawBox(l, vars)
+  if (mode === 'box') {
+    return { ...base, box: true, x: round(b.x), y: round(b.y), w: round(Math.max(b.w + 2, 10)), h: round(Math.max(b.h + 1, 4)), valign: 'top' }
+  }
+  const a = textAnchor(l, vars)
+  if (mode === 'curve') {
+    const text = String(l.text).replace(/\n/g, ' ')
+    return { ...base, text, align: 'center', x: round(b.x + b.w / 2), y: round(a.y), curve: 'up', curveR: 20, curveAngle: 0 }
+  }
+  return { ...base, x: a.x, y: a.y }
+}
 
 /**
  * Lebar maksimum (mm) teks berisi data ({{nama}}, {{jabatan}}, …) agar isi yang panjang tidak keluar kartu: `fitWidth`
@@ -81,6 +196,7 @@ const textWidth = (l, text, hgt) => text.length * hgt * (l.font === 'IBM Plex Mo
  * @param {{w: number}} size ukuran kartu (mm)
  */
 export function autoFitWidth(l, size, safe = SAFE) {
+  if (isBoxText(l) || isCurved(l)) return null
   if (l.fitWidth) return l.fitWidth
   const text = String(l.text ?? '')
   if (l.allowBleed || l.rotate || !text.includes('{{') || text.includes('\n')) return null
@@ -92,13 +208,15 @@ export function autoFitWidth(l, size, safe = SAFE) {
 
 /** Ukuran teks efektif (pt) setelah auto-fit `fitWidth`, minimal 6 pt — sama dengan DesignValidator::textSize. */
 export function textSize(l, vars = {}) {
-  if (!l.fitWidth || l.size < MIN_TEXT_PT) return l.size
+  if (isBoxText(l)) return l.size < MIN_TEXT_PT ? l.size : fitTextBox(l, vars).size
+  if (!l.fitWidth || l.size < MIN_TEXT_PT || isCurved(l)) return l.size
   const w = textWidth(l, fillVars(l.text, vars), ptToMm(l.size))
   return w > l.fitWidth ? Math.max(MIN_TEXT_PT, round((l.size * l.fitWidth) / w, 1)) : l.size
 }
 
 /** Baris-baris teks (teks multi-baris dipisah \n). */
 export const textLines = (l, vars = {}) => {
+  if (isBoxText(l)) return fitTextBox(l, vars).lines
   const t = fillVars(l.text, vars)
   return (l.uppercase ? t.toUpperCase() : t).split('\n')
 }
@@ -107,6 +225,8 @@ export const textLines = (l, vars = {}) => {
 export function rawBox(l, vars = {}) {
   switch (l.type) {
     case 'text': {
+      if (isBoxText(l)) return { x: l.x, y: l.y, w: l.w, h: l.h }
+      if (isCurved(l)) return curveBox(l, vars)
       const hgt = ptToMm(textSize(l, vars))
       const lines = textLines(l, vars)
       const wid = Math.max(...lines.map((line) => textWidth(l, line, hgt)))
@@ -194,7 +314,14 @@ export function resizeLayer(l, handle, dx, dy, { keepAspect = false, vars = {} }
     const size = round(Math.max(2, Math.min(60, l.size + Math.max(dx * sx, dy * sy))))
     return { ...out, size, x: handle.includes('w') ? round(l.x + l.size - size) : l.x, y: handle.includes('n') ? round(l.y + l.size - size) : l.y }
   }
-  if (l.type === 'text') {
+  if (l.type === 'text' && isCurved(l)) {
+    // teks melengkung: tarik sudut = perbesar ukuran huruf
+    const sx = handle.includes('e') ? 1 : -1
+    const box = rawBox(l, vars)
+    out.size = round(Math.min(72, Math.max(4, l.size * Math.max(0.1, (box.w + dx * sx * 2) / Math.max(box.w, 0.1)))), 1)
+    return out
+  }
+  if (l.type === 'text' && !isBoxText(l)) {
     const box = rawBox(l, vars)
     const sx = handle.includes('e') ? 1 : -1
     // teks rata tengah tumbuh ke dua arah → tarikan dx menambah lebar 2×dx
@@ -349,7 +476,10 @@ function scaleLayer(l, k, origin) {
     case 'line': return { ...l, x1: X(l.x1), y1: Y(l.y1), x2: X(l.x2), y2: Y(l.y2), width: Math.max(0.1, S(l.width)) }
     case 'circle': return { ...l, cx: X(l.cx), cy: Y(l.cy), r: Math.max(0.5, S(l.r)) }
     case 'rings': return { ...l, cx: X(l.cx), cy: Y(l.cy), from: S(l.from), to: S(l.to), step: Math.max(1, S(l.step)) }
-    case 'text': return { ...l, x: X(l.x), y: Y(l.y), size: Math.max(MIN_TEXT_PT, round(l.size * k, 1)), ...(l.fitWidth ? { fitWidth: S(l.fitWidth) } : {}) }
+    case 'text': return {
+      ...l, x: X(l.x), y: Y(l.y), size: Math.max(MIN_TEXT_PT, round(l.size * k, 1)), ...(l.fitWidth ? { fitWidth: S(l.fitWidth) } : {}),
+      ...(isBoxText(l) ? { w: Math.max(1, S(l.w)), h: Math.max(1, S(l.h)) } : {}), ...(isCurved(l) ? { curveR: Math.max(3, S(l.curveR)) } : {}),
+    }
     case 'glyph': case 'icon': return { ...l, x: X(l.x), y: Y(l.y), size: Math.max(2, S(l.size)) }
     default: return { ...l, x: X(l.x), y: Y(l.y), w: Math.max(1, S(l.w)), h: Math.max(1, S(l.h)) }
   }

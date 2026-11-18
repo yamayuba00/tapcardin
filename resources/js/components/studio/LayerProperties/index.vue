@@ -10,7 +10,9 @@ import AppSelect from '@/components/ui/AppSelect/index.vue'
 import AppTextarea from '@/components/ui/AppTextarea/index.vue'
 import AppToggle from '@/components/ui/AppToggle/index.vue'
 import ColorPicker from '@/components/studio/ColorPicker/index.vue'
-import { isSystem, layerLabel, textSize } from '@/lib/design'
+import FontPicker from '@/components/studio/FontPicker/index.vue'
+import { fitTextBox, isBoxText, isCurved, isSystem, layerLabel, setTextMode, textSize } from '@/lib/design'
+import { nearestWeight } from '@/lib/fonts'
 import { GLYPHS } from '@/lib/glyphs'
 
 const props = defineProps({
@@ -29,14 +31,18 @@ const num = (key, value, min = -Infinity, max = Infinity) => {
   const n = Number(value)
   if (!Number.isNaN(n)) set(key, Math.min(max, Math.max(min, n)))
 }
-const fontOptions = computed(() => Object.keys(props.fonts).map((f) => ({ value: f, label: f })))
 const weightOptions = computed(() => (props.fonts[layer.value?.font] ?? [400]).map((w) => ({ value: w, label: String(w) })))
 const glyphOptions = computed(() => Object.entries(GLYPHS).map(([name, icon]) => ({ value: name, label: name, icon })))
 const varToken = (v) => '{' + '{' + v + '}' + '}'
 const VARS = ['name', 'title', 'company', 'phone', 'email', 'website', 'brand', 'tagline']
 const colorKey = computed(() => ({ rect: 'fill', ellipse: 'fill', polygon: 'fill', circle: 'stroke' })[layer.value?.type] ?? 'color')
 const fitted = computed(() => (layer.value?.type === 'text' ? textSize(layer.value, props.vars) : null))
-const hasBox = computed(() => ['rect', 'image', 'ellipse', 'polygon'].includes(layer.value?.type))
+const hasBox = computed(() => ['rect', 'image', 'ellipse', 'polygon'].includes(layer.value?.type) || isBoxText(layer.value))
+const textMode = computed(() => (isCurved(layer.value) ? 'curve' : isBoxText(layer.value) ? 'box' : 'line'))
+const boxFit = computed(() => (isBoxText(layer.value) ? fitTextBox(layer.value, props.vars) : null))
+/** Ganti mode teks: seluruh layer diganti (properti mode lama dibuang). */
+const setMode = (mode) => emit('change', { ...setTextMode(layer.value, mode, props.vars), __replace: true })
+const pickFont = (family) => emit('change', { font: family, weight: nearestWeight(family, layer.value.weight ?? 400) })
 const hasStroke = computed(() => ['rect', 'ellipse', 'polygon'].includes(layer.value?.type))
 const rotatable = computed(() => props.layers.every((l) => !['circle', 'rings', 'line'].includes(l.type)))
 const multiFill = computed(() => props.layers.every((l) => ['rect', 'ellipse', 'polygon'].includes(l.type)))
@@ -83,21 +89,39 @@ const n2 = 'grid grid-cols-2 gap-3'
           <div class="flex flex-wrap gap-1.5">
             <button v-for="v in VARS" :key="v" type="button" class="cursor-pointer rounded-sm border border-line px-2 py-1 font-mono text-xs hover:bg-surface-2" @click="set('text', layer.text + varToken(v))" v-text="varToken(v)"></button>
           </div>
+          <AppSegmented :model-value="textMode" label="Bentuk teks" :options="[{ value: 'line', label: 'Satu titik' }, { value: 'box', label: 'Kotak teks' }, { value: 'curve', label: 'Melengkung' }]" @update:model-value="setMode" />
+          <AppField label="Font"><FontPicker :model-value="layer.font" :allowed="fonts" @update:model-value="pickFont" /></AppField>
           <div :class="n2">
-            <AppField label="Font"><AppSelect :model-value="layer.font" :options="fontOptions" @update:model-value="(v) => emit('change', { font: v, weight: fonts[v][0] })" /></AppField>
-            <AppField label="Tebal"><AppSelect :model-value="layer.weight" :options="weightOptions" @update:model-value="(v) => num('weight', v)" /></AppField>
-            <AppField label="Ukuran (pt)" :error="layer.size < 6 ? 'Minimal 6 pt' : ''"><AppInput type="number" step="0.5" min="4" :model-value="layer.size" @update:model-value="(v) => num('size', v, 4, 120)" /></AppField>
-            <AppField label="Spasi huruf"><AppInput type="number" step="0.02" min="0" max="0.5" :model-value="layer.tracking ?? 0" @update:model-value="(v) => num('tracking', v, 0, 0.5)" /></AppField>
-            <AppField v-if="layer.text.includes('\n')" label="Jarak baris"><AppInput type="number" step="0.05" min="0.8" max="3" :model-value="layer.lineHeight ?? 1.25" @update:model-value="(v) => num('lineHeight', v, 0.8, 3)" /></AppField>
-            <AppField v-else label="Lebar maks (mm)" :hint="fitted !== layer.size ? `Diperkecil ke ${fitted} pt` : 'Kosong = bebas'">
+            <AppField label="Tebal"><AppSelect :model-value="layer.weight" :options="weightOptions" class="!w-full" @update:model-value="(v) => num('weight', v)" /></AppField>
+            <AppField
+              :label="textMode === 'box' ? 'Ukuran maks (pt)' : 'Ukuran (pt)'" :error="layer.size < 6 ? 'Minimal 6 pt' : ''"
+              :hint="boxFit && boxFit.size !== layer.size ? `Diperkecil ke ${boxFit.size} pt agar muat` : ''"
+            ><AppInput type="number" step="0.5" min="4" :model-value="layer.size" @update:model-value="(v) => num('size', v, 4, 120)" /></AppField>
+            <AppField label="Spasi huruf (em)"><AppInput type="number" step="0.02" min="-0.1" max="1" :model-value="layer.tracking ?? 0" @update:model-value="(v) => num('tracking', v, -0.1, 1)" /></AppField>
+            <AppField v-if="textMode === 'box' || layer.text.includes('\n')" label="Jarak baris"><AppInput type="number" step="0.05" min="0.8" max="3" :model-value="layer.lineHeight ?? 1.25" @update:model-value="(v) => num('lineHeight', v, 0.8, 3)" /></AppField>
+            <AppField v-else-if="textMode === 'line'" label="Lebar maks (mm)" :hint="fitted !== layer.size ? `Diperkecil ke ${fitted} pt` : 'Kosong = bebas'">
               <AppInput type="number" step="1" min="5" :model-value="layer.fitWidth ?? ''" placeholder="—" @update:model-value="(v) => set('fitWidth', v === '' || Number(v) <= 0 ? undefined : Number(v))" />
             </AppField>
           </div>
-          <AppSegmented :model-value="layer.align" label="Perataan" :options="[{ value: 'left', label: 'Kiri' }, { value: 'center', label: 'Tengah' }, { value: 'right', label: 'Kanan' }]" @update:model-value="(v) => set('align', v)" />
+          <p v-if="boxFit?.overflow" class="text-sm text-warn">Teks tidak muat walau sudah 6 pt — perbesar kotak atau persingkat teks.</p>
+          <AppSegmented v-if="textMode !== 'curve'" :model-value="layer.align" label="Perataan" :options="[{ value: 'left', label: 'Kiri' }, { value: 'center', label: 'Tengah' }, { value: 'right', label: 'Kanan' }]" @update:model-value="(v) => set('align', v)" />
+          <AppSegmented v-if="textMode === 'box'" :model-value="layer.valign ?? 'top'" label="Posisi vertikal" :options="[{ value: 'top', label: 'Atas' }, { value: 'middle', label: 'Tengah' }, { value: 'bottom', label: 'Bawah' }]" @update:model-value="(v) => set('valign', v === 'top' ? undefined : v)" />
+          <template v-if="textMode === 'curve'">
+            <AppSegmented :model-value="layer.curve" label="Arah lengkung" :options="[{ value: 'up', label: 'Melengkung ke atas' }, { value: 'down', label: 'Melengkung ke bawah' }]" @update:model-value="(v) => set('curve', v)" />
+            <div :class="n2">
+              <AppField label="Jari-jari (mm)" hint="Kecil = lebih melengkung"><AppInput type="number" step="1" min="3" max="80" :model-value="layer.curveR" @update:model-value="(v) => num('curveR', v, 3, 80)" /></AppField>
+              <AppField label="Sudut awal (°)" hint="Geser teks di sepanjang lingkaran"><AppInput type="number" step="5" min="-180" max="180" :model-value="layer.curveAngle ?? 0" @update:model-value="(v) => num('curveAngle', v, -180, 180)" /></AppField>
+            </div>
+          </template>
           <div class="flex flex-wrap gap-x-5">
             <AppToggle :model-value="!!layer.uppercase" @update:model-value="(v) => set('uppercase', v || undefined)">Kapital</AppToggle>
             <AppToggle :model-value="!!layer.italic" @update:model-value="(v) => set('italic', v || undefined)">Miring</AppToggle>
+            <AppToggle :model-value="!!layer.outline" @update:model-value="(v) => emit('change', v ? { outline: kit ? 'kit:background' : palette[0].hex, outlineWidth: 0.2 } : { outline: undefined, outlineWidth: undefined })">Garis tepi huruf</AppToggle>
           </div>
+          <template v-if="layer.outline">
+            <ColorPicker :model-value="layer.outline" :palette="palette" :kit="kit" label="Warna garis tepi huruf" @update:model-value="(v) => set('outline', v)" />
+            <AppField label="Tebal garis tepi huruf (mm)"><AppInput type="number" step="0.05" min="0.05" max="2" :model-value="layer.outlineWidth ?? 0.2" @update:model-value="(v) => num('outlineWidth', v, 0.05, 2)" /></AppField>
+          </template>
         </template>
 
         <!-- ikon -->

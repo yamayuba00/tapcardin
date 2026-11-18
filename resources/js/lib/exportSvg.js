@@ -1,11 +1,6 @@
 // Ekspor SVG kanvas desain → PNG (pratinjau cetak). Gambar & font lokal disematkan sebagai data URL agar hasilnya
 // sama dengan editor; warna dari kelas Tailwind disalin ke atribut karena PNG tidak membawa CSS halaman.
-
-const FONT_FILES = {
-  'Syne-600': '/fonts/syne-600.woff2', 'Syne-700': '/fonts/syne-700.woff2', 'Syne-800': '/fonts/syne-800.woff2',
-  'IBM Plex Sans-400': '/fonts/ibm-plex-sans-400.woff2', 'IBM Plex Sans-500': '/fonts/ibm-plex-sans-500.woff2', 'IBM Plex Sans-600': '/fonts/ibm-plex-sans-600.woff2',
-  'IBM Plex Mono-400': '/fonts/ibm-plex-mono-400.woff2', 'IBM Plex Mono-500': '/fonts/ibm-plex-mono-500.woff2',
-}
+import { fontUrl } from '@/lib/fonts'
 
 async function toDataUrl(url) {
   const res = await fetch(url, { credentials: 'same-origin' })
@@ -21,9 +16,11 @@ async function toDataUrl(url) {
 async function fontCss(svg) {
   const used = new Set()
   svg.querySelectorAll('[font-family]').forEach((el) => used.add(`${el.getAttribute('font-family')}-${el.getAttribute('font-weight') || 400}`))
-  const rules = await Promise.all([...used].filter((k) => FONT_FILES[k]).map(async (k) => {
-    const [family, weight] = [k.slice(0, k.lastIndexOf('-')), k.slice(k.lastIndexOf('-') + 1)]
-    return `@font-face{font-family:"${family}";font-weight:${weight};src:url(${await toDataUrl(FONT_FILES[k])}) format("woff2");}`
+  const rules = await Promise.all([...used].map(async (k) => {
+    const [family, weight] = [k.slice(0, k.lastIndexOf('-')), Number(k.slice(k.lastIndexOf('-') + 1))]
+    const url = fontUrl(family, weight)
+    if (!url) return ''
+    return `@font-face{font-family:"${family}";font-weight:${weight};src:url(${await toDataUrl(url)}) format("woff2");}`
   }))
   return rules.join('')
 }

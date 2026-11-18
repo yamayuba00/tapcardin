@@ -110,6 +110,10 @@ export function useDesignEditor(id) {
   }
   /** Patch properti ke semua layer terpilih yang bisa diubah (panel properti). */
   function patch(p, record = true) {
+    if (p.__replace) { // ganti seluruh layer (mis. ganti mode teks) — properti lama tidak terbawa
+      const { __replace: _r, ...layer } = p
+      return change(editable.value.slice(0, 1).map((l) => ({ id: l.id, layer: { ...layer, id: l.id } })), record)
+    }
     change(editable.value.map((l) => ({ id: l.id, layer: { ...l, ...p } })), record)
   }
   /** Layer pengguna selalu disisipkan di bawah elemen sistem agar QR/NFC tetap paling depan. */

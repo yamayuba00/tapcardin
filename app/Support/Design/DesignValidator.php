@@ -67,6 +67,12 @@ final class DesignValidator
 
             if ($l['type'] === 'text' && $l['size'] < self::MIN_TEXT_PT) {
                 $add($id, 'error', "Teks {$label($l)} {$l['size']} pt terlalu kecil untuk dicetak (minimal 6 pt).");
+            } elseif (TextLayout::isBox($l) && TextLayout::fitBox($l)['overflow']) {
+                $add($id, 'warning', "Teks {$label($l)} tidak muat di kotaknya walau sudah diperkecil ke 6 pt. Perbesar kotak atau persingkat teks.");
+            }
+            // font tulisan tangan bergaris tipis: di bawah 8 pt sering pecah/tak terbaca pada cetak PVC & sablon
+            if ($l['type'] === 'text' && Fonts::category($l['font'] ?? null) === 'script' && self::textSize($l) < 8) {
+                $add($id, 'warning', "Teks {$label($l)} memakai font tulisan tangan di bawah 8 pt — sulit dibaca saat dicetak. Perbesar atau ganti font.");
             }
             if ($l['type'] === 'image') {
                 $pxW = ($l['asset'] ?? '') === 'kit:logo' ? (int) ($this->kit['logo']['px_w'] ?? 0) : (int) ($l['px_w'] ?? 0);
@@ -113,17 +119,18 @@ final class DesignValidator
     public static function box(array $l): ?array
     {
         $b = match ($l['type']) {
-            'text' => (function () use ($l) {
-                $h = self::textSize($l) * self::PT_MM;
-                $lines = explode("\n", $l['text']);
-                $lh = $h * ($l['lineHeight'] ?? 1.25);
-                $w = max(array_map(fn ($line) => self::textWidth(['text' => $line] + $l, $h), $lines));
-                $x = match ($l['align'] ?? 'left') {
-                    'center' => $l['x'] - $w / 2, 'right' => $l['x'] - $w, default => $l['x']
-                };
+            'text' => TextLayout::isBox($l) ? ['x' => $l['x'], 'y' => $l['y'], 'w' => $l['w'], 'h' => $l['h']]
+                : (TextLayout::isCurved($l) ? TextLayout::curveBox($l) : (function () use ($l) {
+                    $h = self::textSize($l) * self::PT_MM;
+                    $lines = explode("\n", $l['text']);
+                    $lh = $h * ($l['lineHeight'] ?? 1.25);
+                    $w = max(array_map(fn ($line) => self::textWidth(['text' => $line] + $l, $h), $lines));
+                    $x = match ($l['align'] ?? 'left') {
+                        'center' => $l['x'] - $w / 2, 'right' => $l['x'] - $w, default => $l['x']
+                    };
 
-                return ['x' => $x, 'y' => $l['y'] - $h * 0.8, 'w' => $w, 'h' => $h + $lh * (count($lines) - 1)];
-            })(),
+                    return ['x' => $x, 'y' => $l['y'] - $h * 0.8, 'w' => $w, 'h' => $h + $lh * (count($lines) - 1)];
+                })()),
             'rect', 'image', 'ellipse', 'polygon' => ['x' => $l['x'], 'y' => $l['y'], 'w' => $l['w'], 'h' => $l['h']],
             'line' => ['x' => min($l['x1'], $l['x2']), 'y' => min($l['y1'], $l['y2']) - $l['width'] / 2,
                 'w' => abs($l['x2'] - $l['x1']) ?: $l['width'], 'h' => abs($l['y2'] - $l['y1']) ?: $l['width']],
@@ -151,8 +158,11 @@ final class DesignValidator
     public static function textSize(array $l): float
     {
         $size = (float) $l['size'];
+        if (TextLayout::isBox($l)) {
+            return $size < self::MIN_TEXT_PT ? $size : TextLayout::fitBox($l)['size'];
+        }
         $fit = $l['fitWidth'] ?? null;
-        if (! $fit || $size < self::MIN_TEXT_PT) {
+        if (! $fit || $size < self::MIN_TEXT_PT || TextLayout::isCurved($l)) {
             return $size;
         }
         $w = self::textWidth($l, $size * self::PT_MM);
@@ -162,7 +172,7 @@ final class DesignValidator
 
     private static function textWidth(array $l, float $h): float
     {
-        return mb_strlen($l['text']) * $h * (($l['font'] ?? '') === 'IBM Plex Mono' ? 0.6 : 0.55) * (1 + ($l['tracking'] ?? 0));
+        return TextLayout::width($l, $l['text'], $h);
     }
 
     private static function intersects(array $a, array $b): bool

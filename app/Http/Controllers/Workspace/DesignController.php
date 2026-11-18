@@ -12,6 +12,7 @@ use App\Models\Profile;
 use App\Support\Design\CardGeometry;
 use App\Support\Design\DesignNormalizer;
 use App\Support\Design\DesignValidator;
+use App\Support\Design\Fonts;
 use App\Support\Design\Geometry;
 use App\Support\Design\LanyardGeometry;
 use App\Support\Design\LanyardPricing;
@@ -51,7 +52,7 @@ class DesignController extends WorkspaceController
             'templates' => array_map(fn ($t) => $t + ['preview' => $previews[$t['key']]], TemplateLibrary::catalog()),
             'my_templates' => $mine->map(fn (Design $d) => ['id' => $d->public_id, 'name' => $d->name, 'orientation' => $d->orientation, 'front' => $d->front_json, 'back' => $d->back_json]),
             'palette' => collect(Palette::COLORS)->map(fn ($hex, $name) => ['name' => $name, 'hex' => $hex])->values(),
-            'fonts' => DesignNormalizer::FONTS,
+            'fonts' => Fonts::weights(),
             'glyphs' => DesignNormalizer::GLYPHS,
             'qr' => $qr,
             'variables' => $this->variables(),

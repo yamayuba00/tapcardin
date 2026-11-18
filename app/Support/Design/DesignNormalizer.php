@@ -16,8 +16,6 @@ final class DesignNormalizer
 {
     public const MAX_LAYERS = 80;
 
-    public const FONTS = ['Syne' => [600, 700, 800], 'IBM Plex Sans' => [400, 500, 600], 'IBM Plex Mono' => [400, 500]];
-
     public const KIT_COLORS = ['primary', 'secondary', 'background', 'text'];
 
     /** Ikon lucide yang boleh dipakai pengguna (layer `glyph`); dirender sama di editor & cetak. */
@@ -120,11 +118,18 @@ final class DesignNormalizer
 
     private function text(array $l, callable $xy, callable $n, callable $color): array
     {
-        $font = array_key_exists($l['font'] ?? '', self::FONTS) ? $l['font'] : 'IBM Plex Sans';
-        $weights = self::FONTS[$font];
+        $fonts = Fonts::weights();
+        $font = array_key_exists($l['font'] ?? '', $fonts) ? $l['font'] : 'IBM Plex Sans';
+        $weights = $fonts[$font];
         $weight = in_array((int) ($l['weight'] ?? 0), $weights, true) ? (int) $l['weight'] : $weights[0];
         $text = mb_substr(str_replace("\r", '', (string) ($l['text'] ?? '')), 0, 300);
-        $multi = str_contains($text, "\n");
+        $curve = in_array($l['curve'] ?? null, ['up', 'down'], true) ? $l['curve'] : null;
+        $box = ! $curve && ! empty($l['box']);
+        if ($curve) {
+            $text = str_replace("\n", ' ', $text); // teks melengkung selalu satu baris
+        }
+        $multi = str_contains($text, "\n") || $box;
+        $outline = isset($l['outline']) && ($l['outlineWidth'] ?? 0) > 0;
 
         return array_filter([
             'type' => 'text',
@@ -136,10 +141,21 @@ final class DesignNormalizer
             'align' => in_array($l['align'] ?? '', ['left', 'center', 'right'], true) ? $l['align'] : 'left',
             'uppercase' => ! empty($l['uppercase']) ?: null,
             'italic' => ! empty($l['italic']) ?: null,
-            'tracking' => isset($l['tracking']) ? $n('tracking', 0, 0.5) : null,
+            'tracking' => isset($l['tracking']) && (float) $l['tracking'] != 0.0 ? $n('tracking', -0.1, 1) : null,
             'lineHeight' => $multi && isset($l['lineHeight']) ? $n('lineHeight', 0.8, 3, 1.25) : null,
             // lebar maks (mm): teks yang lebih panjang diperkecil otomatis, tidak di bawah 6 pt
-            'fitWidth' => isset($l['fitWidth']) && ! $multi ? $n('fitWidth', 5, 300) : null,
+            'fitWidth' => isset($l['fitWidth']) && ! $multi && ! $curve ? $n('fitWidth', 5, 300) : null,
+            // kotak teks: x,y = sudut kiri atas; dibungkus ke lebar w & diperkecil sampai muat tinggi h
+            'box' => $box ?: null,
+            'w' => $box ? $n('w', 3, 300, 30) : null,
+            'h' => $box ? $n('h', 2, 300, 10) : null,
+            'valign' => $box && in_array($l['valign'] ?? '', ['middle', 'bottom'], true) ? $l['valign'] : null,
+            // melengkung: (x, y) = tengah teks di puncak (up) / dasar (down) lingkaran berjari-jari curveR
+            'curve' => $curve,
+            'curveR' => $curve ? $n('curveR', 3, 80, 20) : null,
+            'curveAngle' => $curve && isset($l['curveAngle']) && (float) $l['curveAngle'] != 0.0 ? $n('curveAngle', -180, 180) : null,
+            'outline' => $outline ? $color('outline') : null,
+            'outlineWidth' => $outline ? $n('outlineWidth', 0.05, 2, 0.2) : null,
             'allowBleed' => ! empty($l['allowBleed']) ?: null,
         ], fn ($v) => $v !== null);
     }

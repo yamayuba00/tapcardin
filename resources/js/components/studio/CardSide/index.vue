@@ -3,13 +3,14 @@
 // Mode edit: overlay DBD §3.5 (bleed, safe zone, chip, slot lanyard / tepi tali & batas pola), grid, seleksi banyak
 // (klik + Shift/Ctrl, kotak seleksi), grup, geser dengan snap (Alt = bebas), ubah ukuran (Shift = rasio tetap),
 // putar (Shift = kelipatan 15°). Elemen sistem & elemen yang dikunci tidak bisa digeser.
-import { computed, onBeforeUnmount, onMounted, onUpdated, ref, useId } from 'vue'
+import { computed, onBeforeUnmount, onMounted, onUpdated, ref, useId, watch } from 'vue'
 import { QR_MARK } from '@/lib/qrMark'
 import { Lock, Nfc } from 'lucide-vue-next'
 import {
   BLEED, angleTo, center, expandGroups, isFixed, isSystem, layerBox, moveLayer, polygonPoints, ptToMm, rawBox, resizeLayer,
-  autoFitWidth, resolveColor, snapMove, textLines, textSize, unionBox,
+  autoFitWidth, curvePath, isBoxText, isCurved, resolveColor, snapMove, textAnchor, textLines, textSize, unionBox,
 } from '@/lib/design'
+import { loadFontsFor } from '@/lib/fonts'
 import { glyph } from '@/lib/glyphs'
 
 const props = defineProps({
@@ -64,7 +65,7 @@ const fontMm = (l) => ptToMm(textSize(fitted(l), props.vars))
  * masih melewati batas dirapatkan tepat ke batas (textLength). Ikut terbawa ke ekspor PNG/PDF karena memakai SVG ini.
  */
 function clampText() {
-  svg.value?.querySelectorAll('text[data-fit]').forEach((el) => {
+  svg.value?.querySelectorAll('[data-fit]').forEach((el) => {
     el.removeAttribute('textLength')
     el.removeAttribute('lengthAdjust')
     const max = Number(el.dataset.fit)
@@ -81,6 +82,11 @@ onMounted(() => {
   document.fonts?.ready.then(clampText)
 })
 onUpdated(clampText)
+// font koleksi dimuat hanya bila dipakai desain ini; ukur ulang setelah font asli siap
+const fontKeys = computed(() => [...new Set(props.side.layers.filter((l) => l.type === 'text').map((l) => `${l.font}|${l.weight}`))].join(','))
+watch(fontKeys, () => loadFontsFor(props.side.layers).then(clampText), { immediate: true })
+const anc = (l) => textAnchor(l, props.vars)
+const outlineAttrs = (l) => (l.outline ? { stroke: col(l.outline), 'stroke-width': l.outlineWidth ?? 0.2, 'paint-order': 'stroke', 'stroke-linejoin': 'round' } : {})
 const anchor = (a) => ({ center: 'middle', right: 'end' })[a] ?? 'start'
 const rings = (l) => {
   const out = []
@@ -256,6 +262,9 @@ function up() {
       <pattern :id="`hatch-${uid}`" width="1.2" height="1.2" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
         <line x1="0" y1="0" x2="0" y2="1.2" class="stroke-amber-300" stroke-width="0.25" />
       </pattern>
+      <template v-for="l in visible" :key="`cp-${l.id}`">
+        <path v-if="isCurved(l)" :id="`cp-${uid}-${l.id}`" :d="curvePath(l)" fill="none" />
+      </template>
       <template v-for="l in visible" :key="`clip-${l.id}`">
         <clipPath v-if="l.type === 'image' && l.mask" :id="`m-${uid}-${l.id}`">
           <ellipse v-if="l.mask === 'circle'" :cx="l.x + l.w / 2" :cy="l.y + l.h / 2" :rx="l.w / 2" :ry="l.h / 2" />
@@ -274,10 +283,16 @@ function up() {
         @pointerdown="downLayer($event, l)"
       >
         <text
-          v-if="l.type === 'text'"
-          :x="l.x" :y="l.y" :fill="col(l.color)" :font-family="l.font" :font-weight="l.weight" :font-style="l.italic ? 'italic' : undefined"
-          :font-size="fontMm(l)" :text-anchor="anchor(l.align)" :letter-spacing="(l.tracking ?? 0) * fontMm(l)" :data-fit="autoFit(l) ?? undefined"
-        ><tspan v-for="(line, i) in textLines(l, vars)" :key="i" :x="l.x" :dy="i === 0 ? 0 : fontMm(l) * (l.lineHeight ?? 1.25)">{{ line || ' ' }}</tspan></text>
+          v-if="l.type === 'text' && isCurved(l)"
+          :fill="col(l.color)" :font-family="l.font" :font-weight="l.weight" :font-style="l.italic ? 'italic' : undefined"
+          :font-size="fontMm(l)" text-anchor="middle" :letter-spacing="(l.tracking ?? 0) * fontMm(l)" v-bind="outlineAttrs(l)"
+        ><textPath :href="`#cp-${uid}-${l.id}`" startOffset="50%">{{ textLines(l, vars).join(' ') }}</textPath></text>
+        <text
+          v-else-if="l.type === 'text'"
+          :x="anc(l).x" :y="anc(l).y" :fill="col(l.color)" :font-family="l.font" :font-weight="l.weight" :font-style="l.italic ? 'italic' : undefined"
+          :font-size="fontMm(l)" :text-anchor="anchor(l.align)" :letter-spacing="(l.tracking ?? 0) * fontMm(l)" :data-fit="isBoxText(l) ? undefined : autoFit(l) ?? undefined"
+          v-bind="outlineAttrs(l)"
+        ><tspan v-for="(line, i) in textLines(l, vars)" :key="i" :x="anc(l).x" :dy="i === 0 ? 0 : fontMm(l) * (l.lineHeight ?? 1.25)" :data-fit="isBoxText(l) && line ? l.w : undefined">{{ line || ' ' }}</tspan></text>
         <rect v-else-if="l.type === 'rect'" :x="l.x" :y="l.y" :width="l.w" :height="l.h" :rx="l.rx || 0" :fill="col(l.fill)" :stroke="l.stroke ? col(l.stroke) : undefined" :stroke-width="l.strokeWidth" />
         <ellipse v-else-if="l.type === 'ellipse'" :cx="l.x + l.w / 2" :cy="l.y + l.h / 2" :rx="l.w / 2" :ry="l.h / 2" :fill="col(l.fill)" :stroke="l.stroke ? col(l.stroke) : undefined" :stroke-width="l.strokeWidth" />
         <polygon v-else-if="l.type === 'polygon'" :points="polygonPoints(l)" :fill="col(l.fill)" :stroke="l.stroke ? col(l.stroke) : undefined" :stroke-width="l.strokeWidth" stroke-linejoin="round" />
