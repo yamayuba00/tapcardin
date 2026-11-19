@@ -17,7 +17,9 @@ class UserController extends PlatformController
     public function index(Request $request): JsonResponse
     {
         $this->can('users.view');
-        $users = Table::paginate(User::withTrashed(), $request, [
+        // pemilih owner: hanya akun aktif (tidak dihapus & tidak diblokir)
+        $base = User::withTrashed()->when($request->query('status') === 'active', fn ($w) => $w->whereNull('deleted_at')->whereNull('blocked_at'));
+        $users = Table::paginate($base, $request, [
             'name' => 'name', 'email' => 'email', 'created_at' => 'created_at', 'last_login_at' => 'last_login_at',
         ], '-created_at', ['email', 'name', 'handle']);
 

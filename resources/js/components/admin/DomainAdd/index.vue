@@ -1,6 +1,6 @@
 <script setup>
 // Form tambah domain kustom: pilih workspace (atau terkunci dari halaman detail), isi domain.
-import { onMounted, ref } from 'vue'
+import { ref } from 'vue'
 import { Plus } from 'lucide-vue-next'
 import AppButton from '@/components/ui/AppButton/index.vue'
 import AppField from '@/components/ui/AppField/index.vue'
@@ -17,13 +17,11 @@ const { busy, run } = useAction()
 const tenantId = ref(props.tenant)
 const domain = ref('')
 const errors = ref({})
-const options = ref([])
-
-onMounted(async () => {
-  if (props.tenant) return
-  const res = await adminApi.tenants({ type: 'company', per_page: 100, sort: 'name' })
-  options.value = (res.data ?? []).map((t) => ({ value: t.id, label: t.name, description: t.slug }))
-})
+// workspace organisasi (perusahaan & partner) — dicari di server, 20 hasil per ketikan
+async function searchTenants(q) {
+  const res = await adminApi.tenants({ type: 'company', q: q || undefined, per_page: 20, sort: 'name' })
+  return (res.data ?? []).map((t) => ({ value: t.id, label: t.name, description: t.slug }))
+}
 
 async function add() {
   errors.value = {}
@@ -40,7 +38,7 @@ async function add() {
 <template>
   <form class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end" @submit.prevent="add">
     <AppField v-if="!props.tenant" label="Workspace" :error="errors.tenant?.[0]">
-      <AppSelect v-model="tenantId" :options="options" searchable placeholder="Pilih workspace" :invalid="!!errors.tenant" />
+      <AppSelect v-model="tenantId" :search="searchTenants" placeholder="Cari workspace" :invalid="!!errors.tenant" />
     </AppField>
     <AppField label="Domain" :error="errors.domain?.[0]" :class="props.tenant ? 'sm:col-span-2' : ''">
       <AppInput v-model="domain" maxlength="190" required placeholder="kartu.perusahaan.com" :invalid="!!errors.domain" />

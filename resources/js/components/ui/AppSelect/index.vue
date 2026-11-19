@@ -3,8 +3,9 @@
 // grup, deskripsi/ikon per opsi, chip untuk multiple, keyboard (↑↓ Home End Enter Esc, ketik untuk lompat),
 // pola ARIA combobox + listbox. Panel di-teleport ke body; di ponsel tampil sebagai bottom sheet.
 // API lama tetap: v-model, options [{ value, label, description?, icon?, group?, disabled? }], placeholder.
-import { computed, nextTick, onBeforeUnmount, ref, useId, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, reactive, ref, useId, watch } from 'vue'
 import { Check, ChevronDown, Search, X } from 'lucide-vue-next'
+import { createAsyncSearch } from '@/lib/asyncSearch'
 
 defineOptions({ inheritAttrs: false })
 const model = defineModel({ type: [String, Number, Array, null], default: '' })
@@ -18,6 +19,9 @@ const props = defineProps({
   disabled: Boolean,
   invalid: Boolean,
   emptyText: { type: String, default: 'Tidak ada pilihan yang cocok.' },
+  // mode server: (q) => Promise<opsi[]>; q kosong = halaman awal. Label pilihan tetap tampil walau tidak ada di hasil.
+  search: { type: Function, default: null },
+  selectedOption: { type: Object, default: null },
 })
 
 const id = useId()
@@ -33,9 +37,26 @@ const mobile = ref(false)
 const same = (a, b) => String(a) === String(b)
 const selected = computed(() => (props.multiple ? (Array.isArray(model.value) ? model.value : []) : model.value))
 const isSelected = (v) => (props.multiple ? selected.value.some((s) => same(s, v)) : model.value !== '' && model.value != null && same(model.value, v))
-const chosen = computed(() => props.options.filter((o) => isSelected(o.value)))
-const canSearch = computed(() => props.searchable ?? props.options.length > 8)
+
+// mode server: hasil dari props.search, opsi yang pernah tampil diingat agar label pilihan tetap ada
+const remote = ref([])
+const loading = ref(false)
+const failed = ref(false)
+const known = reactive(new Map())
+const remember = (list) => { for (const o of list) known.set(String(o.value), o) }
+const searcher = props.search ? createAsyncSearch(props.search, {
+  onStart: () => { loading.value = true; failed.value = false },
+  onResult: (list) => { remote.value = list ?? []; remember(remote.value); loading.value = false; active.value = remote.value.length ? 0 : -1 },
+  onError: () => { remote.value = []; loading.value = false; failed.value = true },
+}) : null
+const chosen = computed(() => {
+  if (!props.search) return props.options.filter((o) => isSelected(o.value))
+  const vals = props.multiple ? selected.value : model.value === '' || model.value == null ? [] : [model.value]
+  return vals.map((v) => known.get(String(v)) ?? (props.selectedOption && same(props.selectedOption.value, v) ? props.selectedOption : { value: v, label: String(v) }))
+})
+const canSearch = computed(() => (props.search ? true : props.searchable ?? props.options.length > 8))
 const filtered = computed(() => {
+  if (props.search) return remote.value
   const q = query.value.trim().toLowerCase()
   return q ? props.options.filter((o) => `${o.label} ${o.description ?? ''}`.toLowerCase().includes(q)) : props.options
 })
@@ -71,6 +92,7 @@ async function show() {
   if (props.disabled || open.value) return
   open.value = true
   query.value = ''
+  searcher?.now('')
   active.value = Math.max(0, filtered.value.findIndex((o) => isSelected(o.value)))
   place()
   await nextTick()
@@ -79,10 +101,12 @@ async function show() {
 }
 function hide(focusTrigger = true) {
   open.value = false
+  searcher?.cancel()
   if (focusTrigger) trigger.value?.focus()
 }
 function pick(o) {
   if (!o || o.disabled) return
+  if (props.search) known.set(String(o.value), o)
   if (props.multiple) {
     const has = isSelected(o.value)
     if (!has && limitReached.value) return
@@ -129,7 +153,13 @@ function onKey(e) {
 function scrollActive() {
   nextTick(() => panel.value?.querySelector(`[data-index="${active.value}"]`)?.scrollIntoView({ block: 'nearest' }))
 }
-watch(query, () => (active.value = filtered.value.length ? 0 : -1))
+watch(query, (q) => {
+  if (searcher && open.value) {
+    const t = q.trim()
+    return t ? searcher.run(t) : searcher.now('')
+  }
+  active.value = filtered.value.length ? 0 : -1
+})
 
 const outside = (e) => { if (open.value && !panel.value?.contains(e.target) && !trigger.value?.contains(e.target)) hide(false) }
 const reposition = () => open.value && place()
@@ -140,6 +170,7 @@ watch(open, (v) => {
   window[fn]('scroll', reposition, true)
 })
 onBeforeUnmount(() => {
+  searcher?.cancel()
   document.removeEventListener('pointerdown', outside, true)
   window.removeEventListener('resize', reposition)
   window.removeEventListener('scroll', reposition, true)
@@ -212,7 +243,7 @@ const VISIBLE_CHIPS = 3
         />
       </div>
 
-      <ul :id="`${id}-list`" role="listbox" :aria-multiselectable="multiple || undefined" :aria-label="$attrs['aria-label'] || placeholder" class="min-h-0 flex-1 overflow-y-auto overscroll-contain p-1.5">
+      <ul :id="`${id}-list`" role="listbox" :aria-multiselectable="multiple || undefined" :aria-busy="loading || undefined" :aria-label="$attrs['aria-label'] || placeholder" class="min-h-0 flex-1 overflow-y-auto overscroll-contain p-1.5">
         <li
           v-if="!multiple && placeholder && !canSearch"
           role="option" :aria-selected="!chosen.length"
@@ -246,7 +277,9 @@ const VISIBLE_CHIPS = 3
             <Check v-if="!multiple && isSelected(r.option.value)" class="size-4 flex-none text-accent-text" aria-hidden="true" />
           </li>
         </template>
-        <li v-if="!filtered.length" class="px-3 py-6 text-center text-sm text-muted">{{ emptyText }}</li>
+        <li v-if="loading && !filtered.length" class="px-3 py-6 text-center text-sm text-muted" role="status">Memuat…</li>
+        <li v-else-if="failed" class="px-3 py-6 text-center text-sm text-danger" role="alert">Gagal memuat. Ketik lagi untuk mencoba ulang.</li>
+        <li v-else-if="!filtered.length" class="px-3 py-6 text-center text-sm text-muted">{{ search && query.trim() ? 'Tidak ada hasil.' : emptyText }}</li>
       </ul>
 
       <div v-if="multiple" class="flex flex-none items-center justify-between gap-2 border-t border-line px-3 py-2 text-sm">

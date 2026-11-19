@@ -20,6 +20,7 @@ use App\Models\TenantMember;
 use App\Models\User;
 use App\Support\Audit;
 use App\Support\Http\Table;
+use App\Support\MemberPicker;
 use App\Support\Webhooks\WebhookPayload;
 use App\Support\Webhooks\Webhooks;
 use Illuminate\Http\JsonResponse;
@@ -205,14 +206,9 @@ class CompanyController extends WorkspaceController
     }
 
     /** GET /api/company/cards/assignees — karyawan aktif yang boleh menerima kartu (Manager: hanya timnya). */
-    public function assignees(): JsonResponse
+    public function assignees(Request $request): JsonResponse
     {
-        $scope = $this->cardScope();
-        $members = TenantMember::with('user')->where('status', MemberStatus::Active->value)
-            ->when($scope !== null, fn ($w) => $w->whereIn('user_id', $scope))->get()
-            ->sortBy(fn (TenantMember $m) => mb_strtolower($m->user->name))->values();
-
-        return response()->json(['data' => $members->map(fn (TenantMember $m) => ['user_id' => $m->user->public_id, 'name' => $m->user->name, 'email' => $m->user->email])]);
+        return MemberPicker::json($request, $this->cardScope());
     }
 
     /** GET /api/company/leads — rekap per karyawan: kartu aktif, tap & lead 30 hari, total lead. */

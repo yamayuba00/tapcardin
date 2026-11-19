@@ -1,6 +1,6 @@
 <script setup>
 // Kartu karyawan: stok perusahaan ditugaskan ke karyawan (karyawan mengaktifkan sendiri), atau ditarik kembali ke stok.
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 import AppBadge from '@/components/ui/AppBadge/index.vue'
 import AppButton from '@/components/ui/AppButton/index.vue'
 import AppField from '@/components/ui/AppField/index.vue'
@@ -18,14 +18,16 @@ const COLUMNS = [{ key: 'card', label: 'Kartu' }, { key: 'status', label: 'Statu
 const setFilter = (v) => { list.filters.filter = v; list.search() }
 const replace = (c) => { list.rows.value = list.rows.value.map((x) => (x.token === c.token ? c : x)) }
 
-const members = ref([])
-const options = computed(() => members.value.map((m) => ({ value: m.user_id, label: m.name, description: m.email })))
+// karyawan dicari di server (Manager: hanya anggota timnya, dibatasi server)
+async function searchMembers(q) {
+  const res = await companyApi.assignees({ q: q || undefined, limit: 20 })
+  return (res.data ?? []).map((m) => ({ value: m.user_id, label: m.name, description: m.email }))
+}
 const assigning = ref(null)
 const target = ref('')
-async function openAssign(card) {
+function openAssign(card) {
   assigning.value = card
   target.value = ''
-  if (!members.value.length) members.value = (await companyApi.assignees()).data ?? [] // Manager: hanya anggota timnya
 }
 async function assign() {
   const res = await run(() => companyApi.assignCard(assigning.value.token, target.value), 'Kartu ditugaskan. Karyawan bisa mengaktifkannya sekarang.').catch(() => null)
@@ -62,7 +64,7 @@ async function release() {
 
   <AppModal v-if="assigning" size="sm" title="Tugaskan kartu" :description="`Kartu ${assigning.short_code} hanya bisa diaktifkan oleh karyawan yang dipilih.`" @close="assigning = null">
     <form id="card-assign" class="grid gap-4" @submit.prevent="assign">
-      <AppField label="Karyawan"><AppSelect v-model="target" :options="options" searchable placeholder="Pilih karyawan" /></AppField>
+      <AppField label="Karyawan"><AppSelect v-model="target" :search="searchMembers" placeholder="Cari nama atau email karyawan" /></AppField>
     </form>
     <template #footer>
       <AppButton variant="secondary" @click="assigning = null">Batal</AppButton>

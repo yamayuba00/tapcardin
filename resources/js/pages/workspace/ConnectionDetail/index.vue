@@ -117,7 +117,7 @@ const activityText = (a) => (a.type === 'assigned'
             <dt class="text-muted">Tahap</dt><dd><StageBadge :stage="c.stage" /><span v-if="c.lost_reason" class="text-muted"> · {{ c.lost_reason }}</span></dd>
             <dt class="text-muted">Penanggung jawab</dt>
             <dd>
-              <AssigneeSelect v-if="canAssign" :model-value="c.assignee?.id ?? ''" :disabled="busy" @update:model-value="reassign" />
+              <AssigneeSelect v-if="canAssign" :model-value="c.assignee?.id ?? ''" :current="c.assignee" :disabled="busy" @update:model-value="reassign" />
               <span v-else>{{ c.assignee?.name ?? '—' }}</span>
             </dd>
             <dt class="text-muted">Email</dt><dd>{{ c.email || '—' }}</dd>

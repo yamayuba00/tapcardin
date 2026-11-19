@@ -20,6 +20,7 @@ use App\Models\TenantMember;
 use App\Models\User;
 use App\Support\Audit;
 use App\Support\Http\Table;
+use App\Support\MemberPicker;
 use App\Support\Notify;
 use App\Support\Phone;
 use App\Support\Webhooks\WebhookPayload;
@@ -260,14 +261,9 @@ class ConnectionController extends WorkspaceController
     }
 
     /** GET /api/leads/assignees — anggota aktif yang boleh menerima lead (Manager: hanya tim yang dikelola). */
-    public function assignees(): JsonResponse
+    public function assignees(Request $request): JsonResponse
     {
-        $scope = $this->assignScope();
-        $members = TenantMember::with('user')->where('status', MemberStatus::Active->value)
-            ->when($scope !== null, fn ($w) => $w->whereIn('user_id', $scope))->get()
-            ->sortBy(fn (TenantMember $m) => mb_strtolower($m->user->name))->values();
-
-        return response()->json(['data' => $members->map(fn (TenantMember $m) => ['user_id' => $m->user->public_id, 'name' => $m->user->name, 'email' => $m->user->email])]);
+        return MemberPicker::json($request, $this->assignScope());
     }
 
     /** PUT /api/leads/assign {ids[], user|null} — tugaskan, alihkan, atau lepas penanggung jawab lead (bisa massal). */
