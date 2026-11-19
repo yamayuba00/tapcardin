@@ -25,6 +25,7 @@ use App\Http\Controllers\Workspace\ProfileController;
 use App\Http\Controllers\Workspace\ReminderController;
 use App\Http\Controllers\Workspace\ScanController;
 use App\Http\Controllers\Workspace\StreamController;
+use App\Http\Controllers\Workspace\WebhookController;
 use App\Http\Controllers\Workspace\WorkspaceBrandController;
 use Illuminate\Support\Facades\Route;
 
@@ -181,6 +182,20 @@ Route::middleware('auth')->prefix('api')->name('api.')->group(function () {
         Route::put('/cards/{token}/assign', 'assign')->name('cards.assign');
         Route::delete('/cards/{token}/assign', 'unassign')->name('cards.unassign');
         Route::get('/leads', 'leads')->name('leads');
+    });
+
+    // Webhook keluar (workspace perusahaan, paket dengan fitur `webhooks`)
+    Route::controller(WebhookController::class)->group(function () {
+        Route::get('/webhooks', 'index')->name('webhooks.index');
+        Route::get('/webhooks/catalog', 'catalog')->name('webhooks.catalog');
+        Route::post('/webhooks', 'store')->middleware('throttle:30,1')->name('webhooks.store');
+        Route::patch('/webhooks/{endpoint}', 'update')->name('webhooks.update');
+        Route::delete('/webhooks/{endpoint}', 'destroy')->name('webhooks.destroy');
+        Route::post('/webhooks/{endpoint}/secret', 'rotate')->name('webhooks.rotate');
+        Route::post('/webhooks/{endpoint}/test', 'test')->middleware('throttle:20,1')->name('webhooks.test');
+        Route::get('/webhooks/{endpoint}/deliveries', 'deliveries')->name('webhooks.deliveries');
+        Route::get('/webhook-deliveries/{delivery}', 'showDelivery')->name('webhooks.delivery');
+        Route::post('/webhook-deliveries/{delivery}/redeliver', 'redeliver')->middleware('throttle:30,1')->name('webhooks.redeliver');
     });
 
     Route::get('/addons', [AddonController::class, 'index'])->name('addons');

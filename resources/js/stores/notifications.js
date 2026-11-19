@@ -5,7 +5,7 @@ import { useToastStore } from './toast'
 import { config } from '@/config'
 import { connectRealtime } from '@/lib/realtime'
 
-const TYPES = ['tap', 'lead_new', 'lost_card_tapped', 'saved_back', 'reminder_due', 'import_done', 'invoice_paid', 'invoice_due', 'plan_changed', 'workspace_expired', 'order_status', 'announcement', 'tap_quota', 'subscription_past_due', 'grace_ending', 'subscription_reminder', 'trial_ending', 'order_unpaid']
+const TYPES = ['tap', 'lead_new', 'lost_card_tapped', 'saved_back', 'reminder_due', 'import_done', 'invoice_paid', 'invoice_due', 'plan_changed', 'workspace_expired', 'order_status', 'announcement', 'tap_quota', 'subscription_past_due', 'grace_ending', 'subscription_reminder', 'trial_ending', 'order_unpaid', 'webhook_disabled']
 
 const messages = {
   tap: (d) => `Seseorang membuka profil Anda${d.city ? ' · ' + d.city : ''}`,
@@ -26,6 +26,7 @@ const messages = {
   subscription_reminder: (d) => `Masa aktif ${d.workspace ?? 'workspace'} berakhir ${d.days <= 1 ? 'besok' : `${d.days} hari lagi`} — perpanjang paket ${d.plan} agar dashboard tidak terkunci`,
   trial_ending: (d) => `Uji coba ${d.workspace ?? 'workspace'} berakhir besok — pilih paket agar dashboard tidak terkunci`,
   workspace_expired: (d) => `Masa aktif paket ${d.plan} habis — dashboard terkunci sampai diperpanjang`,
+  webhook_disabled: (d) => `Webhook ke ${d.url} dinonaktifkan otomatis setelah ${d.failures ?? 20} kali gagal — periksa penerimanya`,
   order_unpaid: (d) => `Pesanan ${d.number} belum dibayar — batal otomatis bila tidak dibayar tepat waktu`,
   order_status: (d) => `Pesanan ${d.number}: ${d.label}${d.tracking ? ' · resi ' + d.tracking : ''}`,
   announcement: (d) => `${d.title} — ${d.body}`,

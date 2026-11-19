@@ -16,6 +16,8 @@ use App\Models\LeadStage;
 use App\Support\Audit;
 use App\Support\Http\Table;
 use App\Support\Phone;
+use App\Support\Webhooks\WebhookPayload;
+use App\Support\Webhooks\Webhooks;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -91,6 +93,10 @@ class ConnectionController extends WorkspaceController
             $data['phone_e164'] = Phone::toE164($data['phone']);
         }
         $connection->update($data);
+        $changes = array_values(array_diff(array_keys($connection->getChanges()), ['updated_at', 'email_norm', 'phone_e164']));
+        if ($changes) {
+            Webhooks::emit($this->tenant()->id, 'lead.updated', fn () => ['lead' => WebhookPayload::lead($connection), 'changes' => $changes]);
+        }
 
         return $this->detail($connection);
     }
@@ -117,6 +123,9 @@ class ConnectionController extends WorkspaceController
             'last_activity_at' => now(),
         ]);
         $this->log($connection, ActivityType::StageChanged, null, ['from_stage' => $from?->name, 'to_stage' => $stage->name]);
+        $ref = fn ($st) => $st ? ['id' => $st->public_id, 'name' => $st->name, 'kind' => $st->kind?->value] : null;
+        Webhooks::emit($this->tenant()->id, 'lead.stage_changed', fn () => ['lead' => WebhookPayload::lead($connection->setRelation('stage', $stage)),
+            'from_stage' => $ref($from), 'to_stage' => $ref($stage), 'lost_reason' => $connection->lost_reason]);
         Followups::cancelAuto($connection);
 
         return $this->detail($connection);

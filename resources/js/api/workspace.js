@@ -197,3 +197,16 @@ export const companyApi = {
   unassignCard: (token) => http.del(`/api/company/cards/${token}/assign`),
   leads: () => http.get('/api/company/leads'),
 }
+
+export const webhooksApi = {
+  list: () => http.get('/api/webhooks'),
+  catalog: () => http.get('/api/webhooks/catalog'),
+  create: (body) => http.post('/api/webhooks', body),
+  update: (id, body) => http.patch(`/api/webhooks/${id}`, body),
+  remove: (id) => http.del(`/api/webhooks/${id}`),
+  rotate: (id) => http.post(`/api/webhooks/${id}/secret`),
+  test: (id) => http.post(`/api/webhooks/${id}/test`),
+  deliveries: (id, params) => http.get(`/api/webhooks/${id}/deliveries`, params),
+  delivery: (id) => http.get(`/api/webhook-deliveries/${id}`),
+  redeliver: (id) => http.post(`/api/webhook-deliveries/${id}/redeliver`),
+}

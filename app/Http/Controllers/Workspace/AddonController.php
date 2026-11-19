@@ -10,16 +10,16 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 /**
- * Add-on berbayar di luar paket (integrasi CRM per alat) & fitur segera hadir (Webhook). Selama "segera hadir":
- * daftar / batal daftar minat per workspace. Webhook: izin `integrations.manage` / `workspace.settings`, sisanya `billing.view`.
+ * Add-on berbayar di luar paket (integrasi CRM per alat). Selama "segera hadir": daftar / batal daftar minat per workspace
+ * (izin `billing.view`). Webhook sudah tersedia sebagai fitur sendiri (WebhookController).
  */
 class AddonController extends WorkspaceController
 {
-    /** GET /api/addons?group=webhook — tanpa `group`: semua kecuali webhook (punya halamannya sendiri). */
+    /** GET /api/addons?group=crm */
     public function index(Request $request): JsonResponse
     {
         $group = $request->query('group');
-        $this->authorizeGroup($group === 'webhook' ? 'webhook' : 'addon');
+        $this->access()->authorize('billing.view');
         $mine = AddonInterest::where('tenant_id', $this->tenant()->id)->pluck('created_at', 'addon_id');
 
         return response()->json(['data' => Addon::where('status', '!=', 'retired')
@@ -30,7 +30,7 @@ class AddonController extends WorkspaceController
     /** POST /api/addons/{key}/interest {note?} — "Beri tahu saya" saat add-on tersedia. Idempoten. */
     public function interest(Request $request, Addon $addon): JsonResponse
     {
-        $this->authorizeGroup($addon->group);
+        $this->access()->authorize('billing.view');
         $data = $request->validate(['note' => ['nullable', 'string', 'max:200']]);
         if ($addon->status !== 'coming_soon') {
             throw new ApiError('addon_not_coming_soon', 'Add-on ini tidak dalam masa pendaftaran minat.');
@@ -46,18 +46,10 @@ class AddonController extends WorkspaceController
 
     public function withdraw(Addon $addon): JsonResponse
     {
-        $this->authorizeGroup($addon->group);
+        $this->access()->authorize('billing.view');
         AddonInterest::where(['addon_id' => $addon->id, 'tenant_id' => $this->tenant()->id])->delete();
 
         return response()->json(['data' => self::present($addon) + ['interested_at' => null]]);
-    }
-
-    /** Webhook segera hadir: owner/admin (pengaturan workspace) boleh mendaftar minat walau paketnya belum Business. */
-    private function authorizeGroup(?string $group): void
-    {
-        $group === 'webhook'
-            ? $this->access()->authorize('integrations.manage', 'workspace.settings')
-            : $this->access()->authorize('billing.view');
     }
 
     public static function present(Addon $a): array

@@ -4,11 +4,14 @@ namespace App\Actions\Leads;
 
 use App\Enums\ActivityType;
 use App\Enums\LeadSource;
+use App\Models\Card;
 use App\Models\Connection;
 use App\Models\LeadActivity;
 use App\Models\LeadStage;
 use App\Support\Notify;
 use App\Support\Phone;
+use App\Support\Webhooks\WebhookPayload;
+use App\Support\Webhooks\Webhooks;
 use App\Tenancy\CurrentTenant;
 use Illuminate\Support\Facades\DB;
 
@@ -54,6 +57,7 @@ final class CreateConnection
 
                 $this->activity($existing, $refs['tap_id'] ?? null ? ActivityType::Tap : ActivityType::Created,
                     $data['note'] ?? null, ['source' => $source->value, 'collector_user_id' => $collectorUserId, 'deduplicated' => true]);
+                $this->exchanged($tenant->id, $existing, $source, $refs, true);
 
                 return ['connection' => $existing, 'duplicate' => true];
             }
@@ -98,7 +102,25 @@ final class CreateConnection
                 ]);
             }
 
+            if (empty($refs['quiet'])) {
+                Webhooks::emit($tenant->id, 'lead.created', fn () => ['lead' => WebhookPayload::lead($connection)]);
+            }
+            $this->exchanged($tenant->id, $connection, $source, $refs, false);
+
             return ['connection' => $connection, 'duplicate' => false];
+        });
+    }
+
+    /** Tukar Kontak dari profil kartu → event `contact.exchanged` (juga saat kontak sudah ada). */
+    private function exchanged(int $tenantId, Connection $c, LeadSource $source, array $refs, bool $duplicate): void
+    {
+        if ($source !== LeadSource::ExchangeForm) {
+            return;
+        }
+        Webhooks::emit($tenantId, 'contact.exchanged', function () use ($c, $refs, $duplicate) {
+            $card = isset($refs['card_id']) ? Card::acrossTenants()->find($refs['card_id']) : null;
+
+            return ['lead' => WebhookPayload::lead($c), 'card' => $card ? WebhookPayload::cardRef($card) : null, 'duplicate' => $duplicate];
         });
     }
 

@@ -99,7 +99,7 @@ terakhir disimpan untuk rollback. Migrasi TapCard hanya menambah tabel/kolom, ja
 |---|---|
 | Nginx | [`nginx/tapcard.conf`](nginx/tapcard.conf) — satu server block untuk domain & semua subdomain, HTTP→HTTPS, aset ber-hash di-cache setahun, SSE notifikasi tanpa buffering, `ws.<domain>` diteruskan ke Reverb (WebSocket). Kompatibel Nginx 1.18–1.27 |
 | PHP-FPM | [`php/fpm-pools.conf`](php/fpm-pools.conf) — pool utama (jumlah worker dihitung dari RAM) + pool terpisah untuk notifikasi realtime; [`php/opcache-production.ini`](php/opcache-production.ini) |
-| Supervisor | [`supervisor/tapcard.conf`](supervisor/tapcard.conf) — 2 worker antrean (`taps`, `notify`, `leads`, `default`, `render`) + 1 worker `tapcard-broadcast` (antrean `broadcast`: siaran realtime, sekali coba, batas waktu 1 dtk sambung / 2 dtk total) + scheduler + `tapcard-reverb` (WebSocket realtime di 127.0.0.1:8080). Reverb lambat/mati tidak menahan tap, lead, dan email; notifikasi tetap tersimpan & sampai lewat SSE |
+| Supervisor | [`supervisor/tapcard.conf`](supervisor/tapcard.conf) — 2 worker antrean (`taps`, `notify`, `leads`, `default`, `render`) + 1 worker `tapcard-broadcast` (antrean `broadcast`: siaran realtime, sekali coba, batas waktu 1 dtk sambung / 2 dtk total) + 2 worker `tapcard-webhooks` (antrean `webhooks`: webhook keluar ke sistem pelanggan, batas waktu 2 dtk sambung / 5 dtk total, ulang 1m→12j, endpoint dinonaktifkan otomatis setelah 20 gagal berturut-turut) + scheduler + `tapcard-reverb` (WebSocket realtime di 127.0.0.1:8080). Reverb lambat/mati dan penerima webhook yang lambat tidak menahan tap, lead, dan email; notifikasi tetap tersimpan & sampai lewat SSE |
 | Scheduler | pengingat follow-up & invoice kedaluwarsa (tiap menit), uptime (10 detik), alarm & cek pembayaran (5 menit), statistik kartu (15 menit), pesanan belum dibayar: pengingat lalu batal setelah 3 hari (tiap jam), tagihan & masa tenggang langganan (01.00 WIB), backup (02.15 WIB), partisi & pembersihan data (harian) |
 | SSL | Certbot, perpanjang otomatis (timer sistem) + reload Nginx |
 | Keamanan | UFW: hanya SSH, 80, 443 terbuka · `.env` tidak terbaca publik · PHP selain `index.php` tidak dieksekusi |
@@ -197,7 +197,7 @@ Sebelum lonjakan besar (peluncuran, event, kampanye) pindahkan lebih dulu — ja
 database menulis + mengunci satu baris per job; di Redis tidak.
 
 `deploy.sh` otomatis memasang `supervisor/tapcard.conf` bila berubah (mis. rilis yang menambah worker
-`tapcard-broadcast`). Pasang manual hanya bila rilis tidak lewat `deploy.sh`:
+`tapcard-broadcast` atau `tapcard-webhooks`). Pasang manual hanya bila rilis tidak lewat `deploy.sh`:
 
 ```bash
 sudo cp /var/www/tapcard/current/deploy/supervisor/tapcard.conf /etc/supervisor/conf.d/tapcard.conf

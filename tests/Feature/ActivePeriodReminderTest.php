@@ -194,16 +194,11 @@ class ActivePeriodReminderTest extends TestCase
         $this->assertTrue(DB::getSchemaBuilder()->hasColumn('subscriptions', 'reminders_sent'));
     }
 
-    public function test_webhook_page_is_coming_soon_for_company_admins(): void
+    public function test_webhook_interest_addon_is_retired_now_that_webhooks_exist(): void
     {
+        $this->assertSame('retired', DB::table('addons')->where('key', 'webhooks')->value('status'));
         $this->actingAs($this->owner);
-        $list = $this->json('GET', $this->host('majujaya', '/api/addons?group=webhook'))->assertOk()->json('data');
-        $this->assertSame([['webhooks', 'webhook', 'coming_soon']], array_map(fn ($a) => [$a['key'], $a['group'], $a['status']], $list));
-        $this->json('POST', $this->host('majujaya', '/api/addons/webhooks/interest'), ['note' => 'ERP'])->assertOk()->assertJsonPath('data.interested_at', fn ($v) => $v !== null);
-        $this->assertDatabaseHas('addon_interests', ['tenant_id' => $this->org->id, 'note' => 'ERP']);
         $this->assertNotContains('webhooks', collect($this->json('GET', $this->host('majujaya', '/api/addons'))->json('data'))->pluck('key')->all());
-
-        $this->actingAs($this->member);
-        $this->json('GET', $this->host('majujaya', '/api/addons?group=webhook'))->assertForbidden();
+        $this->json('POST', $this->host('majujaya', '/api/addons/webhooks/interest'))->assertJsonPath('error.code', 'addon_not_coming_soon');
     }
 }

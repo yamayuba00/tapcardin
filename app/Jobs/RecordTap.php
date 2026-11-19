@@ -8,6 +8,8 @@ use App\Models\Card;
 use App\Models\Tap;
 use App\Models\TeamMember;
 use App\Support\Notify;
+use App\Support\Webhooks\WebhookPayload;
+use App\Support\Webhooks\Webhooks;
 use App\Tenancy\TenantAwareJob;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -64,6 +66,9 @@ class RecordTap implements ShouldQueue
         ]);
 
         Card::whereKey($card->id)->update(['last_tap_at' => $at]);
+        Webhooks::emit($this->tenantId, 'tap.recorded', fn () => ['card' => WebhookPayload::cardRef($card), 'holder' => WebhookPayload::user($card->loadMissing('holder')->holder),
+            'source' => $this->ctx->source, 'city' => $this->ctx->city, 'country' => $this->ctx->country,
+            'device' => $this->ctx->device, 'browser' => $this->ctx->browser, 'at' => $at->toIso8601String()]);
 
         if (! $card->holder_user_id) {
             return;

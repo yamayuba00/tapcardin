@@ -17,6 +17,7 @@ final class EmailContent
     public const DEFAULT_ON = [
         'invoice_due' => true, 'invoice_paid' => true, 'plan_changed' => true, 'workspace_expired' => true, 'subscription_past_due' => true,
         'grace_ending' => true, 'subscription_reminder' => true, 'trial_ending' => true, 'order_status' => true, 'order_unpaid' => true, 'tap_quota' => true, 'lost_card_tapped' => true,
+        'webhook_disabled' => true,
     ];
 
     /** Selalu dikirim, tidak bisa dimatikan (tidak tampil di daftar preferensi). */
@@ -129,6 +130,16 @@ final class EmailContent
                 ],
                 'action' => ['label' => 'Pilih paket', 'path' => '/billing'],
                 'tone' => 'warn',
+            ],
+            'webhook_disabled' => [
+                'subject' => 'Webhook dinonaktifkan otomatis',
+                'title' => 'Webhook dinonaktifkan otomatis',
+                'lines' => [
+                    'Pengiriman ke **'.($d['url'] ?? '-').'** gagal **'.($d['failures'] ?? 20).' kali berturut-turut**, jadi endpoint ini kami nonaktifkan agar tidak terus mengirim.',
+                    'Periksa server penerima (HTTPS, balasan 2xx, waktu balas < 5 detik), lalu aktifkan lagi dari halaman Webhook. Event selama nonaktif tidak dikirim.',
+                ],
+                'action' => ['label' => 'Buka Webhook', 'path' => '/webhooks'],
+                'tone' => 'danger',
             ],
             'workspace_expired' => [
                 'subject' => 'Masa aktif workspace habis',

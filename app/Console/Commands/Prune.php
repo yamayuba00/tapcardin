@@ -23,6 +23,7 @@ class Prune extends Command
             'cache' => DB::table('cache')->where('expiration', '<', time())->delete(),
             'notifications' => DB::table('notifications')->whereNotNull('read_at')->where('created_at', '<', now()->subDays(90))->delete(),
             'monitor_checks (> 90 hari)' => DB::table('monitor_checks')->where('checked_at', '<', now()->subDays(StatusPage::DAYS))->delete(),
+            'webhook_deliveries (> 30 hari)' => DB::table('webhook_deliveries')->where('created_at', '<', now()->subDays(30))->delete(),
             'users (hard delete > 30 hari)' => $this->purgeUsers(),
         ];
         foreach ($counts as $table => $n) {

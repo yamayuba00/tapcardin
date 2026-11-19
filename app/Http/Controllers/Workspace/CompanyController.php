@@ -19,6 +19,8 @@ use App\Models\TenantMember;
 use App\Models\User;
 use App\Support\Audit;
 use App\Support\Http\Table;
+use App\Support\Webhooks\WebhookPayload;
+use App\Support\Webhooks\Webhooks;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -97,6 +99,7 @@ class CompanyController extends WorkspaceController
             : TenantMember::create(['tenant_id' => $this->tenant()->id, 'user_id' => $user->id, 'role_id' => $role->id, 'status' => MemberStatus::Active->value]);
         PermissionResolver::bump($this->tenant()->id);
         Audit::tenant($this->tenant()->id, 'member.added', $user, null, ['role' => $role->key]);
+        Webhooks::emit($this->tenant()->id, 'member.added', fn () => $this->hookMember($user, $role->key, 'active'));
 
         return response()->json(['data' => $this->member($m->fresh(['user', 'role']), $this->tenant()->owner_user_id)], 201);
     }
@@ -111,6 +114,7 @@ class CompanyController extends WorkspaceController
         $m->update(['role_id' => Role::system($data['role'])->id]);
         PermissionResolver::bump($this->tenant()->id);
         Audit::tenant($this->tenant()->id, 'member.role_changed', $m->user, ['role' => $before], ['role' => $data['role']]);
+        Webhooks::emit($this->tenant()->id, 'member.role_changed', fn () => $this->hookMember($m->user, $data['role'], $m->status->value) + ['from_role' => $before]);
 
         return response()->json(['data' => $this->member($m->fresh(['user', 'role']), $this->tenant()->owner_user_id)]);
     }
@@ -127,6 +131,7 @@ class CompanyController extends WorkspaceController
         });
         PermissionResolver::bump($this->tenant()->id);
         Audit::tenant($this->tenant()->id, 'member.removed', $m->user);
+        Webhooks::emit($this->tenant()->id, 'member.deactivated', fn () => $this->hookMember($m->user, $m->role->key, 'removed'));
 
         return response()->json(['data' => $this->member($m->fresh(['user', 'role']), $this->tenant()->owner_user_id)]);
     }
@@ -139,6 +144,7 @@ class CompanyController extends WorkspaceController
         $m->update(['status' => MemberStatus::Active->value, 'removed_at' => null, 'removed_by' => null]);
         PermissionResolver::bump($this->tenant()->id);
         Audit::tenant($this->tenant()->id, 'member.reactivated', $m->user);
+        Webhooks::emit($this->tenant()->id, 'member.reactivated', fn () => $this->hookMember($m->user, $m->role->key, 'active'));
 
         return response()->json(['data' => $this->member($m->fresh(['user', 'role']), $this->tenant()->owner_user_id)]);
     }
@@ -171,6 +177,7 @@ class CompanyController extends WorkspaceController
         }
         $card->update(['assigned_user_id' => $user->id]);
         Audit::tenant($card->tenant_id, 'card.assigned', $card, null, ['user' => $user->public_id]);
+        Webhooks::emit($card->tenant_id, 'card.assigned', fn () => ['card' => WebhookPayload::card($card->fresh(['holder', 'assignee']))]);
 
         return response()->json(['data' => $this->card($card->fresh(['holder', 'assignee']))]);
     }
@@ -182,6 +189,7 @@ class CompanyController extends WorkspaceController
         $card = $this->companyCard($token);
         DB::transaction(fn () => $this->release($card, $status));
         Audit::tenant($card->tenant_id, 'card.unassigned', $card);
+        Webhooks::emit($card->tenant_id, 'card.unassigned', fn () => ['card' => WebhookPayload::card($card->fresh(['holder', 'assignee']))]);
 
         return response()->json(['data' => $this->card($card->fresh(['holder', 'assignee']))]);
     }
@@ -248,6 +256,11 @@ class CompanyController extends WorkspaceController
             $status->handle($card, CardStatus::Unclaimed, 'Ditarik dari karyawan', extra: ['holder_user_id' => null, 'assigned_user_id' => null, 'profile_id' => null]);
             CardLoginKey::where('card_id', $card->id)->delete();
         }
+    }
+
+    private function hookMember(User $u, string $role, string $status): array
+    {
+        return ['user' => WebhookPayload::user($u), 'role' => $role, 'status' => $status];
     }
 
     private function member(TenantMember $m, ?int $ownerId): array

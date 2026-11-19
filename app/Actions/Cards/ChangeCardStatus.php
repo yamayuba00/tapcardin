@@ -7,6 +7,8 @@ use App\Exceptions\ApiError;
 use App\Models\Card;
 use App\Models\CardStatusHistory;
 use App\Support\Audit;
+use App\Support\Webhooks\WebhookPayload;
+use App\Support\Webhooks\Webhooks;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
@@ -55,6 +57,12 @@ final class ChangeCardStatus
                 : Audit::tenant($card->tenant_id, 'card.status_changed', $card, $before, $after);
 
             self::forget($card);
+
+            if ($card->tenant_id) {
+                $type = $from === CardStatus::Unclaimed && $to === CardStatus::Active ? 'card.activated' : 'card.status_changed';
+                Webhooks::emit($card->tenant_id, $type, fn () => ['card' => WebhookPayload::card($card)]
+                    + ($type === 'card.status_changed' ? ['from' => $from->value, 'to' => $to->value, 'reason' => $reason] : []));
+            }
 
             return $card;
         });
