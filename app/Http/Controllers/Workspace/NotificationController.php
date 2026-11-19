@@ -18,7 +18,7 @@ class NotificationController extends WorkspaceController
             ->orderByDesc('id')->limit($limit + 1)->get(['id', 'type', 'data', 'read_at', 'created_at']);
 
         return response()->json([
-            'data' => $rows->take($limit)->map(fn ($n) => ['id' => $n->id, 'type' => $n->type, 'data' => $n->data, 'read' => $n->read_at !== null, 'at' => $n->created_at->toIso8601String()])->values(),
+            'data' => $rows->take($limit)->map(fn ($n) => ['id' => $n->id, 'type' => $n->type, 'data' => $n->data, 'read' => $n->read_at !== null, 'at' => $n->type === 'tap' && isset($n->data['at']) ? $n->data['at'] : $n->created_at->toIso8601String()])->values(), // tap gabungan: waktu tap terakhir
             'meta' => ['unread' => $this->scoped()->whereNull('read_at')->count(), 'has_more' => $rows->count() > $limit],
         ]);
     }

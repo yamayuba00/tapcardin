@@ -5,13 +5,12 @@ import { useToastStore } from './toast'
 import { config } from '@/config'
 import { connectRealtime } from '@/lib/realtime'
 import { TYPES, message } from '@/lib/notifications'
+import { applyIncoming } from '@/lib/notificationMerge'
 
 // transport aktif (di luar state Pinia agar tidak dibuat reaktif)
 let es = null
 let pollTimer = null
 let fallbackTimer = null
-const seen = new Set() // id notifikasi yang sudah ditampilkan (Reverb & SSE bisa sempat aktif bersamaan)
-
 /**
  * Notifikasi realtime: Reverb (WebSocket) bila tersedia; cadangan otomatis ke SSE `/api/stream` (TRD §9) bila WebSocket
  * tidak tersambung, lalu polling 15 detik bila browser tanpa EventSource. `mode` = connecting | realtime | sse | poll.
@@ -74,16 +73,11 @@ export const useNotificationStore = defineStore('notifications', {
       pollTimer = null
     },
     receive(type, data, id = null) {
-      if (id) {
-        if (seen.has(id)) return
-        seen.add(id)
-        if (seen.size > 500) seen.delete(seen.values().next().value)
-      }
-      this.unread++
-      if (this.loaded && id) this.items.unshift({ id, type, data, read: false, at: new Date().toISOString() })
+      const update = applyIncoming(this, type, data, id)
+      if (update === null) return // kiriman ganda (Reverb + SSE) — sudah ditampilkan
       const msg = message(type, data)
-      if (msg) useToastStore().push(msg, type === 'lost_card_tapped' ? 'danger' : 'info')
-      this.listeners.forEach((fn) => fn(type, data))
+      if (msg) useToastStore().push(msg, type === 'lost_card_tapped' ? 'danger' : 'info', id ? `n${id}` : null)
+      this.listeners.forEach((fn) => fn(type, data, { id, update }))
     },
     /** @returns {() => void} pelepas listener */
     subscribe(fn) {

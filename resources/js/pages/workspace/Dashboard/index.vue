@@ -34,10 +34,14 @@ let unsubscribe
 
 onMounted(() => {
   timer = setInterval(() => (now.value = new Date()), 30000)
-  unsubscribe = notifications.subscribe((type, d) => {
+  unsubscribe = notifications.subscribe((type, d, { id, update } = {}) => {
     if (!data.value) return
     if (type === 'tap') {
-      data.value.recent.unshift({ type: 'tap', at: d.at, title: 'Profil Anda dibuka', meta: [d.city].filter(Boolean) })
+      // tap gabungan (id notifikasi sama) memperbarui baris yang sudah ada, bukan menambah baris baru
+      const row = { type: 'tap', at: d.at, nid: id, title: (d.count ?? 1) > 1 ? `${d.count} orang membuka profil Anda` : 'Profil Anda dibuka', meta: [d.label, ...(d.cities ?? [d.city])].filter(Boolean) }
+      const i = update && id ? data.value.recent.findIndex((r) => r.nid === id) : -1
+      if (i >= 0) data.value.recent.splice(i, 1)
+      data.value.recent.unshift(row)
       data.value.kpi.taps_7++
       data.value.kpi.taps_30++
       const last = data.value.series.at(-1)

@@ -86,7 +86,7 @@ class RecordTap implements ShouldQueue
         }
         $data = ['card' => $card->card_token, 'label' => $card->label, 'city' => $this->ctx->city, 'source' => $this->ctx->source, 'tap_id' => $tap->id, 'at' => $at->toIso8601String()];
         match ($card->status) {
-            CardStatus::Active => Notify::user($card->holder_user_id, $this->tenantId, 'tap', $data),
+            CardStatus::Active => Notify::tap($card->holder_user_id, $this->tenantId, $data), // digabung per kartu per 60 menit
             CardStatus::Lost => Notify::user($card->holder_user_id, $this->tenantId, 'lost_card_tapped', $data),
             default => null,
         };

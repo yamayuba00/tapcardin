@@ -3,7 +3,9 @@
 export const TYPES = ['tap', 'lead_new', 'lost_card_tapped', 'saved_back', 'reminder_due', 'import_done', 'invoice_paid', 'invoice_due', 'plan_changed', 'workspace_expired', 'order_status', 'announcement', 'tap_quota', 'subscription_past_due', 'grace_ending', 'subscription_reminder', 'trial_ending', 'order_unpaid', 'webhook_disabled', 'lead_assigned']
 
 export const messages = {
-  tap: (d) => `Seseorang membuka profil Anda${d.city ? ' · ' + d.city : ''}`,
+  tap: (d) => ((d.count ?? 1) > 1
+    ? `${d.count} orang membuka profil Anda${d.label ? ` (${/^kartu\b/i.test(d.label) ? d.label : `kartu ${d.label}`})` : ''}`
+    : `Seseorang membuka profil Anda${d.city ? ' · ' + d.city : ''}`),
   lead_new: (d) => `${d.name} terhubung${d.company ? ' · ' + d.company : ''}`,
   lead_assigned: (d) => (d.count > 1 ? `${d.by} menugaskan ${d.count} lead ke Anda` : `${d.by} menugaskan ${d.name} ke Anda`),
   lost_card_tapped: (d) => `Kartu hilang Anda baru di-tap${d.city ? ' di ' + d.city : ''}`,
