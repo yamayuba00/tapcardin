@@ -18,6 +18,9 @@ final class DesignNormalizer
 
     public const KIT_COLORS = ['primary', 'secondary', 'background', 'text'];
 
+    /** Bentuk potong gambar. */
+    public const MASKS = ['circle', 'rounded', 'star', 'polygon', 'hexagon'];
+
     /** Ikon lucide yang boleh dipakai pengguna (layer `glyph`); dirender sama di editor & cetak. */
     public const GLYPHS = [
         'phone', 'mail', 'globe', 'map-pin', 'message-circle', 'send', 'instagram', 'linkedin', 'facebook', 'youtube', 'twitter', 'github',
@@ -77,7 +80,7 @@ final class DesignNormalizer
         $wh = fn (string $k, float $default = 10) => $n($k, 0.2, $span + 20, $default);
         $color = fn (string $k, string $fallback = 'ink-950') => $this->color($l[$k] ?? null, $fallback);
         $stroke = fn () => isset($l['stroke']) && ($l['strokeWidth'] ?? 0) > 0
-            ? ['stroke' => $color('stroke'), 'strokeWidth' => $n('strokeWidth', 0.1, 5, 0.3)] : [];
+            ? ['stroke' => $color('stroke'), 'strokeWidth' => $n('strokeWidth', 0.1, 5, 0.3)] + $this->dash($l) : [];
 
         return match ($l['type'] ?? null) {
             'text' => $this->text($l, $xy, $n, $color),
@@ -89,9 +92,9 @@ final class DesignNormalizer
                 'sides' => (int) $n('sides', 3, 12, 6), 'star' => ! empty($l['star']), 'inner' => $n('inner', 0.2, 0.9, 0.5),
                 'fill' => isset($l['fill']) && $l['fill'] === 'none' ? 'none' : $color('fill')] + $stroke(),
             'line' => ['type' => 'line', 'x1' => $xy('x1'), 'y1' => $xy('y1'), 'x2' => $xy('x2'), 'y2' => $xy('y2'),
-                'color' => $color('color'), 'width' => $n('width', 0.1, 5, 0.3), 'dash' => ! empty($l['dash'])],
+                'color' => $color('color'), 'width' => $n('width', 0.1, 5, 0.3), 'dash' => ! empty($l['dash'])] + $this->dash($l),
             'circle' => ['type' => 'circle', 'cx' => $xy('cx'), 'cy' => $xy('cy'), 'r' => $n('r', 0.5, 60, 5),
-                'stroke' => $color('stroke'), 'strokeWidth' => $n('strokeWidth', 0.1, 5, 0.3)],
+                'stroke' => $color('stroke'), 'strokeWidth' => $n('strokeWidth', 0.1, 5, 0.3)] + $this->dash($l),
             'rings' => ['type' => 'rings', 'cx' => $xy('cx'), 'cy' => $xy('cy'), 'from' => $n('from', 1, 80, 6), 'to' => $n('to', 2, 120, 30),
                 'step' => $n('step', 1, 30, 4), 'color' => $color('color'), 'opacity' => $n('opacity', 0.05, 1, 0.3)],
             'glyph' => in_array($l['name'] ?? '', self::GLYPHS, true)
@@ -101,6 +104,17 @@ final class DesignNormalizer
             'image' => $this->image($l, $xy, $wh, $n),
             default => null,
         };
+    }
+
+    /** Pola garis: putus-putus (panjang potongan mm) atau titik. Kosong = garis penuh. */
+    private function dash(array $l): array
+    {
+        $style = in_array($l['strokeStyle'] ?? null, ['dashed', 'dotted'], true) ? $l['strokeStyle'] : null;
+
+        return array_filter([
+            'strokeStyle' => $style,
+            'dashLen' => $style === 'dashed' && isset($l['dashLen']) ? $this->clamp($l['dashLen'], 0.3, 20) : null,
+        ], fn ($v) => $v !== null);
     }
 
     /** Properti yang berlaku untuk semua jenis layer. */
@@ -173,8 +187,15 @@ final class DesignNormalizer
             'x' => $xy('x'), 'y' => $xy('y'), 'w' => $wh('w'), 'h' => $wh('h'),
             'px_w' => (int) ($l['px_w'] ?? 0), 'px_h' => (int) ($l['px_h'] ?? 0),
             'fit' => ($l['fit'] ?? 'contain') === 'cover' ? 'cover' : 'contain',
-            'mask' => in_array($l['mask'] ?? 'none', ['circle', 'rounded'], true) ? $l['mask'] : null,
+            'mask' => in_array($l['mask'] ?? 'none', self::MASKS, true) ? $l['mask'] : null,
             'radius' => ($l['mask'] ?? null) === 'rounded' ? $n('radius', 0.5, 30, 2) : null,
+            'maskSides' => ($l['mask'] ?? null) === 'polygon' ? (int) $n('maskSides', 3, 12, 6) : null,
+            // potong: perbesar 1–5× lalu geser -1..1 (tepi kiri/atas ↔ kanan/bawah) di dalam kotak
+            'cropZoom' => isset($l['cropZoom']) && (float) $l['cropZoom'] > 1 ? $n('cropZoom', 1, 5) : null,
+            'cropX' => isset($l['cropX']) && (float) $l['cropX'] != 0.0 ? $n('cropX', -1, 1) : null,
+            'cropY' => isset($l['cropY']) && (float) $l['cropY'] != 0.0 ? $n('cropY', -1, 1) : null,
+            'flipX' => ! empty($l['flipX']) ?: null,
+            'flipY' => ! empty($l['flipY']) ?: null,
         ], fn ($v) => $v !== null);
     }
 

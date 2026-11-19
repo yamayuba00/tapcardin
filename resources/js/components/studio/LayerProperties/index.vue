@@ -56,6 +56,14 @@ const LOCK_INFO = {
   'sys-tapicon': 'Zona TAP menandai letak chip NFC.',
 }
 const n2 = 'grid grid-cols-2 gap-3'
+const STROKE_STYLES = [{ value: 'solid', label: 'Penuh' }, { value: 'dashed', label: 'Putus' }, { value: 'dotted', label: 'Titik' }]
+const strokeStyle = computed(() => layer.value?.strokeStyle ?? (layer.value?.dash ? 'dashed' : 'solid'))
+const setStrokeStyle = (v) => emit('change', { strokeStyle: v === 'solid' ? undefined : v, dash: undefined, ...(v === 'dashed' ? {} : { dashLen: undefined }) })
+const MASKS = [
+  { value: 'none', label: 'Asli' }, { value: 'rounded', label: 'Membulat' }, { value: 'circle', label: 'Lingkaran' },
+  { value: 'star', label: 'Bintang' }, { value: 'hexagon', label: 'Segi enam' }, { value: 'polygon', label: 'Poligon' },
+]
+const zoomed = computed(() => (layer.value?.cropZoom ?? 1) > 1)
 </script>
 
 <template>
@@ -134,7 +142,6 @@ const n2 = 'grid grid-cols-2 gap-3'
           <AppField label="X2 (mm)"><AppInput type="number" step="0.5" :model-value="layer.x2" @update:model-value="(v) => num('x2', v)" /></AppField>
           <AppField label="Y2 (mm)"><AppInput type="number" step="0.5" :model-value="layer.y2" @update:model-value="(v) => num('y2', v)" /></AppField>
           <AppField label="Tebal (mm)"><AppInput type="number" step="0.05" min="0.1" :model-value="layer.width" @update:model-value="(v) => num('width', v, 0.1, 5)" /></AppField>
-          <AppToggle :model-value="!!layer.dash" class="self-end" @update:model-value="(v) => set('dash', v || undefined)">Putus-putus</AppToggle>
         </div>
         <div v-else-if="layer.type === 'circle' || layer.type === 'rings'" :class="n2">
           <AppField label="Pusat X (mm)"><AppInput type="number" step="0.5" :model-value="layer.cx" @update:model-value="(v) => num('cx', v)" /></AppField>
@@ -161,7 +168,7 @@ const n2 = 'grid grid-cols-2 gap-3'
             <AppField label="Ukuran (mm)"><AppInput type="number" step="0.5" min="2" :model-value="layer.size" @update:model-value="(v) => num('size', v, 2, 60)" /></AppField>
             <AppField label="Tebal garis"><AppInput type="number" step="0.25" min="1" max="3" :model-value="layer.strokeWidth ?? 2" @update:model-value="(v) => num('strokeWidth', v, 1, 3)" /></AppField>
           </template>
-          <AppField v-if="layer.type === 'rect'" label="Sudut (mm)"><AppInput type="number" step="0.5" min="0" :model-value="layer.rx ?? 0" @update:model-value="(v) => num('rx', v, 0, 50)" /></AppField>
+          <AppField v-if="layer.type === 'rect'" label="Sudut membulat (mm)"><AppInput type="number" step="0.5" min="0" :model-value="layer.rx ?? 0" @update:model-value="(v) => num('rx', v, 0, 50)" /></AppField>
           <template v-if="layer.type === 'polygon'">
             <AppField label="Jumlah sisi"><AppInput type="number" step="1" min="3" max="12" :model-value="layer.sides" @update:model-value="(v) => num('sides', v, 3, 12)" /></AppField>
             <AppField v-if="layer.star" label="Kedalaman lekuk"><AppInput type="number" step="0.05" min="0.2" max="0.9" :model-value="layer.inner ?? 0.5" @update:model-value="(v) => num('inner', v, 0.2, 0.9)" /></AppField>
@@ -169,11 +176,34 @@ const n2 = 'grid grid-cols-2 gap-3'
         </div>
         <AppToggle v-if="layer.type === 'polygon'" :model-value="!!layer.star" @update:model-value="(v) => set('star', v)">Bentuk bintang</AppToggle>
 
+        <!-- pola garis (garis, lingkaran, garis tepi bentuk) -->
+        <template v-if="layer.type === 'line' || layer.type === 'circle'">
+          <AppSegmented :model-value="strokeStyle" label="Pola garis" :options="STROKE_STYLES" @update:model-value="setStrokeStyle" />
+          <AppField v-if="strokeStyle === 'dashed'" label="Panjang putus (mm)"><AppInput type="number" step="0.1" min="0.3" max="20" :model-value="layer.dashLen ?? Math.round((layer.width ?? layer.strokeWidth ?? 0.3) * 300) / 100" @update:model-value="(v) => num('dashLen', v, 0.3, 20)" /></AppField>
+        </template>
+
         <!-- gambar -->
         <template v-if="layer.type === 'image'">
           <AppSegmented :model-value="layer.fit ?? 'contain'" label="Isi kotak" :options="[{ value: 'contain', label: 'Utuh' }, { value: 'cover', label: 'Penuhi (crop)' }]" @update:model-value="(v) => set('fit', v)" />
-          <AppSegmented :model-value="layer.mask ?? 'none'" label="Bentuk" :options="[{ value: 'none', label: 'Asli' }, { value: 'rounded', label: 'Membulat' }, { value: 'circle', label: 'Lingkaran' }]" @update:model-value="(v) => set('mask', v === 'none' ? undefined : v)" />
+          <AppSegmented :model-value="layer.mask ?? 'none'" label="Bentuk potong" :options="MASKS" @update:model-value="(v) => emit('change', { mask: v === 'none' ? undefined : v, ...(v === 'polygon' && !layer.maskSides ? { maskSides: 5 } : {}) })" />
           <AppField v-if="layer.mask === 'rounded'" label="Radius sudut (mm)"><AppInput type="number" step="0.5" min="0.5" :model-value="layer.radius ?? 2" @update:model-value="(v) => num('radius', v, 0.5, 30)" /></AppField>
+          <AppField v-if="layer.mask === 'polygon'" label="Jumlah sisi"><AppInput type="number" step="1" min="3" max="12" :model-value="layer.maskSides ?? 6" @update:model-value="(v) => num('maskSides', v, 3, 12)" /></AppField>
+          <div class="grid gap-3 rounded-md border border-line p-3">
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-sm font-medium">Atur potongan</span>
+              <button v-if="zoomed || layer.cropX || layer.cropY" type="button" class="cursor-pointer text-sm text-accent-text hover:underline" @click="emit('change', { cropZoom: undefined, cropX: undefined, cropY: undefined })">Atur ulang</button>
+            </div>
+            <AppField label="Perbesar"><input type="range" min="1" max="5" step="0.05" :value="layer.cropZoom ?? 1" class="w-full cursor-pointer accent-[var(--accent)]" aria-label="Perbesar gambar di dalam bentuk" @input="(e) => num('cropZoom', e.target.value, 1, 5)" /></AppField>
+            <template v-if="zoomed">
+              <AppField label="Geser kiri ↔ kanan"><input type="range" min="-1" max="1" step="0.02" :value="layer.cropX ?? 0" class="w-full cursor-pointer accent-[var(--accent)]" aria-label="Geser gambar horizontal" @input="(e) => num('cropX', e.target.value, -1, 1)" /></AppField>
+              <AppField label="Geser atas ↔ bawah"><input type="range" min="-1" max="1" step="0.02" :value="layer.cropY ?? 0" class="w-full cursor-pointer accent-[var(--accent)]" aria-label="Geser gambar vertikal" @input="(e) => num('cropY', e.target.value, -1, 1)" /></AppField>
+            </template>
+            <p v-else class="text-xs text-muted">Perbesar untuk memilih bagian gambar yang tampil di dalam bentuk.</p>
+          </div>
+          <div class="flex flex-wrap gap-x-5">
+            <AppToggle :model-value="!!layer.flipX" @update:model-value="(v) => set('flipX', v || undefined)">Balik horizontal</AppToggle>
+            <AppToggle :model-value="!!layer.flipY" @update:model-value="(v) => set('flipY', v || undefined)">Balik vertikal</AppToggle>
+          </div>
           <p class="text-sm text-muted">
             {{ layer.asset === 'kit:logo' ? 'Logo dari brand kit — ganti logo di panel Brand kit, semua desain ikut berubah.' : 'Disarankan ≥ 300 dpi pada ukuran cetak. Server memeriksa resolusi saat disimpan.' }}
           </p>
@@ -190,6 +220,8 @@ const n2 = 'grid grid-cols-2 gap-3'
           <template v-if="layer.stroke">
             <ColorPicker :model-value="layer.stroke" :palette="palette" :kit="kit" label="Warna garis tepi" @update:model-value="(v) => set('stroke', v)" />
             <AppField label="Tebal garis tepi (mm)"><AppInput type="number" step="0.05" min="0.1" :model-value="layer.strokeWidth ?? 0.3" @update:model-value="(v) => num('strokeWidth', v, 0.1, 5)" /></AppField>
+            <AppSegmented :model-value="strokeStyle" label="Pola garis tepi" :options="STROKE_STYLES" @update:model-value="setStrokeStyle" />
+            <AppField v-if="strokeStyle === 'dashed'" label="Panjang putus (mm)"><AppInput type="number" step="0.1" min="0.3" max="20" :model-value="layer.dashLen ?? Math.round((layer.strokeWidth ?? 0.3) * 300) / 100" @update:model-value="(v) => num('dashLen', v, 0.3, 20)" /></AppField>
           </template>
         </template>
 

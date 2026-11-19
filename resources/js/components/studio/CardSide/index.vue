@@ -8,7 +8,7 @@ import { QR_MARK } from '@/lib/qrMark'
 import { Lock, Nfc } from 'lucide-vue-next'
 import {
   BLEED, angleTo, center, expandGroups, isFixed, isSystem, layerBox, moveLayer, polygonPoints, ptToMm, rawBox, resizeLayer,
-  autoFitWidth, curvePath, isBoxText, isCurved, resolveColor, snapMove, textAnchor, textLines, textSize, unionBox,
+  autoFitWidth, curvePath, imageRect, isBoxText, isCurved, maskPoints, resolveColor, snapMove, strokeDash, textAnchor, textLines, textSize, unionBox,
 } from '@/lib/design'
 import { loadFontsFor } from '@/lib/fonts'
 import { glyph } from '@/lib/glyphs'
@@ -86,6 +86,19 @@ onUpdated(clampText)
 const fontKeys = computed(() => [...new Set(props.side.layers.filter((l) => l.type === 'text').map((l) => `${l.font}|${l.weight}`))].join(','))
 watch(fontKeys, () => loadFontsFor(props.side.layers).then(clampText), { immediate: true })
 const anc = (l) => textAnchor(l, props.vars)
+/** Atribut garis tepi bentuk: warna, tebal, pola putus/titik. */
+const strokeAttrs = (l, color = l.stroke, width = l.strokeWidth) => {
+  if (!color) return {}
+  const d = strokeDash(l, width ?? 0.3)
+  return { stroke: col(color), 'stroke-width': width, 'stroke-dasharray': d.dasharray, 'stroke-linecap': d.linecap }
+}
+const needsClip = (l) => l.type === 'image' && (l.mask || (l.cropZoom ?? 1) > 1)
+const flip = (l) => {
+  if (!l.flipX && !l.flipY) return undefined
+  const cx = l.x + l.w / 2
+  const cy = l.y + l.h / 2
+  return `translate(${cx} ${cy}) scale(${l.flipX ? -1 : 1} ${l.flipY ? -1 : 1}) translate(${-cx} ${-cy})`
+}
 const outlineAttrs = (l) => (l.outline ? { stroke: col(l.outline), 'stroke-width': l.outlineWidth ?? 0.2, 'paint-order': 'stroke', 'stroke-linejoin': 'round' } : {})
 const anchor = (a) => ({ center: 'middle', right: 'end' })[a] ?? 'start'
 const rings = (l) => {
@@ -266,9 +279,10 @@ function up() {
         <path v-if="isCurved(l)" :id="`cp-${uid}-${l.id}`" :d="curvePath(l)" fill="none" />
       </template>
       <template v-for="l in visible" :key="`clip-${l.id}`">
-        <clipPath v-if="l.type === 'image' && l.mask" :id="`m-${uid}-${l.id}`">
+        <clipPath v-if="needsClip(l)" :id="`m-${uid}-${l.id}`">
           <ellipse v-if="l.mask === 'circle'" :cx="l.x + l.w / 2" :cy="l.y + l.h / 2" :rx="l.w / 2" :ry="l.h / 2" />
-          <rect v-else :x="l.x" :y="l.y" :width="l.w" :height="l.h" :rx="l.radius ?? 2" />
+          <polygon v-else-if="maskPoints(l)" :points="maskPoints(l)" />
+          <rect v-else :x="l.x" :y="l.y" :width="l.w" :height="l.h" :rx="l.mask === 'rounded' ? l.radius ?? 2 : 0" />
         </clipPath>
       </template>
     </defs>
@@ -293,18 +307,21 @@ function up() {
           :font-size="fontMm(l)" :text-anchor="anchor(l.align)" :letter-spacing="(l.tracking ?? 0) * fontMm(l)" :data-fit="isBoxText(l) ? undefined : autoFit(l) ?? undefined"
           v-bind="outlineAttrs(l)"
         ><tspan v-for="(line, i) in textLines(l, vars)" :key="i" :x="anc(l).x" :dy="i === 0 ? 0 : fontMm(l) * (l.lineHeight ?? 1.25)" :data-fit="isBoxText(l) && line ? l.w : undefined">{{ line || ' ' }}</tspan></text>
-        <rect v-else-if="l.type === 'rect'" :x="l.x" :y="l.y" :width="l.w" :height="l.h" :rx="l.rx || 0" :fill="col(l.fill)" :stroke="l.stroke ? col(l.stroke) : undefined" :stroke-width="l.strokeWidth" />
-        <ellipse v-else-if="l.type === 'ellipse'" :cx="l.x + l.w / 2" :cy="l.y + l.h / 2" :rx="l.w / 2" :ry="l.h / 2" :fill="col(l.fill)" :stroke="l.stroke ? col(l.stroke) : undefined" :stroke-width="l.strokeWidth" />
-        <polygon v-else-if="l.type === 'polygon'" :points="polygonPoints(l)" :fill="col(l.fill)" :stroke="l.stroke ? col(l.stroke) : undefined" :stroke-width="l.strokeWidth" stroke-linejoin="round" />
-        <line v-else-if="l.type === 'line'" :x1="l.x1" :y1="l.y1" :x2="l.x2" :y2="l.y2" :stroke="col(l.color)" :stroke-width="l.width" stroke-linecap="round" :stroke-dasharray="l.dash ? `${l.width * 3} ${l.width * 2}` : undefined" />
-        <circle v-else-if="l.type === 'circle'" :cx="l.cx" :cy="l.cy" :r="l.r" fill="none" :stroke="col(l.stroke)" :stroke-width="l.strokeWidth" />
+        <rect v-else-if="l.type === 'rect'" :x="l.x" :y="l.y" :width="l.w" :height="l.h" :rx="l.rx || 0" :fill="col(l.fill)" v-bind="strokeAttrs(l)" />
+        <ellipse v-else-if="l.type === 'ellipse'" :cx="l.x + l.w / 2" :cy="l.y + l.h / 2" :rx="l.w / 2" :ry="l.h / 2" :fill="col(l.fill)" v-bind="strokeAttrs(l)" />
+        <polygon v-else-if="l.type === 'polygon'" :points="polygonPoints(l)" :fill="col(l.fill)" v-bind="strokeAttrs(l)" stroke-linejoin="round" />
+        <line v-else-if="l.type === 'line'" :x1="l.x1" :y1="l.y1" :x2="l.x2" :y2="l.y2" v-bind="strokeAttrs(l, l.color, l.width)" :stroke-linecap="strokeDash(l, l.width).linecap ?? 'round'" />
+        <circle v-else-if="l.type === 'circle'" :cx="l.cx" :cy="l.cy" :r="l.r" fill="none" v-bind="strokeAttrs(l)" />
         <g v-else-if="l.type === 'rings'">
           <circle v-for="c in rings(l)" :key="c.r" :cx="l.cx" :cy="l.cy" :r="c.r" fill="none" :stroke="col(l.color)" stroke-width="0.25" :stroke-opacity="c.o" />
         </g>
         <Nfc v-else-if="l.type === 'icon'" :x="l.x" :y="l.y" :size="l.size" :color="l.color" :stroke-width="1.6" />
         <component :is="glyph(l.name)" v-else-if="l.type === 'glyph'" :x="l.x" :y="l.y" :size="l.size" :color="col(l.color)" :stroke-width="l.strokeWidth ?? 2" />
-        <g v-else-if="l.type === 'image'" :clip-path="l.mask ? `url(#m-${uid}-${l.id})` : undefined">
-          <image v-if="imgUrl(l)" :href="imgUrl(l)" :x="l.x" :y="l.y" :width="l.w" :height="l.h" :preserveAspectRatio="l.fit === 'cover' ? 'xMidYMid slice' : 'xMidYMid meet'" />
+        <g v-else-if="l.type === 'image'" :clip-path="needsClip(l) ? `url(#m-${uid}-${l.id})` : undefined">
+          <image
+            v-if="imgUrl(l)" :href="imgUrl(l)" v-bind="(({ x, y, w, h }) => ({ x, y, width: w, height: h }))(imageRect(l))" :transform="flip(l)"
+            :preserveAspectRatio="l.fit === 'cover' ? 'xMidYMid slice' : 'xMidYMid meet'"
+          />
           <rect v-else-if="editable" :x="l.x" :y="l.y" :width="l.w" :height="l.h" fill="none" class="stroke-muted" stroke-width="0.2" stroke-dasharray="1 0.8" />
           <g v-else-if="sample && l.asset === 'kit:logo'" :fill="sysInk" :stroke="sysInk" opacity="0.55">
             <rect :x="l.x" :y="l.y" :width="l.w" :height="l.h" :rx="l.mask === 'circle' ? Math.min(l.w, l.h) / 2 : 1" fill="none" stroke-width="0.25" stroke-dasharray="1 0.7" />

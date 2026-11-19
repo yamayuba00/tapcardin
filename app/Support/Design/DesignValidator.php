@@ -76,7 +76,8 @@ final class DesignValidator
             }
             if ($l['type'] === 'image') {
                 $pxW = ($l['asset'] ?? '') === 'kit:logo' ? (int) ($this->kit['logo']['px_w'] ?? 0) : (int) ($l['px_w'] ?? 0);
-                if ($pxW > 0 && $l['w'] > 0 && ($dpi = (int) round($pxW / ($l['w'] / 25.4))) < self::MIN_DPI) {
+                $printW = $l['w'] * max(1, (float) ($l['cropZoom'] ?? 1)); // gambar yang diperbesar di dalam potongan
+                if ($pxW > 0 && $printW > 0 && ($dpi = (int) round($pxW / ($printW / 25.4))) < self::MIN_DPI) {
                     $add($id, 'warning', "Resolusi gambar {$dpi} dpi pada ukuran cetak; disarankan ≥ 300 dpi agar tidak pecah.");
                 }
                 if (($l['asset'] ?? '') === 'kit:logo' && empty($this->kit['logo'])) {

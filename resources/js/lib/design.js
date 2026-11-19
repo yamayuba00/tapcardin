@@ -272,6 +272,37 @@ export function unionBox(layers, vars = {}) {
   return { x, y, w: Math.max(...boxes.map((b) => b.x + b.w)) - x, h: Math.max(...boxes.map((b) => b.y + b.h)) - y }
 }
 
+/**
+ * Pola garis: 'dashed' (putus, panjang `dashLen` mm) atau 'dotted' (titik bulat). `dash: true` lama = putus-putus.
+ * @returns {{dasharray?: string, linecap?: string}}
+ */
+export function strokeDash(l, width) {
+  const style = l.strokeStyle ?? (l.dash ? 'dashed' : null)
+  if (style === 'dotted') return { dasharray: `0.01 ${round(width * 2, 3)}`, linecap: 'round' }
+  if (style === 'dashed') {
+    const len = l.dashLen ?? round(width * 3, 3)
+    return { dasharray: `${len} ${round(len * 0.6, 3)}` }
+  }
+  return {}
+}
+
+/** Bentuk potong gambar → titik poligon (bintang 5 sudut, poligon `maskSides`, segi enam); null = lingkaran/kotak. */
+export function maskPoints(l) {
+  const shape = { star: { sides: 5, star: true, inner: 0.5 }, polygon: { sides: l.maskSides ?? 6 }, hexagon: { sides: 6 } }[l.mask]
+  return shape ? polygonPoints({ x: l.x, y: l.y, w: l.w, h: l.h, ...shape }) : null
+}
+
+/**
+ * Posisi gambar di dalam kotaknya: diperbesar `cropZoom` (≥ 1) lalu digeser `cropX`/`cropY` (-1 = tepi kiri/atas
+ * terlihat, 1 = tepi kanan/bawah). Tanpa zoom = kotak itu sendiri.
+ */
+export function imageRect(l) {
+  const z = Math.max(1, l.cropZoom ?? 1)
+  const w = l.w * z
+  const h = l.h * z
+  return { x: round(l.x - ((w - l.w) * ((l.cropX ?? 0) + 1)) / 2, 3), y: round(l.y - ((h - l.h) * ((l.cropY ?? 0) + 1)) / 2, 3), w: round(w, 3), h: round(h, 3) }
+}
+
 /** Titik poligon/bintang di dalam kotak (x, y, w, h). */
 export function polygonPoints(l) {
   const n = Math.max(3, Math.min(12, Math.round(l.sides ?? 6)))
