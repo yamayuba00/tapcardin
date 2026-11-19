@@ -58,7 +58,8 @@ const empty = computed(() => data.value && data.value.kpi.taps_30 === 0 && data.
 
 <template>
   <PageHeader eyebrow="Ringkasan" title="Beranda">
-    <AppButton v-if="data?.share_token" :to="`/cards/${data.share_token}/share`"><Share2 class="size-5" /> Bagikan kartu</AppButton>
+    <!-- tombol sudah ada sejak awal (nonaktif saat memuat) agar tombol di sebelahnya tidak bergeser -->
+    <AppButton v-if="!data || data.share_token" :to="data?.share_token ? `/cards/${data.share_token}/share` : undefined" :disabled="!data"><Share2 class="size-5" /> Bagikan kartu</AppButton>
     <AppButton variant="secondary" to="/cards"><CreditCard class="size-5" /> Kartu saya</AppButton>
   </PageHeader>
 

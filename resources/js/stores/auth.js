@@ -1,8 +1,11 @@
 import { defineStore } from 'pinia'
+import { shareInflight } from '@/lib/inflight'
 import { context } from '@/config'
 import { authApi } from '@/api/auth'
 import { meApi } from '@/api/workspace'
 import { adminApi } from '@/api/admin'
+
+let fetchShared = null
 
 /** Sesi pengguna (workspace) atau staf (admin). `me` = null berarti tamu. */
 export const useAuthStore = defineStore('auth', {
@@ -16,6 +19,11 @@ export const useAuthStore = defineStore('auth', {
   actions: {
     async load(force = false) {
       if (this.loaded && !force) return this.me
+      // panggilan bersamaan (router guard + halaman) berbagi satu permintaan /api/me
+      fetchShared ??= shareInflight(() => this.fetchMe())
+      return fetchShared()
+    },
+    async fetchMe() {
       try {
         const res = context === 'admin' ? await adminApi.me() : await meApi.get()
         this.me = res.data

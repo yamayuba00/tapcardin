@@ -24,6 +24,8 @@ export const useNotificationStore = defineStore('notifications', {
       this.started = true
       // satu panggilan: lencana belum dibaca + isi lonceng sekaligus
       await this.load().catch(() => {})
+      // koneksi realtime (pusher ±60 KB + auth channel) menunggu halaman selesai tampil & peramban senggang
+      await new Promise((r) => ('requestIdleCallback' in window ? requestIdleCallback(r, { timeout: 3000 }) : setTimeout(r, 1500)))
 
       const auth = useAuthStore()
       if (!config.realtime || !auth.me?.id) return this.startSse()

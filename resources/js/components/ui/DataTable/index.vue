@@ -52,7 +52,11 @@ function pickSort(v) {
 
 <template>
   <div class="grid gap-3">
-    <AppSkeleton v-if="!rows" class="!h-60" />
+    <!-- muat pertama: kerangka berbentuk baris tabel (tinggi mirip hasil akhir → tidak ada lompatan tata letak) -->
+    <div v-if="!rows" class="grid gap-1.5" aria-busy="true" aria-label="Memuat data">
+      <AppSkeleton class="!h-10" />
+      <AppSkeleton v-for="i in 5" :key="i" class="!h-12 opacity-70" />
+    </div>
     <div v-else :class="['relative', loading ? 'opacity-60' : '']" :aria-busy="loading || undefined">
       <!-- ponsel: kartu -->
       <div class="grid gap-3 sm:hidden">
