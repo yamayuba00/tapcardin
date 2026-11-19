@@ -25,6 +25,9 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   @endif
   <link rel="preload" href="/fonts/syne-700.woff2" as="font" type="font/woff2" crossorigin>
+  @php($heading = ['IBM Plex Sans' => 'ibm-plex-sans-600', 'IBM Plex Mono' => 'ibm-plex-mono-500'][$meta['font'] ?? ''] ?? null)
+  @if ($heading)<link rel="preload" href="/fonts/{{ $heading }}.woff2" as="font" type="font/woff2" crossorigin>@endif
+  @if (isset($meta['font']))<link rel="preload" href="/fonts/ibm-plex-sans-400.woff2" as="font" type="font/woff2" crossorigin>@endif
   @vite(['resources/css/app.css', 'resources/js/main.js'])
 </head>
 <body class="bg-bg text-fg antialiased">

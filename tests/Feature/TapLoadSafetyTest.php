@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\CardStatus;
 use App\Jobs\RecordTap;
 use App\Jobs\TapContext;
+use App\Models\Card;
 use App\Models\Tap;
 use App\Tenancy\TenantScope;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -44,6 +45,27 @@ class TapLoadSafetyTest extends TestCase
         $this->get($this->host('perusahaan-tidak-ada', '/'))->assertNotFound()->assertSee('"error":{"status":404}', false);
         // API tetap JSON, bukan halaman
         $this->getJson($this->host('tap', '/api/c/XXXXXXXXXX'))->assertNotFound()->assertHeader('Content-Type', 'application/json');
+    }
+
+    public function test_digital_card_resolve_is_not_heavier_than_physical(): void
+    {
+        $rina = $this->makeUser();
+        $digital = Card::acrossTenants()->where(['holder_user_id' => $rina->id, 'form' => 'digital'])->firstOrFail();
+        $physical = $this->makeCard(CardStatus::Active, $this->makeUser('budi@example.com', 'Budi'));
+        $count = function (string $token, string $ua) {
+            $this->getJson($this->host('tap', "/api/c/$token"), ['User-Agent' => 'warm'])->assertOk(); // cache kartu terisi
+            DB::flushQueryLog();
+            DB::enableQueryLog();
+            $this->getJson($this->host('tap', "/api/c/$token"), ['User-Agent' => $ua])->assertOk()->assertJsonPath('data.state', 'profile');
+            DB::disableQueryLog();
+
+            return count(DB::getQueryLog());
+        };
+        $d = $count($digital->card_token, 'pengunjung-baru-1');
+        $p = $count($physical->card_token, 'pengunjung-baru-2');
+        // kartu digital hanya menambah 1 UPDATE kuota tap
+        $this->assertLessThanOrEqual($p + 2, $d, "digital $d query vs fisik $p");
+        $this->assertLessThan(25, $d);
     }
 
     public function test_retried_record_tap_job_does_not_duplicate(): void

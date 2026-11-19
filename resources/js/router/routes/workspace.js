@@ -1,5 +1,6 @@
 // app.{base} & {slug}.{base} — workspace (AFD §3, layar U-01…U-16)
-import WorkspaceLayout from '@/layouts/WorkspaceLayout/index.vue'
+// layout dimuat terpisah: halaman tap publik tidak ikut mengunduh sidebar, ikon menu, dan store workspace
+const WorkspaceLayout = () => import('@/layouts/WorkspaceLayout/index.vue')
 
 const page = (name) => () => import(`@/pages/workspace/${name}/index.vue`)
 

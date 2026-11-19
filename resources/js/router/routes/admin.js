@@ -1,5 +1,5 @@
 // panel.{base} — panel pemilik & produksi (PRD §10.9, layar M-01…M-07)
-import AdminLayout from '@/layouts/AdminLayout/index.vue'
+const AdminLayout = () => import('@/layouts/AdminLayout/index.vue')
 
 const page = (name) => () => import(`@/pages/admin/${name}/index.vue`)
 

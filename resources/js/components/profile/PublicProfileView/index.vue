@@ -88,9 +88,10 @@ const nameCls = computed(() => [
               :key="q.key"
               :href="q.href"
               :aria-label="`${q.label} ${profile.display_name}`"
-              :class="['grid size-14 place-items-center border border-line-strong bg-surface text-fg hover:bg-surface-2', corner]"
+              :class="['grid min-h-16 w-[76px] content-center justify-items-center gap-1 border border-line-strong bg-surface px-1 py-2 text-fg no-underline hover:bg-surface-2', corner]"
             >
               <component :is="q.icon" class="size-[22px]" aria-hidden="true" />
+              <span class="text-xs leading-none text-muted" aria-hidden="true">{{ q.label }}</span>
             </a>
           </div>
         </div>

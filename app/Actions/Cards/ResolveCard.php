@@ -68,6 +68,7 @@ final class ResolveCard
                 'image' => $p['avatar_url'],
                 'theme' => $p['theme']['mode'] ?? 'dark',
                 'lang' => $p['locale'] ?? 'id',
+                'font' => $p['theme']['font'] ?? 'Syne', // judul profil: font di-preload agar nama tidak berkedip
             ] : null,
         ];
     }
