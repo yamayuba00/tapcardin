@@ -210,6 +210,8 @@ class WebhookTest extends TestCase
         // member.*
         $this->api('POST', '/company/members', ['email' => 'sari@example.com', 'role' => 'member'])->assertCreated();
         $this->api('PATCH', "/company/members/{$sari->public_id}", ['role' => 'manager'])->assertOk();
+        // lead.assigned
+        $this->api('PUT', '/leads/assign', ['ids' => [$lead], 'user' => $sari->public_id])->assertOk()->assertJsonPath('data.updated', 1);
         // card.assigned / card.unassigned
         $card = $this->makeCard();
         $card->forceFill(['tenant_id' => $this->org->id])->save();

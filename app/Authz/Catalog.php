@@ -149,7 +149,7 @@ final class Catalog
                 ...self::OWN_BASICS, 'orders.create', 'billing.manage', 'billing.view',
             ]),
             'manager' => self::role('Manager', 'Lead, kartu, dan analitik timnya', 'tenant', [
-                ...self::OWN_BASICS, 'cards.view.team', 'cards.status.team',
+                ...self::OWN_BASICS, 'cards.view.team', 'cards.status.team', 'cards.assign.team',
                 'leads.view.team', 'leads.edit.team', 'leads.assign.team', 'leads.export.team',
                 'events.manage.team', 'events.checkin', 'analytics.view.team',
             ]),

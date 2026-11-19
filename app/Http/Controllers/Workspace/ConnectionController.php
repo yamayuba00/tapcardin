@@ -7,14 +7,20 @@ use App\Actions\Leads\Followups;
 use App\Authz\PlanFeatures;
 use App\Enums\ActivityType;
 use App\Enums\LeadSource;
+use App\Enums\MemberStatus;
 use App\Enums\StageKind;
+use App\Exceptions\ApiError;
 use App\Http\Resources\Present;
 use App\Models\Connection;
 use App\Models\FormSubmission;
 use App\Models\LeadActivity;
 use App\Models\LeadStage;
+use App\Models\TeamMember;
+use App\Models\TenantMember;
+use App\Models\User;
 use App\Support\Audit;
 use App\Support\Http\Table;
+use App\Support\Notify;
 use App\Support\Phone;
 use App\Support\Webhooks\WebhookPayload;
 use App\Support\Webhooks\Webhooks;
@@ -251,6 +257,83 @@ class ConnectionController extends WorkspaceController
             ->selectRaw('tag, count(*) as n')->groupBy('tag')->orderByDesc('n')->limit(200)->get();
 
         return response()->json(['data' => $rows->map(fn ($r) => ['value' => $r->tag, 'count' => (int) $r->n])]);
+    }
+
+    /** GET /api/leads/assignees — anggota aktif yang boleh menerima lead (Manager: hanya tim yang dikelola). */
+    public function assignees(): JsonResponse
+    {
+        $scope = $this->assignScope();
+        $members = TenantMember::with('user')->where('status', MemberStatus::Active->value)
+            ->when($scope !== null, fn ($w) => $w->whereIn('user_id', $scope))->get()
+            ->sortBy(fn (TenantMember $m) => mb_strtolower($m->user->name))->values();
+
+        return response()->json(['data' => $members->map(fn (TenantMember $m) => ['user_id' => $m->user->public_id, 'name' => $m->user->name, 'email' => $m->user->email])]);
+    }
+
+    /** PUT /api/leads/assign {ids[], user|null} — tugaskan, alihkan, atau lepas penanggung jawab lead (bisa massal). */
+    public function assign(Request $request): JsonResponse
+    {
+        $scope = $this->assignScope();
+        $data = $request->validate([
+            'ids' => ['required', 'array', 'min:1', 'max:100'], 'ids.*' => ['string', 'size:26'],
+            'user' => ['nullable', 'string', 'size:26'],
+        ]);
+        $assignee = null;
+        if ($data['user'] ?? null) {
+            $assignee = User::where('public_id', $data['user'])->first();
+            if (! $assignee || ! TenantMember::where('user_id', $assignee->id)->where('status', MemberStatus::Active->value)->exists()) {
+                throw new ApiError('not_member', 'Pilih anggota yang masih aktif.');
+            }
+            if ($scope !== null && ! in_array($assignee->id, $scope, true)) {
+                throw new ApiError('outside_team', 'Anda hanya bisa menugaskan lead ke anggota tim yang Anda kelola.', 403);
+            }
+        }
+        $leads = Connection::with('assignee')->whereIn('public_id', $data['ids'])->whereNull('merged_into_id')
+            ->visibleTo($this->user(), $this->access()->context())->withinPlan($this->planLimit())->get();
+        abort_if($leads->isEmpty(), 404);
+        // lead pindah tim mengikuti penanggung jawab barunya, agar Manager tim itu ikut melihatnya
+        $teamId = $assignee ? TeamMember::where('user_id', $assignee->id)->orderBy('created_at')->value('team_id') : null;
+
+        $changed = DB::transaction(function () use ($leads, $assignee, $teamId) {
+            $changed = [];
+            foreach ($leads as $c) {
+                if ($c->assignee_user_id === $assignee?->id) {
+                    continue;
+                }
+                $previous = $c->assignee;
+                $c->update(['assignee_user_id' => $assignee?->id] + ($teamId ? ['team_id' => $teamId] : []));
+                $this->log($c, ActivityType::Assigned, null, ['from' => $previous?->name, 'to' => $assignee?->name]);
+                $changed[] = [$c, $previous];
+            }
+
+            return $changed;
+        });
+
+        $by = $this->user();
+        foreach ($changed as [$c, $previous]) {
+            Audit::tenant($c->tenant_id, 'lead.assigned', $c, ['assignee' => $previous?->public_id], ['assignee' => $assignee?->public_id]);
+            Webhooks::emit($c->tenant_id, 'lead.assigned', fn () => ['lead' => WebhookPayload::lead($c->fresh(['stage', 'assignee', 'card'])),
+                'assignee' => WebhookPayload::user($assignee), 'previous_assignee' => WebhookPayload::user($previous), 'assigned_by' => WebhookPayload::user($by)]);
+        }
+        if ($assignee && $changed && $assignee->id !== $by->id) {
+            $first = $changed[0][0];
+            Notify::user($assignee->id, $this->tenant()->id, 'lead_assigned', ['count' => count($changed), 'name' => $first->name,
+                'id' => count($changed) === 1 ? $first->public_id : null, 'by' => $by->name]);
+        }
+
+        return response()->json(['data' => ['updated' => count($changed)]]);
+    }
+
+    /** Cakupan penugasan lead: null = semua anggota; Manager = id pengguna di tim yang dikelolanya. */
+    private function assignScope(): ?array
+    {
+        $access = $this->access();
+        $access->authorize('leads.assign.all', 'leads.assign.team');
+        if ($access->has('leads.assign.all')) {
+            return null;
+        }
+
+        return TeamMember::whereIn('team_id', $access->context()['managed_team_ids'])->pluck('user_id')->unique()->values()->all();
     }
 
     /** Batas koneksi yang bisa dilihat (null = tanpa batas). */

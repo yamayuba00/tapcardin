@@ -92,6 +92,8 @@ Route::middleware('auth')->prefix('api')->name('api.')->group(function () {
     Route::post('/leads', [ConnectionController::class, 'store'])->name('leads.store');
     Route::get('/leads/export.csv', [ConnectionController::class, 'export'])->name('leads.export');
     Route::get('/leads/tags', [ConnectionController::class, 'tags'])->name('leads.tags');
+    Route::get('/leads/assignees', [ConnectionController::class, 'assignees'])->name('leads.assignees');
+    Route::put('/leads/assign', [ConnectionController::class, 'assign'])->name('leads.assign');
     // rute statis /leads/* didaftarkan sebelum /leads/{connection}
     Route::get('/leads/dashboard', [LeadDashboardController::class, 'show'])->name('leads.dashboard');
     Route::put('/leads/dashboard/layout', [LeadDashboardController::class, 'saveLayout'])->name('leads.dashboard.layout');
@@ -179,6 +181,7 @@ Route::middleware('auth')->prefix('api')->name('api.')->group(function () {
         Route::post('/members/{user}/deactivate', 'deactivate')->name('members.deactivate');
         Route::post('/members/{user}/reactivate', 'reactivate')->name('members.reactivate');
         Route::get('/cards', 'cards')->name('cards');
+        Route::get('/cards/assignees', 'assignees')->name('cards.assignees');
         Route::put('/cards/{token}/assign', 'assign')->name('cards.assign');
         Route::delete('/cards/{token}/assign', 'unassign')->name('cards.unassign');
         Route::get('/leads', 'leads')->name('leads');

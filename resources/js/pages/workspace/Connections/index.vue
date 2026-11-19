@@ -5,7 +5,7 @@
 // Paket dengan batas koneksi: sisanya tetap tersimpan tapi disembunyikan sampai upgrade.
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Blocks, ChartColumn, Download, FileUp, Lock, Plus, ScanLine, SlidersHorizontal } from 'lucide-vue-next'
+import { Blocks, ChartColumn, Download, FileUp, Lock, Plus, ScanLine, SlidersHorizontal, UserCheck } from 'lucide-vue-next'
 import AppButton from '@/components/ui/AppButton/index.vue'
 import AppEmpty from '@/components/ui/AppEmpty/index.vue'
 import AppField from '@/components/ui/AppField/index.vue'
@@ -18,6 +18,7 @@ import DataTable from '@/components/ui/DataTable/index.vue'
 import PageHeader from '@/components/common/PageHeader/index.vue'
 import RefreshStatus from '@/components/common/RefreshStatus/index.vue'
 import StageBadge from '@/components/common/StageBadge/index.vue'
+import AssigneeSelect from '@/components/leads/AssigneeSelect/index.vue'
 import { cardsApi, eventsApi, leadsApi } from '@/api/workspace'
 import { toQuery } from '@/api/client'
 import { useAutoRefresh } from '@/composables/useAutoRefresh'
@@ -37,6 +38,29 @@ const DUE = [
   { value: 'overdue', label: 'Follow-up terlambat' }, { value: 'today', label: 'Follow-up hari ini' },
   { value: 'week', label: 'Follow-up 7 hari' }, { value: 'none', label: 'Belum dijadwalkan' },
 ]
+// penugasan massal (workspace perusahaan, izin alihkan lead semua / tim)
+const canAssign = computed(() => auth.workspace?.type !== 'personal' && (auth.can('leads.assign.all') || auth.can('leads.assign.team')))
+const picked = ref(new Set())
+const togglePick = (id) => { const s = new Set(picked.value); s.has(id) ? s.delete(id) : s.add(id); picked.value = s }
+const pickPage = () => { picked.value = new Set([...picked.value, ...(list.rows.value ?? []).map((r) => r.id)]) }
+const assigning = ref(false)
+const assignee = ref('')
+const assignBusy = ref(false)
+async function assignPicked() {
+  assignBusy.value = true
+  try {
+    const res = await leadsApi.assign([...picked.value], assignee.value)
+    toast.ok(`${res.data.updated} ${label.value.toLowerCase()} ${assignee.value ? 'ditugaskan' : 'dilepas dari penanggung jawab'}.`)
+    picked.value = new Set()
+    assigning.value = false
+    list.reload()
+  } catch (e) {
+    toast.error(e.message)
+  } finally {
+    assignBusy.value = false
+  }
+}
+const columns = computed(() => [...(canAssign.value ? [{ key: 'pick', label: '' }] : []), ...COLUMNS])
 const COLUMNS = [
   { key: 'name', label: 'Nama', sortable: true },
   { key: 'stage', label: 'Tahap', sortable: true },
@@ -144,18 +168,41 @@ const overdue = (iso) => iso && new Date(iso) < new Date()
   </div>
   <RefreshStatus :last-at="auto.lastAt.value" :refreshing="auto.refreshing.value" :every="auto.every" :live="auto.live.value" class="sm:justify-end" @refresh="auto.refresh" />
 
+  <div v-if="canAssign && list.rows.value?.length" class="flex flex-wrap items-center gap-2 text-sm">
+    <template v-if="picked.size">
+      <span class="font-medium">{{ picked.size }} dipilih</span>
+      <AppButton @click="assignee = ''; assigning = true"><UserCheck class="size-5" /> Tugaskan</AppButton>
+      <AppButton variant="ghost" @click="picked = new Set()">Batal pilih</AppButton>
+    </template>
+    <AppButton v-else variant="ghost" @click="pickPage">Pilih semua di halaman ini</AppButton>
+  </div>
+
+  <AppModal v-if="assigning" size="sm" title="Tugaskan penanggung jawab" :description="`${picked.size} ${label.toLowerCase()} akan ditugaskan. Penanggung jawab baru mendapat notifikasi.`" @close="assigning = false">
+    <form id="lead-assign" class="grid gap-4" @submit.prevent="assignPicked">
+      <AppField label="Penanggung jawab"><AssigneeSelect v-model="assignee" /></AppField>
+    </form>
+    <template #footer>
+      <AppButton variant="secondary" @click="assigning = false">Batal</AppButton>
+      <AppButton type="submit" form="lead-assign" :loading="assignBusy">Simpan</AppButton>
+    </template>
+  </AppModal>
+
   <AppEmpty
     v-if="list.rows.value && !list.rows.value.length && !filtered"
     :text="`${label} muncul saat seseorang menekan Tukar Kontak di profil Anda, saat Anda men-scan kartu orang lain, mengimpor CSV, atau menambahkannya manual.`"
   />
   <DataTable
     v-else
-    :columns="COLUMNS" :rows="list.rows.value" :meta="list.meta.value" :sort="list.sort.value" :loading="list.loading.value"
+    :columns="columns" :rows="list.rows.value" :meta="list.meta.value" :sort="list.sort.value" :loading="list.loading.value"
     empty-text="Tidak ada yang cocok dengan filter." @sort="list.toggleSort" @page="list.goto" @per-page="list.setPerPage"
   >
+    <template #cell-pick="{ row: c }">
+      <input type="checkbox" class="size-[18px] cursor-pointer accent-accent" :checked="picked.has(c.id)" :aria-label="`Pilih ${c.name}`" @change="togglePick(c.id)" />
+    </template>
     <template #cell-name="{ row: c }">
       <RouterLink :to="`/connections/${c.id}`" class="font-semibold">{{ c.name }}</RouterLink>
       <span class="block text-sm text-muted">{{ [c.job_title, c.company].filter(Boolean).join(' · ') || c.email || c.phone }}</span>
+      <span v-if="canAssign" class="block text-xs text-muted">PJ: {{ c.assignee?.name ?? 'belum ada' }}</span>
     </template>
     <template #cell-stage="{ row: c }"><StageBadge :stage="c.stage" /></template>
     <template #cell-source="{ row: c }">

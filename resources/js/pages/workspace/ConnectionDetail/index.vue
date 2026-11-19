@@ -2,7 +2,7 @@
 // U-07 / W-09 — tombol cepat otomatis mencatat aktivitas (LD-04), tahap + alasan kalah wajib (LD-03), tag, timeline.
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowRight, Calendar, Info, Mail, MessageCircle, Nfc, Pencil, Phone, Plus, Trash2, X } from 'lucide-vue-next'
+import { ArrowRight, Calendar, Info, Mail, MessageCircle, Nfc, Pencil, Phone, Plus, Trash2, UserCheck, X } from 'lucide-vue-next'
 import AppButton from '@/components/ui/AppButton/index.vue'
 import AppField from '@/components/ui/AppField/index.vue'
 import AppInput from '@/components/ui/AppInput/index.vue'
@@ -13,6 +13,7 @@ import AppSkeleton from '@/components/ui/AppSkeleton/index.vue'
 import AppTextarea from '@/components/ui/AppTextarea/index.vue'
 import PageHeader from '@/components/common/PageHeader/index.vue'
 import StageBadge from '@/components/common/StageBadge/index.vue'
+import AssigneeSelect from '@/components/leads/AssigneeSelect/index.vue'
 import ReminderPanel from '@/components/leads/ReminderPanel/index.vue'
 import { leadsApi } from '@/api/workspace'
 import { useAction, useAsync } from '@/composables/useAsync'
@@ -26,6 +27,12 @@ const id = route.params.id
 const { data: c, reload } = useAsync(() => leadsApi.get(id))
 const { data: stages } = useAsync(() => leadsApi.stages())
 const { busy, run } = useAction()
+// penugasan lead: workspace perusahaan, peran dengan izin alihkan lead (semua / tim)
+const canAssign = computed(() => auth.workspace?.type !== 'personal' && (auth.can('leads.assign.all') || auth.can('leads.assign.team')))
+async function reassign(user) {
+  const res = await run(() => leadsApi.assign([id], user), user ? 'Penanggung jawab diganti.' : 'Penanggung jawab dilepas.').catch(() => null)
+  if (res) reload()
+}
 
 const note = ref('')
 const tag = ref('')
@@ -71,8 +78,10 @@ async function destroy() {
 }
 
 const wa = computed(() => (c.value?.phone ? `https://wa.me/${c.value.phone.replace(/\D/g, '')}` : null))
-const ICONS = { note: Pencil, call: Phone, whatsapp: MessageCircle, email: Mail, meeting: Calendar, stage_changed: ArrowRight, created: Plus, tap: Nfc }
-const activityText = (a) => (a.type === 'stage_changed'
+const ICONS = { note: Pencil, call: Phone, whatsapp: MessageCircle, email: Mail, meeting: Calendar, stage_changed: ArrowRight, created: Plus, tap: Nfc, assigned: UserCheck }
+const activityText = (a) => (a.type === 'assigned'
+  ? (a.meta.to ? `Ditugaskan ke ${a.meta.to}${a.meta.from ? ` (sebelumnya ${a.meta.from})` : ''}` : 'Penanggung jawab dilepas')
+  : a.type === 'stage_changed'
   ? `${a.meta.from_stage ?? '—'} → ${a.meta.to_stage}`
   : a.type === 'created' ? `Dari ${sourceLabel(a.meta.source)}${a.meta.deduplicated ? ' (digabung)' : ''}` : a.body)
 </script>
@@ -106,6 +115,11 @@ const activityText = (a) => (a.type === 'stage_changed'
         <div class="grid gap-4">
           <dl class="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 text-sm break-words sm:gap-x-6">
             <dt class="text-muted">Tahap</dt><dd><StageBadge :stage="c.stage" /><span v-if="c.lost_reason" class="text-muted"> · {{ c.lost_reason }}</span></dd>
+            <dt class="text-muted">Penanggung jawab</dt>
+            <dd>
+              <AssigneeSelect v-if="canAssign" :model-value="c.assignee?.id ?? ''" :disabled="busy" @update:model-value="reassign" />
+              <span v-else>{{ c.assignee?.name ?? '—' }}</span>
+            </dd>
             <dt class="text-muted">Email</dt><dd>{{ c.email || '—' }}</dd>
             <dt class="text-muted">Telepon</dt><dd class="font-mono">{{ c.phone || '—' }}</dd>
             <dt class="text-muted">Sumber</dt><dd>{{ sourceLabel(c.source) }}<span v-if="c.card"> · kartu {{ c.card.label || c.card.token }}</span><span v-if="c.event"> · {{ c.event.name }}</span></dd>

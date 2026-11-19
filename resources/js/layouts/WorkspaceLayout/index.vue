@@ -25,10 +25,10 @@ const { toggle } = useTheme()
 const canWebhook = computed(() => auth.can('integrations.manage') || auth.can('workspace.settings'))
 const groups = computed(() => [
   { label: null, items: [{ key: 'dashboard', label: 'Beranda', icon: House, to: '/dashboard' }] },
-  // workspace perusahaan: kelola karyawan, kartu karyawan, rekap lead (owner/admin); Webhook segera hadir
-  ...(auth.workspace && auth.workspace.type !== 'personal' && (auth.can('members.invite') || canWebhook.value)
+  // workspace perusahaan: kelola karyawan & rekap lead (owner/admin), kartu karyawan (juga Manager untuk timnya), Webhook
+  ...(auth.workspace && auth.workspace.type !== 'personal' && (auth.can('members.invite') || auth.can('cards.assign.*') || canWebhook.value)
     ? [{ label: 'Perusahaan', items: [
-      auth.can('members.invite') && { key: 'members', label: 'Karyawan', icon: Building2, to: '/members' },
+      (auth.can('members.invite') || auth.can('cards.assign.*')) && { key: 'members', label: auth.can('members.invite') ? 'Karyawan' : 'Kartu tim', icon: Building2, to: '/members' },
       canWebhook.value && { key: 'webhooks', label: 'Webhook', icon: Webhook, to: '/webhooks' },
     ].filter(Boolean) }] : []),
   { label: 'Kartu', items: [

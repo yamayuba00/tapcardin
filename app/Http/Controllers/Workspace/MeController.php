@@ -45,6 +45,7 @@ class MeController extends WorkspaceController
         'order_unpaid' => 'Pengingat pesanan belum dibayar',
         'tap_quota' => 'Kuota tap kartu digital hampir / sudah habis',
         'webhook_disabled' => 'Webhook dinonaktifkan otomatis karena terus gagal',
+        'lead_assigned' => 'Lead ditugaskan ke Anda',
     ];
 
     /** Data halaman pengaturan: preferensi notifikasi, paket & pemakaian, izin efektif. */

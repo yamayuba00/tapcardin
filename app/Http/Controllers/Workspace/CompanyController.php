@@ -15,6 +15,7 @@ use App\Models\Role;
 use App\Models\StaffAccount;
 use App\Models\Subscription;
 use App\Models\Tap;
+use App\Models\TeamMember;
 use App\Models\TenantMember;
 use App\Models\User;
 use App\Support\Audit;
@@ -152,9 +153,12 @@ class CompanyController extends WorkspaceController
     /** GET /api/company/cards — kartu fisik perusahaan: stok, ditugaskan, dan dipegang karyawan. */
     public function cards(Request $request): JsonResponse
     {
-        $this->company('cards.assign.all');
+        $scope = $this->cardScope();
         $q = Card::with(['holder', 'assignee'])->where('form', Card::PHYSICAL)
             ->whereIn('status', [CardStatus::Unclaimed->value, CardStatus::Active->value, CardStatus::Paused->value])
+            // Manager: stok perusahaan + kartu milik anggota tim yang dikelolanya
+            ->when($scope !== null, fn ($w) => $w->where(fn ($x) => $x->where(fn ($p) => $p->where('status', CardStatus::Unclaimed->value)->whereNull('assigned_user_id'))
+                ->orWhereIn('assigned_user_id', $scope)->orWhereIn('holder_user_id', $scope)))
             ->when($request->query('filter') === 'pool', fn ($w) => $w->where('status', CardStatus::Unclaimed->value)->whereNull('assigned_user_id'));
         $page = Table::paginate($q, $request, ['status' => 'status', 'updated_at' => 'updated_at'], '-updated_at', ['short_code', 'label'], 25);
 
@@ -164,7 +168,7 @@ class CompanyController extends WorkspaceController
     /** PUT /api/company/cards/{token}/assign {user} — stok perusahaan → karyawan (karyawan mengaktifkan sendiri). */
     public function assign(Request $request, string $token): JsonResponse
     {
-        $this->company('cards.assign.all');
+        $scope = $this->cardScope();
         $data = $request->validate(['user' => ['required', 'string', 'size:26']]);
         $card = $this->companyCard($token);
         if ($card->status !== CardStatus::Unclaimed || $card->holder_user_id) {
@@ -174,6 +178,9 @@ class CompanyController extends WorkspaceController
         $member = $user ? TenantMember::where('user_id', $user->id)->where('status', MemberStatus::Active->value)->exists() : false;
         if (! $member) {
             throw new ApiError('not_member', 'Pilih karyawan yang masih aktif.');
+        }
+        if ($scope !== null && ! in_array($user->id, $scope, true)) {
+            throw new ApiError('outside_team', 'Anda hanya bisa menugaskan kartu ke anggota tim yang Anda kelola.', 403);
         }
         $card->update(['assigned_user_id' => $user->id]);
         Audit::tenant($card->tenant_id, 'card.assigned', $card, null, ['user' => $user->public_id]);
@@ -185,13 +192,27 @@ class CompanyController extends WorkspaceController
     /** DELETE /api/company/cards/{token}/assign — tarik kartu dari karyawan, kembali ke stok perusahaan. */
     public function unassign(string $token, ChangeCardStatus $status): JsonResponse
     {
-        $this->company('cards.assign.all');
+        $scope = $this->cardScope();
         $card = $this->companyCard($token);
+        if ($scope !== null && ! in_array($card->assigned_user_id ?? $card->holder_user_id, $scope, true)) {
+            throw new ApiError('outside_team', 'Kartu ini bukan milik anggota tim yang Anda kelola.', 403);
+        }
         DB::transaction(fn () => $this->release($card, $status));
         Audit::tenant($card->tenant_id, 'card.unassigned', $card);
         Webhooks::emit($card->tenant_id, 'card.unassigned', fn () => ['card' => WebhookPayload::card($card->fresh(['holder', 'assignee']))]);
 
         return response()->json(['data' => $this->card($card->fresh(['holder', 'assignee']))]);
+    }
+
+    /** GET /api/company/cards/assignees — karyawan aktif yang boleh menerima kartu (Manager: hanya timnya). */
+    public function assignees(): JsonResponse
+    {
+        $scope = $this->cardScope();
+        $members = TenantMember::with('user')->where('status', MemberStatus::Active->value)
+            ->when($scope !== null, fn ($w) => $w->whereIn('user_id', $scope))->get()
+            ->sortBy(fn (TenantMember $m) => mb_strtolower($m->user->name))->values();
+
+        return response()->json(['data' => $members->map(fn (TenantMember $m) => ['user_id' => $m->user->public_id, 'name' => $m->user->name, 'email' => $m->user->email])]);
     }
 
     /** GET /api/company/leads — rekap per karyawan: kartu aktif, tap & lead 30 hari, total lead. */
@@ -214,12 +235,23 @@ class CompanyController extends WorkspaceController
         ])->sortByDesc('leads_30')->values()]);
     }
 
-    private function company(string $permission): void
+    private function company(string ...$permissions): void
     {
         if ($this->tenant()->isPersonal()) {
             throw new ApiError('company_only', 'Fitur ini hanya untuk workspace perusahaan.', 404);
         }
-        $this->access()->authorize($permission);
+        $this->access()->authorize(...$permissions);
+    }
+
+    /** Cakupan penugasan kartu: null = semua karyawan (Owner/Admin); Manager = id pengguna di tim yang dikelolanya. */
+    private function cardScope(): ?array
+    {
+        $this->company('cards.assign.all', 'cards.assign.team');
+        if ($this->access()->has('cards.assign.all')) {
+            return null;
+        }
+
+        return TeamMember::whereIn('team_id', $this->access()->context()['managed_team_ids'])->pluck('user_id')->unique()->values()->all();
     }
 
     /** Anggota yang boleh diubah di sini: bukan owner dan bukan diri sendiri. */

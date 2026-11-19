@@ -207,6 +207,13 @@ final class EmailContent
                 'action' => ['label' => 'Lihat analitik', 'path' => '/analytics'],
                 'tone' => 'default',
             ],
+            'lead_assigned' => [
+                'subject' => ($d['count'] ?? 1) > 1 ? "{$d['count']} lead ditugaskan ke Anda" : "Lead ditugaskan ke Anda: {$d['name']}",
+                'title' => 'Lead baru untuk Anda',
+                'lines' => [($d['by'] ?? 'Rekan Anda').' menugaskan '.(($d['count'] ?? 1) > 1 ? "**{$d['count']} lead** (termasuk {$d['name']})" : "**{$d['name']}**").' ke Anda. Segera follow-up selagi hangat.'],
+                'action' => ! empty($d['id']) ? ['label' => 'Buka lead', 'path' => '/connections/'.$d['id']] : ['label' => 'Lihat lead saya', 'path' => '/connections'],
+                'tone' => 'default',
+            ],
             'lead_new' => [
                 'subject' => "Koneksi baru: {$d['name']}",
                 'title' => 'Koneksi baru',

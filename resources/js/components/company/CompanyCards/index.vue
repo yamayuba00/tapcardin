@@ -25,7 +25,7 @@ const target = ref('')
 async function openAssign(card) {
   assigning.value = card
   target.value = ''
-  if (!members.value.length) members.value = (await companyApi.members({ status: 'active', per_page: 100 })).data ?? []
+  if (!members.value.length) members.value = (await companyApi.assignees()).data ?? [] // Manager: hanya anggota timnya
 }
 async function assign() {
   const res = await run(() => companyApi.assignCard(assigning.value.token, target.value), 'Kartu ditugaskan. Karyawan bisa mengaktifkannya sekarang.').catch(() => null)
