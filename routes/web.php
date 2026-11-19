@@ -4,8 +4,11 @@ use App\Http\Controllers\Marketing\ShowcaseController;
 use App\Http\Controllers\PaymentWebhookController;
 use App\Http\Controllers\SpaController;
 use App\Http\Controllers\StatusController;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Http\Request;
+use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Route;
+use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 /*
 | TRD §4.6 — rute dipilih berdasarkan host. Laravel hanya menyediakan endpoint (JSON, unduhan,
@@ -20,10 +23,13 @@ $base = config('tapcard.base_domain');
 // `/up` (cek kesehatan untuk pemantau uptime) tidak boleh tertangkap SPA
 $spa = fn () => Route::get('/{path?}', SpaController::class)->where('path', '^(?!api(/|$)|up$).*');
 
-Route::domain('tap.'.$base)->group(function () use ($spa) {
-    require base_path('routes/public.php');
-    $spa();
-});
+// Resolver publik tanpa sesi: tidak ada login di tap., jadi tiap tap tidak menulis baris `sessions` & cookie.
+// Formulir publik (Tukar Kontak, formulir bio) anonim dan dibatasi throttle — CSRF tidak berarti tanpa sesi.
+Route::domain('tap.'.$base)->withoutMiddleware([StartSession::class, ShareErrorsFromSession::class, PreventRequestForgery::class])
+    ->group(function () use ($spa) {
+        require base_path('routes/public.php');
+        $spa();
+    });
 
 $panel = config('tapcard.panel_subdomain');
 

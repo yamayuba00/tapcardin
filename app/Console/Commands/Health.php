@@ -70,6 +70,11 @@ class Health extends Command
         // `advisory` = saran kapasitas, bukan kerusakan → tidak memicu alarm email (tapcard:alert)
         $checks[] = ['label' => 'Tap 24 jam', 'value' => number_format($taps, 0, ',', '.'), 'ok' => $taps < 50000, 'advisory' => true] + $hint('> ±50.000/hari → pasang Redis');
 
+        // tap jatuh ke partisi DEFAULT = partisi bulan itu belum dibuat (scheduler mati) — bulan itu tak bisa dipartisi lagi
+        $stray = DB::table('taps_default')->limit(1)->count();
+        $checks[] = ['label' => 'Partisi tap', 'value' => $stray ? 'Ada tap di partisi DEFAULT' : 'Lengkap', 'ok' => $stray === 0]
+            + $hint('Jalankan tapcard:partitions & pastikan scheduler hidup');
+
         $online = 0;
         if (config('session.driver') === 'database') {
             $online = DB::table('sessions')->where('last_activity', '>=', time() - 300)->whereNotNull('user_id')->count();

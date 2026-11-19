@@ -13,6 +13,7 @@ use App\Support\Webhooks\Webhooks;
 use App\Tenancy\TenantAwareJob;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Carbon;
@@ -40,6 +41,11 @@ class RecordTap implements ShouldQueue
             return;
         }
         $at = Carbon::parse($this->ctx->at);
+        // job lama di antrean (sebelum ada id) tetap jalan; percobaan ulang setelah tap tersimpan → berhenti, tanpa dobel
+        $requestId = isset($this->ctx->id) ? $this->ctx->id : null;
+        if ($requestId && Tap::where('request_id', $requestId)->where('created_at', $at)->exists()) {
+            return;
+        }
 
         // event kartu (di-assign & sedang berlangsung) atau Mode Event pemegang
         $eventId = EventForCard::at($this->tenantId, $card->id, $card->holder_user_id, $at)?->id;
@@ -47,23 +53,28 @@ class RecordTap implements ShouldQueue
             ? TeamMember::where('user_id', $card->holder_user_id)->orderBy('created_at')->value('team_id')
             : null;
 
-        $tap = Tap::create([
-            'tenant_id' => $this->tenantId,
-            'card_id' => $card->id,
-            'profile_id' => $card->profile_id,
-            'holder_user_id' => $card->holder_user_id,
-            'team_id' => $teamId,
-            'source' => $this->ctx->source,
-            'sun_result' => $this->ctx->sunResult,
-            'event_id' => $eventId,
-            'ip_hash' => $this->ctx->ipHash,
-            'visitor_hash' => $this->ctx->visitorHash,
-            'country' => $this->ctx->country,
-            'city' => $this->ctx->city,
-            'device' => $this->ctx->device,
-            'browser' => $this->ctx->browser,
-            'created_at' => $at,
-        ]);
+        try {
+            $tap = Tap::create([
+                'request_id' => $requestId,
+                'tenant_id' => $this->tenantId,
+                'card_id' => $card->id,
+                'profile_id' => $card->profile_id,
+                'holder_user_id' => $card->holder_user_id,
+                'team_id' => $teamId,
+                'source' => $this->ctx->source,
+                'sun_result' => $this->ctx->sunResult,
+                'event_id' => $eventId,
+                'ip_hash' => $this->ctx->ipHash,
+                'visitor_hash' => $this->ctx->visitorHash,
+                'country' => $this->ctx->country,
+                'city' => $this->ctx->city,
+                'device' => $this->ctx->device,
+                'browser' => $this->ctx->browser,
+                'created_at' => $at,
+            ]);
+        } catch (UniqueConstraintViolationException) {
+            return; // dua worker menjalankan job yang sama bersamaan
+        }
 
         Card::whereKey($card->id)->update(['last_tap_at' => $at]);
         Webhooks::emit($this->tenantId, 'tap.recorded', fn () => ['card' => WebhookPayload::cardRef($card), 'holder' => WebhookPayload::user($card->loadMissing('holder')->holder),

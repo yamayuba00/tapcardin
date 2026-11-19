@@ -1,6 +1,7 @@
 <?php
 
 use App\Exceptions\ApiError;
+use App\Http\Controllers\SpaController;
 use App\Http\Middleware\EnsureNotBlocked;
 use App\Http\Middleware\EnsurePlatformStaff;
 use App\Http\Middleware\ResolveWorkspace;
@@ -69,5 +70,20 @@ return Application::configure(basePath: dirname(__DIR__))
             }
 
             return response()->json(['error' => array_filter(compact('code', 'message', 'fields'))], $status);
+        });
+
+        // Galat halaman (bukan API) → shell SPA dengan halaman galat Vue bermerek; gagal merender → bawaan Laravel.
+        $exceptions->render(function (Throwable $e, Request $request) {
+            if ($request->is('api/*') || $request->expectsJson()) {
+                return null;
+            }
+            $status = $e instanceof HttpExceptionInterface ? $e->getStatusCode() : (config('app.debug') ? null : 500);
+            if (! in_array($status, [403, 404, 419, 429, 500, 503], true)) {
+                return null;
+            }
+            $meta = ['title' => "Galat $status · TapCard", 'description' => 'TapCard', 'image' => null, 'theme' => 'dark', 'lang' => 'id'];
+
+            return rescue(fn () => app(SpaController::class)->render(['error' => ['status' => $status]], $meta, $status)
+                ->withHeaders(($e instanceof HttpExceptionInterface ? $e->getHeaders() : []) + ['X-Robots-Tag' => 'noindex']), null, report: false);
         });
     })->create();

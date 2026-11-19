@@ -37,7 +37,12 @@ class AppServiceProvider extends ServiceProvider
 
         // TRD §11 — batas laju
         $ip = fn (Request $r) => Hasher::ip($r->ip());
-        RateLimiter::for('tap', fn (Request $r) => Limit::perMinute(60)->by($ip($r).'|'.$r->route('token')));
+        // per perangkat (IP + browser) + batas longgar per jaringan: satu Wi-Fi event dipakai ratusan pengunjung
+        $ua = fn (Request $r) => substr(hash('xxh3', (string) $r->userAgent()), 0, 12);
+        RateLimiter::for('tap', fn (Request $r) => [
+            Limit::perMinute(60)->by('d|'.$ip($r).'|'.$ua($r).'|'.$r->route('token')),
+            Limit::perMinute(1200)->by('n|'.$ip($r).'|'.$r->route('token')),
+        ]);
         RateLimiter::for('vcard', fn (Request $r) => Limit::perMinute(30)->by($ip($r)));
         RateLimiter::for('connect', fn (Request $r) => Limit::perMinutes(10, 5)->by($ip($r)));
         // formulir bio: lebih longgar (salah isi pertanyaan wajib ikut terhitung), per IP + kartu

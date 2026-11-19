@@ -6,6 +6,7 @@ use App\Enums\TapSource;
 use App\Support\Hasher;
 use App\Support\UserAgent;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 /** Data tap yang sudah di-hash sebelum masuk antrean (TRD §6.2 langkah 4). */
 final class TapContext
@@ -20,6 +21,7 @@ final class TapContext
         public readonly string $device,
         public readonly ?string $browser,
         public readonly string $at,
+        public readonly ?string $id = null, // ULID per tap: percobaan ulang job tidak mencatat tap ganda
     ) {}
 
     /** @param  TapSource|null  $source  paksa sumber (mis. `app` untuk Mode Reader); bawaan dari `?src=` */
@@ -40,6 +42,7 @@ final class TapContext
             device: UserAgent::device($ua),
             browser: UserAgent::browser($ua),
             at: now()->toIso8601String(),
+            id: (string) Str::ulid(),
         );
     }
 }

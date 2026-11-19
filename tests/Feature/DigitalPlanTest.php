@@ -125,10 +125,11 @@ class DigitalPlanTest extends TestCase
         $this->assertSame(["deleted-{$rina->id}@invalid", null], [$gone->email, $gone->handle]);
         $this->assertSame(CardStatus::Revoked, $old->fresh()->status);
         $this->assertSame('pending_deletion', Tenant::find($rina->personal_tenant_id)->status->value);
-        $this->getJson($this->host('tap', "/api/c/{$old->card_token}"))->assertJsonPath('data.reason', 'revoked');
 
         // daftar lagi dengan email yang sama → akun baru yang kosong, bukan yang lama
+        // (login memakai sesi request terakhir — host app., bukan tap. yang tanpa sesi)
         $again = app(LoginUser::class)->byEmail('rina@example.com', 'Rina Baru');
+        $this->getJson($this->host('tap', "/api/c/{$old->card_token}"))->assertJsonPath('data.reason', 'revoked');
         $this->assertNotSame($rina->id, $again->id);
         $this->assertNotSame($rina->personal_tenant_id, $again->personal_tenant_id);
         $this->assertSame(0, Connection::acrossTenants()->where('tenant_id', $again->personal_tenant_id)->count());

@@ -18,6 +18,8 @@ export const config = {
   devLogin: null,
   /** Data awal yang disisipkan server untuk halaman sensitif kecepatan (mis. `card` di /c/{token}). */
   initial: null,
+  /** @type {null | {status: number}} galat HTTP halaman dari server → ErrorScreen */
+  error: null,
   ...raw,
 }
 
