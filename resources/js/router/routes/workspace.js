@@ -33,6 +33,7 @@ export default [
       { path: 'scan', name: 'scan', component: page('Scan'), meta: { title: 'Scan kartu', nav: 'connections' } },
       { path: 'events', name: 'events', component: page('Events'), meta: { title: 'Event', nav: 'events' } },
       { path: 'events/:id', name: 'event-detail', component: page('EventDetail'), meta: { title: 'Event', nav: 'events' } },
+      { path: 'events/:id/checkin', name: 'event-checkin', component: page('EventCheckin'), meta: { title: 'Check-in peserta', nav: 'events' } },
       { path: 'connections/:id', name: 'connection-detail', component: page('ConnectionDetail'), meta: { title: 'Koneksi', nav: 'connections' } },
       { path: 'designs', name: 'designs', component: page('Designs'), meta: { title: 'Desain', nav: 'designs' } },
       // editor tampil layar penuh (tanpa sidebar) — lihat WorkspaceLayout

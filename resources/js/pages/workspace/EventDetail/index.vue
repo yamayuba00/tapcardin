@@ -2,7 +2,7 @@
 // U-09 — ringkasan event (tap, pengunjung, simpan kontak, koneksi per tahap) + daftar koneksi event (server-side) + ekspor CSV.
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { CreditCard, Download, Pencil, Power, Radio, Save, Trash2 } from 'lucide-vue-next'
+import { CreditCard, Download, Pencil, Power, Radio, Save, ScanLine, Trash2 } from 'lucide-vue-next'
 import AppBadge from '@/components/ui/AppBadge/index.vue'
 import AppButton from '@/components/ui/AppButton/index.vue'
 import AppModal from '@/components/ui/AppModal/index.vue'
@@ -13,6 +13,7 @@ import AppToggle from '@/components/ui/AppToggle/index.vue'
 import BarList from '@/components/charts/BarList/index.vue'
 import DataTable from '@/components/ui/DataTable/index.vue'
 import KpiCard from '@/components/common/KpiCard/index.vue'
+import EventAttendees from '@/components/events/EventAttendees/index.vue'
 import EventForm from '@/components/events/EventForm/index.vue'
 import PageHeader from '@/components/common/PageHeader/index.vue'
 import StageBadge from '@/components/common/StageBadge/index.vue'
@@ -75,6 +76,7 @@ async function destroy() {
           <span v-if="e.location">· {{ e.location }}</span>
         </div>
       </template>
+      <AppButton v-if="auth.can('events.checkin')" :to="`/events/${id}/checkin`"><ScanLine class="size-5" /> Check-in peserta</AppButton>
       <AppButton variant="ghost" @click="editing = true"><Pencil class="size-5" /> Ubah</AppButton>
       <AppButton v-if="auth.can('leads.export.*')" variant="secondary" :href="exportHref"><Download class="size-5" /> Ekspor koneksi</AppButton>
       <AppButton v-if="e.is_active" variant="secondary" :loading="busy" @click="deactivate"><Power class="size-5" /> Matikan Mode Event</AppButton>
@@ -90,6 +92,7 @@ async function destroy() {
 
     <div class="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
       <div class="grid gap-3">
+        <EventAttendees v-if="auth.can('events.checkin') || auth.can('events.manage.all')" :event-id="id" />
         <h2 class="text-base font-semibold">Koneksi dari event ini</h2>
         <DataTable
           :columns="COLUMNS" :rows="leads.rows.value" :meta="leads.meta.value" :sort="leads.sort.value" :loading="leads.loading.value"

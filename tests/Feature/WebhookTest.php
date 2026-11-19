@@ -231,6 +231,12 @@ class WebhookTest extends TestCase
         (new RecordTap($this->org->id, $card->id, new TapContext(source: 'nfc', sunResult: null, ipHash: 'IPHASHRAHASIA', visitorHash: 'VISITORRAHASIA',
             country: 'ID', city: 'Jakarta', device: 'mobile', browser: 'Chrome', at: now()->toIso8601String())))->handle();
 
+        // event.checkin
+        $attendee = $this->makeCard(CardStatus::Active, $sari);
+        $attendee->forceFill(['tenant_id' => $this->org->id])->save();
+        $event = $this->api('POST', '/events', ['name' => 'Expo', 'starts_at' => now()->subHour()->toIso8601String(), 'ends_at' => now()->addHour()->toIso8601String()])->assertCreated()->json('data.id');
+        $this->api('POST', "/events/$event/checkins", ['value' => config('tapcard.resolver_url')."/c/{$attendee->card_token}", 'method' => 'code'])->assertCreated();
+
         $byType = collect($this->sent())->keyBy('type');
         $catalog = WebhookEvents::all();
         foreach ($catalog as $type => $def) {

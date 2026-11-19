@@ -121,6 +121,14 @@ export const eventsApi = {
   cards: (id, cards) => http.put(`/api/events/${id}/cards`, { cards }),
 }
 
+/** Check-in peserta event (panitia). */
+export const checkinsApi = {
+  list: (eventId, params) => http.get(`/api/events/${eventId}/checkins`, params),
+  create: (eventId, value, method) => http.post(`/api/events/${eventId}/checkins`, { value, method }),
+  remove: (eventId, id) => http.del(`/api/events/${eventId}/checkins/${id}`),
+  exportUrl: (eventId) => `/api/events/${eventId}/checkins.csv`,
+}
+
 /** F-09 — Mode Reader. */
 export const scansApi = {
   /** value = URL hasil NFC/QR, kode pendek, atau token. */
