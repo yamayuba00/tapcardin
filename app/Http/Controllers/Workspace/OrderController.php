@@ -10,11 +10,13 @@ use App\Models\Design;
 use App\Models\Invoice;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\Profile;
 use App\Models\ShippingMethod;
 use App\Models\Voucher;
 use App\Services\Payment\PaymentService;
 use App\Support\Audit;
 use App\Support\Design\LanyardPricing;
+use App\Support\Design\Variables;
 use App\Support\Http\Table;
 use App\Support\Indonesia;
 use App\Support\Qr\SvgRenderer;
@@ -51,6 +53,8 @@ class OrderController extends WorkspaceController
             'lanyard' => LanyardPricing::catalog(),
             'designs' => $designs,
             'qr' => $qr,
+            // isi {{name}}, {{title}}, … di pratinjau desain (sama dengan Design Studio)
+            'variables' => Variables::forUser($this->user(), Profile::where('user_id', $this->user()->id)->whereNull('archived_at')->with('fields')->orderBy('id')->first()),
             'payment' => PaymentService::info(),
             'provinces' => Indonesia::PROVINCES,
             // isi otomatis formulir dengan alamat pesanan terakhir pengguna ini

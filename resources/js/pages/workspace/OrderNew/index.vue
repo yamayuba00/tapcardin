@@ -17,6 +17,7 @@ import AppSelect from '@/components/ui/AppSelect/index.vue'
 import AppSkeleton from '@/components/ui/AppSkeleton/index.vue'
 import AppTextarea from '@/components/ui/AppTextarea/index.vue'
 import PageHeader from '@/components/common/PageHeader/index.vue'
+import { kitVars } from '@/lib/design'
 import CardSide from '@/components/studio/CardSide/index.vue'
 import LanyardStrip from '@/components/studio/LanyardStrip/index.vue'
 import { cartApi, ordersApi } from '@/api/workspace'
@@ -28,6 +29,8 @@ const route = useRoute()
 const router = useRouter()
 const toast = useToastStore()
 const { data: cat } = useAsync(() => ordersApi.catalog())
+// pratinjau memakai data bio pengguna ({{name}}, {{title}}, …), sama dengan Design Studio
+const vars = (kit) => ({ ...(cat.value?.variables ?? {}), ...kitVars(kit) })
 const { busy, run } = useAction()
 
 // ── keranjang ──────────────────────────────────────────────
@@ -217,12 +220,12 @@ async function submit() {
           </p>
           <div v-else :class="['grid gap-3', tab === 'lanyard' ? 'sm:grid-cols-2' : 'grid-cols-2 sm:grid-cols-3']">
             <article v-for="d in lists[tab]" :key="d.id" :class="['grid content-start gap-2 rounded-md border p-2 text-sm', inCart(d) ? 'border-accent bg-surface-2' : 'border-line']">
-              <div v-if="d.kind === 'card'" class="overflow-hidden rounded-sm" :class="d.orientation === 'portrait' ? 'mx-auto w-1/2' : ''"><CardSide :side="d.front" :kit="d.kit" :qr="cat.qr" trim /></div>
-              <div v-else class="overflow-hidden rounded-sm"><LanyardStrip :side="d.front" :kit="d.kit" :length="200" :scale="1.4" /></div>
+              <div v-if="d.kind === 'card'" class="overflow-hidden rounded-sm" :class="d.orientation === 'portrait' ? 'mx-auto w-1/2' : ''"><CardSide :side="d.front" :kit="d.kit" :vars="vars(d.kit)" :qr="cat.qr" trim /></div>
+              <div v-else class="overflow-hidden rounded-sm"><LanyardStrip :side="d.front" :kit="d.kit" :vars="vars(d.kit)" :length="200" :scale="1.4" /></div>
               <span class="truncate font-medium">{{ d.name }}</span>
               <AppBadge v-if="!d.ready" tone="warn">Perlu cek cetak</AppBadge>
               <template v-else>
-                <AppButton variant="secondary" :disabled="working" @click="addToCart(d)"><ShoppingCart class="size-4" /> {{ inCart(d) ? 'Tambah lagi' : 'Ke keranjang' }}</AppButton>
+                <AppButton variant="secondary" class="!px-3 whitespace-nowrap" :disabled="working" @click="addToCart(d)"><ShoppingCart class="size-4 flex-none" /> {{ inCart(d) ? 'Tambah lagi' : 'Ke keranjang' }}</AppButton>
                 <AppButton v-if="d.kind === 'card' && d.paired_lanyard" variant="ghost" :disabled="working" @click="addToCart(d, true)"><Link2 class="size-4" /> + Lanyard pasangan</AppButton>
               </template>
             </article>
@@ -239,8 +242,8 @@ async function submit() {
             <div class="flex items-start gap-3">
               <AppCheckbox :model-value="selected.has(it.id)" :aria-label="`Pesan ${it.design.name}`" @update:model-value="(v) => toggle(it, v)" />
               <div class="w-16 flex-none overflow-hidden rounded-sm sm:w-20">
-                <CardSide v-if="it.kind === 'card'" :side="it.design.front" :kit="it.design.kit" :qr="cat.qr" trim />
-                <LanyardStrip v-else :side="it.design.front" :kit="it.design.kit" :length="80" :scale="1" />
+                <CardSide v-if="it.kind === 'card'" :side="it.design.front" :kit="it.design.kit" :vars="vars(it.design.kit)" :qr="cat.qr" trim />
+                <LanyardStrip v-else :side="it.design.front" :kit="it.design.kit" :vars="vars(it.design.kit)" :length="80" :scale="1" />
               </div>
               <div class="grid min-w-0 flex-1 gap-0.5">
                 <span class="truncate font-medium">{{ it.design.name }}</span>

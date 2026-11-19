@@ -6,18 +6,20 @@ use App\Models\Notification;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
-/** Fallback polling untuk SSE (TRD §9) + tandai dibaca. */
+/** Daftar notifikasi (lonceng & halaman Notifikasi, kursor `before`), fallback polling SSE (`since`), tandai dibaca. */
 class NotificationController extends WorkspaceController
 {
     public function index(Request $request): JsonResponse
     {
+        $limit = 30;
         $rows = $this->scoped()
             ->when($request->query('since'), fn ($q, $since) => $q->where('id', '>', (int) $since))
-            ->orderByDesc('id')->limit(30)->get(['id', 'type', 'data', 'read_at', 'created_at']);
+            ->when($request->query('before'), fn ($q, $before) => $q->where('id', '<', (int) $before))
+            ->orderByDesc('id')->limit($limit + 1)->get(['id', 'type', 'data', 'read_at', 'created_at']);
 
         return response()->json([
-            'data' => $rows->map(fn ($n) => ['id' => $n->id, 'type' => $n->type, 'data' => $n->data, 'read' => $n->read_at !== null, 'at' => $n->created_at->toIso8601String()]),
-            'meta' => ['unread' => $this->scoped()->whereNull('read_at')->count()],
+            'data' => $rows->take($limit)->map(fn ($n) => ['id' => $n->id, 'type' => $n->type, 'data' => $n->data, 'read' => $n->read_at !== null, 'at' => $n->created_at->toIso8601String()])->values(),
+            'meta' => ['unread' => $this->scoped()->whereNull('read_at')->count(), 'has_more' => $rows->count() > $limit],
         ]);
     }
 

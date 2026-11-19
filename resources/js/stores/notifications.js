@@ -4,35 +4,7 @@ import { useAuthStore } from './auth'
 import { useToastStore } from './toast'
 import { config } from '@/config'
 import { connectRealtime } from '@/lib/realtime'
-
-const TYPES = ['tap', 'lead_new', 'lost_card_tapped', 'saved_back', 'reminder_due', 'import_done', 'invoice_paid', 'invoice_due', 'plan_changed', 'workspace_expired', 'order_status', 'announcement', 'tap_quota', 'subscription_past_due', 'grace_ending', 'subscription_reminder', 'trial_ending', 'order_unpaid', 'webhook_disabled', 'lead_assigned']
-
-const messages = {
-  tap: (d) => `Seseorang membuka profil Anda${d.city ? ' · ' + d.city : ''}`,
-  lead_new: (d) => `${d.name} terhubung${d.company ? ' · ' + d.company : ''}`,
-  lead_assigned: (d) => (d.count > 1 ? `${d.by} menugaskan ${d.count} lead ke Anda` : `${d.by} menugaskan ${d.name} ke Anda`),
-  lost_card_tapped: (d) => `Kartu hilang Anda baru di-tap${d.city ? ' di ' + d.city : ''}`,
-  saved_back: (d) => `${d.name} menyimpan Anda sebagai koneksi. Buka Scan untuk simpan balik.`,
-  reminder_due: (d) => `Waktunya follow-up ${d.name}${d.note ? ' · ' + d.note : ''}`,
-  invoice_paid: (d) => (d.label ? `Pembayaran ${d.number} berhasil — ${d.label} aktif` : `Pembayaran ${d.number} berhasil — paket ${d.plan} aktif`),
-  tap_quota: (d) => (d.level >= 100
-    ? `Kuota tap kartu digital habis (${d.used}/${d.quota}) — profil tidak bisa dibuka. Tambah tap di Pengaturan.`
-    : `Kuota tap kartu digital tinggal sedikit (${d.used}/${d.quota}). Tambah tap di Pengaturan.`),
-  invoice_due: (d) => `Tagihan perpanjangan ${d.number} sudah terbit`,
-  plan_changed: (d) => `Paket workspace kini ${d.plan}`,
-  subscription_past_due: (d) => `Paket ${d.plan} masuk masa tenggang — bayar tagihan agar fitur tidak terkunci`,
-  grace_ending: (d) => (d.company
-    ? `Masa tenggang paket ${d.plan} hampir berakhir — bayar sekarang agar dashboard tidak terkunci`
-    : `Masa tenggang paket ${d.plan} hampir berakhir — bayar sekarang agar tidak turun ke paket gratis`),
-  subscription_reminder: (d) => `Masa aktif ${d.workspace ?? 'workspace'} berakhir ${d.days <= 1 ? 'besok' : `${d.days} hari lagi`} — perpanjang paket ${d.plan} agar dashboard tidak terkunci`,
-  trial_ending: (d) => `Uji coba ${d.workspace ?? 'workspace'} berakhir besok — pilih paket agar dashboard tidak terkunci`,
-  workspace_expired: (d) => `Masa aktif paket ${d.plan} habis — dashboard terkunci sampai diperpanjang`,
-  webhook_disabled: (d) => `Webhook ke ${d.url} dinonaktifkan otomatis setelah ${d.failures ?? 20} kali gagal — periksa penerimanya`,
-  order_unpaid: (d) => `Pesanan ${d.number} belum dibayar — batal otomatis bila tidak dibayar tepat waktu`,
-  order_status: (d) => `Pesanan ${d.number}: ${d.label}${d.tracking ? ' · resi ' + d.tracking : ''}`,
-  announcement: (d) => `${d.title} — ${d.body}`,
-  import_done: (d) => `Impor ${d.filename} selesai: ${d.created} baru, ${d.merged} digabung, ${d.failed} gagal`,
-}
+import { TYPES, message } from '@/lib/notifications'
 
 // transport aktif (di luar state Pinia agar tidak dibuat reaktif)
 let es = null
@@ -45,14 +17,13 @@ const seen = new Set() // id notifikasi yang sudah ditampilkan (Reverb & SSE bis
  * tidak tersambung, lalu polling 15 detik bila browser tanpa EventSource. `mode` = connecting | realtime | sse | poll.
  */
 export const useNotificationStore = defineStore('notifications', {
-  state: () => ({ unread: 0, started: false, listeners: [], mode: 'off' }),
+  state: () => ({ unread: 0, started: false, listeners: [], mode: 'off', items: [], loaded: false, loading: false, hasMore: true }),
   actions: {
     async start() {
       if (this.started) return
       this.started = true
-      try {
-        this.unread = (await notificationsApi.list()).meta.unread
-      } catch { /* abaikan */ }
+      // satu panggilan: lencana belum dibaca + isi lonceng sekaligus
+      await this.load().catch(() => {})
 
       const auth = useAuthStore()
       if (!config.realtime || !auth.me?.id) return this.startSse()
@@ -107,7 +78,8 @@ export const useNotificationStore = defineStore('notifications', {
         if (seen.size > 500) seen.delete(seen.values().next().value)
       }
       this.unread++
-      const msg = messages[type]?.(data)
+      if (this.loaded && id) this.items.unshift({ id, type, data, read: false, at: new Date().toISOString() })
+      const msg = message(type, data)
       if (msg) useToastStore().push(msg, type === 'lost_card_tapped' ? 'danger' : 'info')
       this.listeners.forEach((fn) => fn(type, data))
     },
@@ -116,9 +88,33 @@ export const useNotificationStore = defineStore('notifications', {
       this.listeners.push(fn)
       return () => (this.listeners = this.listeners.filter((l) => l !== fn))
     },
-    async markRead() {
-      await notificationsApi.markRead()
+    /** Daftar untuk lonceng & halaman Notifikasi; `more` = halaman berikutnya (kursor id). */
+    async load(more = false) {
+      if (!more && this.loaded) return
+      if (this.loading || (more && !this.hasMore)) return
+      this.loading = true
+      try {
+        const before = more ? this.items[this.items.length - 1]?.id : undefined
+        const res = await notificationsApi.page(before)
+        this.items = more ? [...this.items, ...res.data] : res.data
+        this.hasMore = res.meta.has_more
+        this.unread = res.meta.unread
+        this.loaded = true
+      } finally {
+        this.loading = false
+      }
+    },
+    async markRead(id) {
+      const n = this.items.find((x) => x.id === id)
+      if (!n || n.read) return
+      n.read = true
+      this.unread = Math.max(0, this.unread - 1)
+      await notificationsApi.markRead([id]).catch(() => {})
+    },
+    async markAllRead() {
+      this.items.forEach((n) => (n.read = true))
       this.unread = 0
+      await notificationsApi.markRead()
     },
   },
 })

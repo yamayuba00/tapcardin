@@ -8,6 +8,7 @@ import { useRoute } from 'vue-router'
 import {
   BellRing, Blocks, Building2, CalendarDays, ChartColumn, ChevronsUpDown, CreditCard, Gem, House, LayoutDashboard, LogOut, Moon, Package, Palette, Settings, User, Users, Webhook,
 } from 'lucide-vue-next'
+import NotificationBell from '@/components/common/NotificationBell/index.vue'
 import BrandLogo from '@/components/common/BrandLogo/index.vue'
 import InstallApp from '@/components/common/InstallApp/index.vue'
 import MobileNav from '@/components/common/MobileNav/index.vue'
@@ -63,9 +64,8 @@ const { pull, refreshing, threshold } = usePullToRefresh(mainEl, async () => {
 const fullscreen = computed(() => route.meta.fullscreen === true)
 
 // ponsel: 3 tab utama + "Menu" (kelompok berlabel; Beranda sudah jadi tab)
-const unread = computed(() => (notifications.unread ? (notifications.unread > 99 ? '99+' : String(notifications.unread)) : null))
 const tabs = computed(() => [
-  { key: 'dashboard', label: 'Beranda', icon: House, to: '/dashboard', badge: unread.value },
+  { key: 'dashboard', label: 'Beranda', icon: House, to: '/dashboard' },
   { key: 'connections', label: auth.contactLabel, icon: Users, to: '/connections' },
   { key: 'cards', label: 'Kartu', icon: CreditCard, to: '/cards' },
 ])
@@ -88,7 +88,7 @@ const link = 'group flex min-h-9 cursor-pointer items-center gap-3 rounded-lg px
   <!-- app shell: tinggi dikunci setinggi layar; hanya <main> yang scroll, sidebar diam -->
   <div v-else class="grid h-dvh grid-rows-[minmax(0,1fr)] lg:grid-cols-[248px_minmax(0,1fr)] print:block print:h-auto">
     <aside class="hidden min-h-0 flex-col gap-5 overflow-y-auto overscroll-contain print:!hidden border-r border-line px-4 py-5 scrollbar-none lg:flex" aria-label="Navigasi utama">
-      <RouterLink to="/dashboard" class="px-1 no-underline"><BrandLogo /></RouterLink>
+      <div class="flex items-center justify-between gap-2"><RouterLink to="/dashboard" class="px-1 no-underline"><BrandLogo /></RouterLink><NotificationBell /></div>
 
       <nav class="grid gap-4">
         <div v-for="(g, gi) in groups" :key="gi" class="grid gap-0.5">
@@ -96,9 +96,6 @@ const link = 'group flex min-h-9 cursor-pointer items-center gap-3 rounded-lg px
           <RouterLink v-for="item in g.items" :key="item.key" :to="item.to" :aria-current="active === item.key ? 'page' : undefined" :class="link">
             <component :is="item.icon" class="size-[18px] flex-none group-aria-[current=page]:text-accent-text" aria-hidden="true" />
             <span class="truncate">{{ item.label }}</span>
-            <span v-if="item.key === 'dashboard' && notifications.unread" class="ml-auto h-5 min-w-5 rounded-full bg-accent px-1.5 text-center font-mono text-[11px] leading-5 font-semibold text-accent-ink">
-              {{ notifications.unread > 99 ? '99+' : notifications.unread }}
-            </span>
           </RouterLink>
         </div>
       </nav>
@@ -125,6 +122,8 @@ const link = 'group flex min-h-9 cursor-pointer items-center gap-3 rounded-lg px
     <PullIndicator :pull="pull" :refreshing="refreshing" :threshold="threshold" />
     <main ref="mainEl" class="min-h-0 min-w-0 overflow-y-auto overscroll-contain px-4 pt-6 print:overflow-visible print:p-0 pb-[calc(88px+env(safe-area-inset-bottom))] lg:px-8 lg:pt-8 lg:pb-12">
       <div class="grid w-full gap-6">
+        <!-- ponsel: bilah atas ringkas dengan lonceng notifikasi -->
+        <div class="-mt-2 -mb-2 flex items-center justify-between lg:hidden print:hidden"><RouterLink to="/dashboard" class="no-underline"><BrandLogo /></RouterLink><NotificationBell /></div>
         <RouterView v-slot="{ Component }"><component :is="Component" :key="refreshKey" /></RouterView>
       </div>
     </main>

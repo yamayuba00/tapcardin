@@ -142,7 +142,8 @@ export const analyticsApi = {
 
 export const notificationsApi = {
   list: (since) => http.get('/api/notifications', since ? { since } : undefined),
-  markRead: () => http.post('/api/notifications/read'),
+  page: (before) => http.get('/api/notifications', before ? { before } : undefined),
+  markRead: (ids) => http.post('/api/notifications/read', ids ? { ids } : undefined),
   streamUrl: '/api/stream',
 }
 
