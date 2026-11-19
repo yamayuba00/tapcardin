@@ -125,6 +125,15 @@ class BillingController extends WorkspaceController
             'tenant' => $this->tenant()->name,
             'bill_to' => $invoice->billing_snapshot,
             'simulator' => $invoice->payment_provider === 'simulator',
+            // ringkasan setelah lunas: paket & masa aktif yang kini berjalan
+            'active_period' => $invoice->status === 'paid' && $invoice->type === 'subscription'
+                ? Subscription::where('tenant_id', $invoice->tenant_id)->first()?->activePeriod() : null,
+            // tagihan kedaluwarsa → tempat membuat tagihan baru
+            'renew_to' => match (true) {
+                $invoice->type === 'topup' => '/settings',
+                (bool) $invoice->order_id => '/orders',
+                default => '/billing',
+            },
             // halaman tujuan setelah bayar (pesanan kartu → halaman pesanan, tambahan tap → pengaturan)
             'return_to' => match (true) {
                 $invoice->type === 'topup' => '/settings',
@@ -221,6 +230,8 @@ class BillingController extends WorkspaceController
             'plan' => $i->plan?->name, 'cycle' => $i->cycle, 'lines' => $i->lines,
             'subtotal' => (int) $i->subtotal, 'discount' => (int) $i->discount, 'tax' => (int) $i->tax, 'total' => (int) $i->total,
             'issued_at' => $i->issued_at?->toIso8601String(), 'due_at' => $i->due_at?->toIso8601String(), 'paid_at' => $i->paid_at?->toIso8601String(),
+            // batas bayar untuk hitung mundur; server_now = acuan jam (jam perangkat pengguna bisa meleset)
+            'expires_at' => $i->status === 'paid' ? null : $i->expires_at?->toIso8601String(), 'server_now' => now()->toIso8601String(),
             'payment_method' => $i->payment_method, 'payment_url' => $i->isPayable() ? $i->payment_url : null,
         ];
     }
