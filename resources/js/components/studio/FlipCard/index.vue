@@ -3,6 +3,7 @@
 // Rasio kanvas mengikuti ukuran + bleed sisi depan; semua prop editor diteruskan ke CardSide.
 import { computed } from 'vue'
 import CardSide from '@/components/studio/CardSide/index.vue'
+import { RULER_MM } from '@/lib/layout'
 
 const props = defineProps({
   front: { type: Object, required: true },
@@ -18,13 +19,15 @@ const props = defineProps({
   overlays: { type: Boolean, default: true },
   hoverFlip: Boolean,
   sample: Boolean,
+  rulers: Boolean, // penggaris & garis bantu (editor)
 })
-const emit = defineEmits(['select', 'change', 'commit'])
+const emit = defineEmits(['select', 'change', 'commit', 'guides'])
 
 const bleed = computed(() => props.front.size.bleed ?? 3)
-const aspect = computed(() => `${props.front.size.w + 2 * bleed.value} / ${props.front.size.h + 2 * bleed.value}`)
-const common = computed(() => ({ vars: props.vars, kit: props.kit, qr: props.qr, selection: props.selection, grid: props.grid, snap: props.snap, overlays: props.overlays, sample: props.sample }))
-const on = { onSelect: (ids) => emit('select', ids), onChange: (e) => emit('change', e), onCommit: () => emit('commit') }
+const ruler = computed(() => (props.rulers && props.editable ? RULER_MM : 0))
+const aspect = computed(() => `${props.front.size.w + 2 * bleed.value + ruler.value} / ${props.front.size.h + 2 * bleed.value + ruler.value}`)
+const common = computed(() => ({ vars: props.vars, kit: props.kit, qr: props.qr, selection: props.selection, grid: props.grid, snap: props.snap, overlays: props.overlays, sample: props.sample, rulers: props.rulers && props.editable }))
+const on = { onSelect: (ids) => emit('select', ids), onChange: (e) => emit('change', e), onCommit: () => emit('commit'), onGuides: (g, rec) => emit('guides', g, rec) }
 </script>
 
 <template>

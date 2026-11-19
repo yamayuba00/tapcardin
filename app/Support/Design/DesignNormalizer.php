@@ -50,13 +50,14 @@ final class DesignNormalizer
             }
         }
 
+        $guides = $this->guides($input['guides'] ?? null);
         if ($this->g->kind() !== 'card') { // lanyard & merchandise tidak punya elemen sistem
-            return ['size' => $this->g->size(), 'background' => $background, 'layers' => $layers, 'zones' => $this->g->zones()];
+            return ['size' => $this->g->size(), 'background' => $background, 'layers' => $layers, 'zones' => $this->g->zones()] + $guides;
         }
         $side = TemplateLibrary::side($this->g, $this->hexOf($background['value'] ?? null) ?? Palette::hex('bone-0'), $layers, $which);
         $side['background'] = $background; // simpan bentuk asli (rujukan kit / gambar), kontras sistem memakai hex hasil resolve
 
-        return $side;
+        return $side + $guides;
     }
 
     private function background(array $bg): array
@@ -104,6 +105,25 @@ final class DesignNormalizer
             'image' => $this->image($l, $xy, $wh, $n),
             default => null,
         };
+    }
+
+    /** Garis bantu editor (mm, tidak dicetak): maks 20 per sumbu, dibulatkan 0,1 mm. Kosong = tidak disimpan. */
+    private function guides(mixed $g): array
+    {
+        if (! is_array($g)) {
+            return [];
+        }
+        $span = ['x' => $this->g->width(), 'y' => $this->g->height()];
+        $out = [];
+        foreach (['x', 'y'] as $axis) {
+            $vals = array_filter(is_array($g[$axis] ?? null) ? $g[$axis] : [], 'is_numeric');
+            $vals = array_map(fn ($v) => round((float) $v, 1), $vals);
+            $vals = array_values(array_unique(array_filter($vals, fn ($v) => $v >= -$this->g->bleed() && $v <= $span[$axis] + $this->g->bleed())));
+            sort($vals);
+            $out[$axis] = array_slice($vals, 0, 20);
+        }
+
+        return $out['x'] || $out['y'] ? ['guides' => $out] : [];
     }
 
     /** Pola garis: putus-putus (panjang potongan mm) atau titik. Kosong = garis penuh. */

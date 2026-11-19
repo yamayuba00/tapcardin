@@ -391,12 +391,12 @@ export function angleTo(c, p, snap = false) {
 
 /**
  * Snap geser: kotak (sesudah dx, dy) menempel ke garis panduan dalam `threshold` mm.
- * Target: tepi kanvas, tengah, margin aman, grid (opsional), dan tepi/tengah layer lain.
+ * Target: tepi kanvas, tengah, margin aman, garis bantu pengguna, grid (opsional), dan tepi/tengah layer lain.
  * @returns {{dx:number, dy:number, guides:{x:number[], y:number[]}}}
  */
-export function snapMove(box, dx, dy, { size, others = [], threshold = 1, safe = SAFE, grid = 0 }) {
-  const tx = [0, safe, size.w / 2, size.w - safe, size.w]
-  const ty = [0, safe, size.h / 2, size.h - safe, size.h]
+export function snapMove(box, dx, dy, { size, others = [], threshold = 1, safe = SAFE, grid = 0, guides = null }) {
+  const tx = [0, safe, size.w / 2, size.w - safe, size.w, ...(guides?.x ?? [])]
+  const ty = [0, safe, size.h / 2, size.h - safe, size.h, ...(guides?.y ?? [])]
   for (const o of others) {
     tx.push(o.x, o.x + o.w / 2, o.x + o.w)
     ty.push(o.y, o.y + o.h / 2, o.y + o.h)

@@ -11,6 +11,7 @@ import {
   autoFitWidth, curvePath, imageRect, isBoxText, isCurved, maskPoints, resolveColor, snapMove, strokeDash, textAnchor, textLines, textSize, unionBox,
 } from '@/lib/design'
 import { loadFontsFor } from '@/lib/fonts'
+import { RULER_MM, setGuide } from '@/lib/layout'
 import { glyph } from '@/lib/glyphs'
 
 const props = defineProps({
@@ -26,8 +27,9 @@ const props = defineProps({
   snap: { type: Boolean, default: true },
   trim: Boolean, // tampilkan tepat ukuran potong (tanpa bleed) — mis. pola lanyard yang diulang
   sample: Boolean, // pratinjau galeri: slot logo kosong ditandai "LOGO" (tidak pernah dipakai untuk cetak)
+  rulers: Boolean, // editor: penggaris mm di kiri & atas; seret dari penggaris = garis bantu (tidak dicetak)
 })
-const emit = defineEmits(['select', 'change', 'commit'])
+const emit = defineEmits(['select', 'change', 'commit', 'guides'])
 
 const uid = useId()
 const svg = ref(null)
@@ -35,7 +37,11 @@ const W = computed(() => props.side.size.w)
 const H = computed(() => props.side.size.h)
 const B = computed(() => props.side.size.bleed ?? BLEED)
 const isLanyard = computed(() => !!props.side.zones?.repeat)
-const viewBox = computed(() => (props.trim ? `0 0 ${W.value} ${H.value}` : `${-B.value} ${-B.value} ${W.value + 2 * B.value} ${H.value + 2 * B.value}`))
+const RM = computed(() => (props.rulers && props.editable && !props.trim ? RULER_MM : 0))
+const viewBox = computed(() => (props.trim
+  ? `0 0 ${W.value} ${H.value}`
+  : `${-B.value - RM.value} ${-B.value - RM.value} ${W.value + 2 * B.value + RM.value} ${H.value + 2 * B.value + RM.value}`))
+const guideList = computed(() => props.side.guides ?? { x: [], y: [] })
 const zones = computed(() => props.side.zones ?? {})
 const safe = computed(() => zones.value.safe ?? 4)
 const visible = computed(() => props.side.layers.filter((l) => !l.hidden))
@@ -125,11 +131,19 @@ const gridLines = computed(() => {
 const pxPerMm = ref(6)
 let ro = null
 onMounted(() => {
-  ro = new ResizeObserver(() => { if (svg.value) pxPerMm.value = svg.value.clientWidth / (W.value + (props.trim ? 0 : 2 * B.value)) || 6 })
+  ro = new ResizeObserver(() => { if (svg.value) pxPerMm.value = svg.value.clientWidth / (W.value + (props.trim ? 0 : 2 * B.value) + RM.value) || 6 })
   ro.observe(svg.value)
 })
 onBeforeUnmount(() => ro?.disconnect())
 const px = (n) => n / pxPerMm.value
+
+// ── Penggaris (tick 1 mm, label tiap 10 mm) ──
+const ticks = (len) => {
+  const out = []
+  for (let v = Math.ceil(-B.value); v <= len + B.value; v++) out.push({ v, size: v % 10 === 0 ? 1 : v % 5 === 0 ? 0.55 : 0.3 })
+  return out
+}
+const rulerTicks = computed(() => (RM.value ? { x: ticks(W.value), y: ticks(H.value) } : { x: [], y: [] }))
 
 const handles = computed(() => {
   const l = single.value
@@ -193,6 +207,12 @@ function downHandle(e, handle) {
   drag = { mode: handle === 'rot' ? 'rotate' : 'resize', handle, origins: [{ ...l }], start: toMm(e), moved: false, center: center(l, props.vars) }
   capture(e)
 }
+/** Seret garis bantu: dari penggaris (baru) atau garis yang ada; dilepas di atas penggaris = dihapus. */
+function downGuide(e, axis, from = null) {
+  e.stopPropagation()
+  drag = { mode: 'guide', axis, base: (guideList.value[axis] ?? []).filter((v) => v !== from), moved: false, start: toMm(e) }
+  capture(e)
+}
 function downCanvas(e) {
   if (!props.editable) return
   const p = toMm(e)
@@ -211,6 +231,12 @@ function move(e) {
     marquee.value = { x: Math.min(p.x, drag.start.x), y: Math.min(p.y, drag.start.y), w: Math.abs(dx), h: Math.abs(dy) }
     return
   }
+  if (drag.mode === 'guide') {
+    const v = p[drag.axis]
+    drag.value = v < -B.value ? null : v
+    emit('guides', { ...guideList.value, [drag.axis]: setGuide(drag.base, null, drag.value) }, false)
+    return
+  }
   if (drag.mode === 'rotate') {
     const o = drag.origins[0]
     emit('change', [{ id: o.id, layer: { ...o, rotate: angleTo(drag.center, p, e.shiftKey) } }])
@@ -227,7 +253,7 @@ function move(e) {
   if (props.snap && !e.altKey) {
     const ids = drag.origins.map((o) => o.id)
     const others = props.side.layers.filter((l) => !ids.includes(l.id) && !l.hidden && l.type !== 'rings').map((l) => layerBox(l, props.vars)).filter(Boolean)
-    const snap = snapMove(unionBox(drag.origins, props.vars), dx, dy, { size: props.side.size, others, threshold: px(6), safe: safe.value, grid: props.grid })
+    const snap = snapMove(unionBox(drag.origins, props.vars), dx, dy, { size: props.side.size, others, threshold: px(6), safe: safe.value, grid: props.grid, guides: guideList.value })
     sdx = snap.dx
     sdy = snap.dy
     guides.value = snap.guides
@@ -249,6 +275,8 @@ function up() {
     } else if (!drag.additive) {
       emit('select', [])
     }
+  } else if (drag?.mode === 'guide') {
+    if (drag.moved) emit('guides', { ...guideList.value, [drag.axis]: setGuide(drag.base, null, drag.value) }, true)
   } else if (drag?.moved) {
     emit('commit')
   }
@@ -392,6 +420,32 @@ function up() {
       <line v-for="gx in guides.x" :key="`gu-x${gx}`" :x1="gx" :x2="gx" :y1="-B" :y2="H + B" class="stroke-accent" :stroke-width="px(1)" />
       <line v-for="gy in guides.y" :key="`gu-y${gy}`" :y1="gy" :y2="gy" :x1="-B" :x2="W + B" class="stroke-accent" :stroke-width="px(1)" />
       <rect v-if="marquee" :x="marquee.x" :y="marquee.y" :width="marquee.w" :height="marquee.h" class="fill-accent/10 stroke-accent" :stroke-width="px(1)" stroke-dasharray="1 0.6" />
+    </g>
+
+    <!-- garis bantu pengguna (tidak dicetak): seret untuk memindah, lepas di penggaris untuk menghapus -->
+    <g v-if="editable && overlays && !trim">
+      <template v-for="gx in guideList.x" :key="`gx-${gx}`">
+        <line :x1="gx" :x2="gx" :y1="-B" :y2="H + B" class="stroke-info pointer-events-none" :stroke-width="px(1)" />
+        <line :x1="gx" :x2="gx" :y1="-B" :y2="H + B" stroke="transparent" :stroke-width="px(10)" class="cursor-ew-resize" @pointerdown="downGuide($event, 'x', gx)" />
+      </template>
+      <template v-for="gy in guideList.y" :key="`gy-${gy}`">
+        <line :y1="gy" :y2="gy" :x1="-B" :x2="W + B" class="stroke-info pointer-events-none" :stroke-width="px(1)" />
+        <line :y1="gy" :y2="gy" :x1="-B" :x2="W + B" stroke="transparent" :stroke-width="px(10)" class="cursor-ns-resize" @pointerdown="downGuide($event, 'y', gy)" />
+      </template>
+    </g>
+
+    <!-- penggaris mm: seret dari atas = garis horizontal, dari kiri = garis vertikal -->
+    <g v-if="RM" class="font-mono">
+      <rect :x="-B - RM" :y="-B - RM" :width="W + 2 * B + RM" :height="RM" class="fill-surface-2 cursor-ns-resize" @pointerdown="downGuide($event, 'y')" />
+      <rect :x="-B - RM" :y="-B" :width="RM" :height="H + 2 * B" class="fill-surface-2 cursor-ew-resize" @pointerdown="downGuide($event, 'x')" />
+      <g class="pointer-events-none stroke-muted" :stroke-width="px(1)">
+        <line v-for="t in rulerTicks.x" :key="`rx${t.v}`" :x1="t.v" :x2="t.v" :y1="-B - RM * t.size" :y2="-B" />
+        <line v-for="t in rulerTicks.y" :key="`ry${t.v}`" :y1="t.v" :y2="t.v" :x1="-B - RM * t.size" :x2="-B" />
+      </g>
+      <g class="pointer-events-none fill-muted" :font-size="px(9)">
+        <text v-for="t in rulerTicks.x.filter((x) => x.size === 1)" :key="`lx${t.v}`" :x="t.v + px(2)" :y="-B - RM + px(10)">{{ t.v }}</text>
+        <text v-for="t in rulerTicks.y.filter((x) => x.size === 1)" :key="`ly${t.v}`" :x="-B - RM + px(2)" :y="t.v - px(2)">{{ t.v }}</text>
+      </g>
     </g>
 
     <!-- pegangan ubah ukuran & putar -->

@@ -6,7 +6,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import LeaveConfirm from '@/components/common/LeaveConfirm/index.vue'
-import { ArrowLeft, CircleAlert, CircleCheck, Clock, Grid3x3, Magnet, Redo2, Trash2, Undo2 } from 'lucide-vue-next'
+import { ArrowLeft, CircleAlert, CircleCheck, Clock, Grid3x3, Keyboard, Magnet, Redo2, Trash2, Undo2 } from 'lucide-vue-next'
 import AppBadge from '@/components/ui/AppBadge/index.vue'
 import AppButton from '@/components/ui/AppButton/index.vue'
 import AppInput from '@/components/ui/AppInput/index.vue'
@@ -26,6 +26,8 @@ import SaveStatus from '@/components/studio/SaveStatus/index.vue'
 import SimpleMerchPanel from '@/components/studio/SimpleMerchPanel/index.vue'
 import ToolRail from '@/components/studio/ToolRail/index.vue'
 import ZoomControl from '@/components/studio/ZoomControl/index.vue'
+import ShortcutHelp from '@/components/studio/ShortcutHelp/index.vue'
+import StepRepeat from '@/components/studio/StepRepeat/index.vue'
 import { studioApi } from '@/api/studio'
 import { useDesignEditor } from '@/composables/useDesignEditor'
 import { useToastStore } from '@/stores/toast'
@@ -132,6 +134,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       <div class="ml-auto flex items-center gap-2">
         <AppBadge tone="info" class="max-sm:!hidden">Cetak segera hadir</AppBadge>
         <SaveStatus :dirty="dirty" :saving="saving" class="max-sm:hidden" />
+        <AppButton variant="ghost" icon aria-label="Pintasan keyboard" title="Pintasan keyboard (?)" class="max-sm:!hidden" @click="ed.help.value = true"><Keyboard class="size-5" /></AppButton>
         <AppMenu :items="menu" />
         <AppButton :loading="saving" title="Simpan (Ctrl+S)" @click="ed.save()">Simpan</AppButton>
       </div>
@@ -147,14 +150,14 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
           v-if="selection.length && ed.editable.value.length"
           :count="selection.length" :grouped="grouped" :locked="anyLocked" :other-side="twoSided ? (active === 'front' ? 'belakang' : 'depan') : null" :pair-label="null"
           @align="ed.align" @distribute="ed.distribute" @group="ed.group" @ungroup="ed.ungroup" @z="ed.zOrder" @lock="ed.toggleLock()"
-          @other-side="ed.copyToOtherSide" @duplicate="ed.duplicate" @remove="ed.remove"
+          @other-side="ed.copyToOtherSide" @duplicate="ed.duplicate" @remove="ed.remove" :target="ed.alignTarget.value" @target="(v) => (ed.alignTarget.value = v)" @repeat="ed.repeating.value = true"
         />
         <p v-else class="rounded-full bg-surface px-3 py-1 text-xs text-muted max-sm:hidden">Anda mendesain <b class="text-fg">area cetak {{ spec.name?.toLowerCase() }}</b>{{ twoSided ? ` · sisi ${active === 'front' ? 'depan' : 'belakang'}` : '' }}. Klik elemen untuk mengedit.</p>
       </div>
       <div class="grid gap-8 px-4 pt-4 pb-10 sm:px-10 xl:grid-cols-[minmax(0,1fr)_340px] xl:items-start">
         <div class="grid gap-3">
           <div class="mx-auto" :style="canvasStyle">
-            <CardSide :side="side" :vars="vars" :kit="kit" :selection="selection" :grid="grid" :snap="snap" editable @select="ed.select" @change="ed.change" @commit="ed.commit" />
+            <CardSide :side="side" :vars="vars" :kit="kit" :selection="selection" :grid="grid" :snap="snap" editable rulers @select="ed.select" @change="ed.change" @commit="ed.commit" @guides="ed.setGuides" />
           </div>
           <p class="flex items-center justify-center gap-1.5 text-xs text-muted">
             <span class="h-0 w-5 border-t border-dashed border-sky-300" aria-hidden="true"></span> Batas aman {{ ed.safe.value }} mm dari tepi area cetak
@@ -234,5 +237,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
     </template>
   </AppModal>
 
+  <StepRepeat v-if="ed.repeating.value" :count="ed.editable.value.length" :room="80 - side.layers.length" @apply="ed.repeat" @close="ed.repeating.value = false" />
+  <ShortcutHelp v-if="ed.help.value" @close="ed.help.value = false" />
   <LeaveConfirm v-if="ed.leaveGuard.pending.value" what="perubahan desain" can-save :saving="saving" @stay="ed.leaveGuard.stay" @leave="ed.leaveGuard.leave" @save="saveAndLeave" />
 </template>

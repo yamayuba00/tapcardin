@@ -7,7 +7,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import LeaveConfirm from '@/components/common/LeaveConfirm/index.vue'
 import {
-  ArrowLeft, CircleAlert, CircleCheck, Grid3x3, ImageUp, LayoutTemplate, Link2, Magnet, Printer, Redo2, ShoppingCart, Trash2, Undo2, X,
+  ArrowLeft, CircleAlert, CircleCheck, Grid3x3, ImageUp, Keyboard, LayoutTemplate, Link2, Magnet, Printer, Redo2, ShoppingCart, Trash2, Undo2, X,
 } from 'lucide-vue-next'
 import AppButton from '@/components/ui/AppButton/index.vue'
 import AppInput from '@/components/ui/AppInput/index.vue'
@@ -30,6 +30,8 @@ import SaveStatus from '@/components/studio/SaveStatus/index.vue'
 import SimpleCardPanel from '@/components/studio/SimpleCardPanel/index.vue'
 import ToolRail from '@/components/studio/ToolRail/index.vue'
 import ZoomControl from '@/components/studio/ZoomControl/index.vue'
+import ShortcutHelp from '@/components/studio/ShortcutHelp/index.vue'
+import StepRepeat from '@/components/studio/StepRepeat/index.vue'
 import { studioApi } from '@/api/studio'
 import { useDesignEditor } from '@/composables/useDesignEditor'
 import { transplantLayers } from '@/lib/design'
@@ -185,6 +187,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       <div class="ml-auto flex items-center gap-2">
         <SaveStatus :dirty="dirty" :saving="saving" class="max-sm:hidden" />
         <AppButton variant="secondary" class="max-lg:!hidden" title="Lihat hasil cetak & unduh PNG" @click="previewing = true"><Printer class="size-5" /> Pratinjau cetak</AppButton>
+        <AppButton variant="ghost" icon aria-label="Pintasan keyboard" title="Pintasan keyboard (?)" class="max-sm:!hidden" @click="ed.help.value = true"><Keyboard class="size-5" /></AppButton>
         <AppMenu :items="menu" />
         <AppButton :loading="saving" title="Simpan (Ctrl+S)" @click="ed.save()">Simpan</AppButton>
       </div>
@@ -200,7 +203,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
           v-if="selection.length && ed.editable.value.length"
           :count="selection.length" :grouped="grouped" :locked="anyLocked" :other-side="otherSide" :pair-label="paired ? 'lanyard' : null"
           @align="ed.align" @distribute="ed.distribute" @group="ed.group" @ungroup="ed.ungroup" @z="ed.zOrder" @lock="ed.toggleLock()"
-          @other-side="ed.copyToOtherSide" @to-pair="copyToPair" @duplicate="ed.duplicate" @remove="ed.remove"
+          @other-side="ed.copyToOtherSide" @to-pair="copyToPair" @duplicate="ed.duplicate" @remove="ed.remove" :target="ed.alignTarget.value" @target="(v) => (ed.alignTarget.value = v)" @repeat="ed.repeating.value = true"
         />
         <p v-else class="rounded-full bg-surface px-3 py-1 text-xs text-muted max-sm:hidden">Klik elemen untuk mengedit · Shift+klik atau seret area untuk memilih beberapa sekaligus</p>
       </div>
@@ -208,15 +211,15 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
         <div :class="zoom === 'fit' ? 'w-full' : 'max-w-none'" :style="canvasStyle">
           <FlipCard
             :front="sides.front" :back="sides.back" :flipped="active === 'back'" :vars="vars" :kit="kit" :qr="catalog.qr"
-            :selection="selection" :grid="grid" :snap="snap" editable
-            @select="ed.select" @change="ed.change" @commit="ed.commit"
+            :selection="selection" :grid="grid" :snap="snap" editable rulers
+            @select="ed.select" @change="ed.change" @commit="ed.commit" @guides="ed.setGuides"
           />
         </div>
         <div class="grid max-w-2xl justify-items-center gap-2">
           <CanvasLegend :lanyard="design.lanyard" />
           <p class="hidden text-center text-xs text-muted sm:block">
-            Pintasan: <kbd>T</kbd> teks · <kbd>R</kbd> kotak · <kbd>O</kbd> elips · <kbd>L</kbd> garis · panah geser 0,5 mm (Shift 2 mm) ·
-            <kbd>Ctrl+D</kbd> duplikat · <kbd>Ctrl+G</kbd> kelompokkan · <kbd>+</kbd> <kbd>−</kbd> <kbd>0</kbd> zoom
+            Pintasan: <kbd>T</kbd> teks · <kbd>R</kbd> kotak · <kbd>O</kbd> elips · <kbd>L</kbd> garis · panah geser 0,1 mm (Shift 1 mm) · seret dari penggaris = garis bantu ·
+            <kbd>Ctrl+D</kbd> duplikat · <kbd>Ctrl+G</kbd> kelompokkan · <kbd>+</kbd> <kbd>−</kbd> <kbd>0</kbd> zoom · <kbd>?</kbd> semua pintasan
           </p>
         </div>
       </div>
@@ -315,5 +318,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
     </template>
   </AppModal>
 
+  <StepRepeat v-if="ed.repeating.value" :count="ed.editable.value.length" :room="80 - side.layers.length" @apply="ed.repeat" @close="ed.repeating.value = false" />
+  <ShortcutHelp v-if="ed.help.value" @close="ed.help.value = false" />
   <LeaveConfirm v-if="ed.leaveGuard.pending.value" what="perubahan desain" can-save :saving="saving" @stay="ed.leaveGuard.stay" @leave="ed.leaveGuard.leave" @save="saveAndLeave" />
 </template>

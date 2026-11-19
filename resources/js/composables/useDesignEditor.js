@@ -6,12 +6,14 @@ import { useRouter } from 'vue-router'
 import { useLeaveGuard } from '@/composables/useLeaveGuard'
 import { studioApi } from '@/api/studio'
 import {
-  alignLayers, createLayer, distributeLayers, expandGroups, isFixed, isSystem, kitVars, moveLayer, newId, transplantLayers,
+  createLayer, distributeLayers, expandGroups, isFixed, isSystem, kitVars, moveLayer, newId, transplantLayers,
 } from '@/lib/design'
+import { NUDGE, alignRef, alignTo, distributeIn, stepRepeat } from '@/lib/layout'
 import { createHistory } from '@/lib/history'
 import { useToastStore } from '@/stores/toast'
 
-const clipboard = { layers: [], from: null } // dibagi antar-halaman editor (kartu ↔ lanyard)
+const clipboard = { layers: [], from: null }
+const MAX_LAYERS = 80 // sama dengan DesignNormalizer::MAX_LAYERS // dibagi antar-halaman editor (kartu ↔ lanyard)
 
 export function useDesignEditor(id) {
   const router = useRouter()
@@ -27,6 +29,9 @@ export function useDesignEditor(id) {
   const dirty = ref(false)
   const grid = ref(0)
   const snap = ref(true)
+  const alignTarget = ref('selection') // acuan ratakan/sebar: selection | canvas | safe
+  const repeating = ref(false) // dialog ulangi berpola
+  const help = ref(false) // dialog pintasan keyboard
   let history = createHistory({})
   const tick = ref(0)
 
@@ -198,12 +203,35 @@ export function useDesignEditor(id) {
   function align(how) {
     const list = editable.value
     if (!list.length) return
-    const out = alignLayers(list, how, side.value.size, vars.value)
+    const ref = alignRef(list, alignTarget.value, side.value.size, safe.value, vars.value)
+    change(alignTo(list, how, ref, vars.value).map((l) => ({ id: l.id, layer: l })), true)
+  }
+  /** Seleksi: jarak sama di antara yang terluar (≥ 3). Kanvas/area aman: tersebar dari tepi ke tepi (≥ 2). */
+  function distribute(axis) {
+    const list = editable.value
+    const out = alignTarget.value === 'selection'
+      ? distributeLayers(list, axis, vars.value)
+      : distributeIn(list, axis, alignRef(list, alignTarget.value, side.value.size, safe.value, vars.value), vars.value)
     change(out.map((l) => ({ id: l.id, layer: l })), true)
   }
-  function distribute(axis) {
-    const out = distributeLayers(editable.value, axis, vars.value)
-    change(out.map((l) => ({ id: l.id, layer: l })), true)
+  /** Ulangi berpola (baris × kolom) — aslinya + salinan jadi satu grup; batas 80 elemen per sisi. */
+  function repeat(opts) {
+    const list = editable.value
+    if (!list.length) return
+    const room = MAX_LAYERS - side.value.layers.length
+    const { copies, group, truncated } = stepRepeat(list, opts, side.value.layers, vars.value, room)
+    repeating.value = false
+    if (!copies.length) return toast.push('Tidak ada ruang untuk elemen baru (batas 80 per sisi).')
+    const layers = side.value.layers
+    for (const l of list) layers[layers.findIndex((x) => x.id === l.id)] = { ...l, group }
+    insert(copies)
+    selection.value = [...list.map((l) => l.id), ...copies.map((c) => c.id)]
+    if (truncated) toast.push('Sebagian pola tidak dibuat: batas 80 elemen per sisi.')
+  }
+  /** Garis bantu sisi aktif (tidak dicetak). `record` = simpan ke riwayat undo (saat seret selesai). */
+  function setGuides(g, record = false) {
+    side.value.guides = g
+    if (record) commit()
   }
   function group() {
     if (editable.value.length < 2) return
@@ -302,10 +330,11 @@ export function useDesignEditor(id) {
     if (mod && k === 'l') { e.preventDefault(); toggleLock(); return }
     if (mod && e.key === ']') { e.preventDefault(); zOrder(e.shiftKey ? 'front' : 'forward'); return }
     if (mod && e.key === '[') { e.preventDefault(); zOrder(e.shiftKey ? 'back' : 'backward'); return }
+    if (e.key === '?') { e.preventDefault(); help.value = !help.value; return }
     if (e.key === 'Escape') { selection.value = []; return }
     if (!editable.value.length) return
     if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); remove(); return }
-    const step = e.shiftKey ? 2 : 0.5 // DBD §10.3 — nudge 0,5 mm
+    const step = e.shiftKey ? NUDGE.coarse : NUDGE.fine
     const d = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[e.key]
     if (d) { e.preventDefault(); nudge(d[0], d[1]) }
   }
@@ -320,6 +349,7 @@ export function useDesignEditor(id) {
 
   return {
     leaveGuard, catalog, design, sides, side, active, selection, selected, editable, issues, errors, saving, dirty, grid, snap, kit, vars, safe,
+    alignTarget, repeating, help, repeat, setGuides,
     canUndo, canRedo, undo, redo, commit, save, load, select, selectAll, switchSide, change, patch, insert, add, addImage, addKitLogo,
     remove, duplicate, copy, cut, paste, copyToOtherSide, align, distribute, group, ungroup, toggleLock, toggleHide, zOrder, reorderTo,
     nudge, setBackground, useKit, kitChanged, expandGroups,
