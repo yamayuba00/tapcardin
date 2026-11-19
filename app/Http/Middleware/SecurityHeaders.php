@@ -22,10 +22,10 @@ class SecurityHeaders
 
         // SPA: Permissions-Policy hanya dibaca saat dokumen pertama dimuat, jadi harus berlaku untuk seluruh
         // aplikasi yang punya halaman pemindai (Mode Reader di app/{slug}, encode & QC di admin) — bukan per path.
-        // Halaman publik (tap. & situs marketing) tetap tanpa kamera/NFC.
+        // Halaman publik (tap., wbh. & situs marketing) tetap tanpa kamera/NFC.
         $base = config('tapcard.base_domain');
         $host = $request->getHost();
-        $isScanPage = $host !== $base && ! str_starts_with($host, 'tap.');
+        $isScanPage = $host !== $base && ! str_starts_with($host, 'tap.') && ! str_starts_with($host, 'wbh.');
         $dev = app()->isLocal() ? ' http://localhost:5173 ws://localhost:5173' : '';
         // unggahan di S3: gambar dimuat dari host bucket, dan diambil (fetch) saat ekspor PNG desain
         $media = config('filesystems.disks.public.driver') === 's3' && ($u = parse_url((string) config('filesystems.disks.public.url'))) && isset($u['host'])

@@ -94,7 +94,7 @@ return [
 
     'reserved_slugs' => [
         'www', 'app', 'admin', 'panel', 'tap', 'ws', 'api', 'mail', 'help', 'status', 'docs', 'blog',
-        'cdn', 'static', 'staging', 'dev', 'support', 'billing', 'login', 'auth',
+        'cdn', 'static', 'staging', 'dev', 'support', 'billing', 'login', 'auth', 'wbh',
     ],
 
     // Webhook keluar: tujuan di jaringan internal (localhost, 10.x, 192.168.x) hanya boleh di APP_ENV=local

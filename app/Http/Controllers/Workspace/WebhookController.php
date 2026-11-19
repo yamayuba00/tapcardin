@@ -51,18 +51,8 @@ class WebhookController extends WorkspaceController
     public function catalog(): JsonResponse
     {
         $this->gate();
-        $t = $this->tenant();
-        $sample = fn (string $type, array $data) => WebhookPayload::envelope('evt_01JD0EVENT0000000000000000', $type, $t, $data, '2026-11-20T09:15:00+07:00');
 
-        return response()->json(['data' => [
-            'events' => collect(WebhookEvents::all())->map(fn ($e, $key) => [
-                'key' => $key, 'group' => $e['group'], 'label' => $e['label'], 'description' => $e['description'],
-                'volume' => $e['volume'] ?? false, 'sample' => $sample($key, $e['sample']),
-            ])->values(),
-            'ping' => $sample('ping', WebhookEvents::pingSample()),
-            'retry' => Webhooks::BACKOFF,
-            'disable_after' => WebhookEndpoint::DISABLE_AFTER,
-        ]]);
+        return response()->json(['data' => WebhookEvents::catalog($this->tenant())]);
     }
 
     /** POST /api/webhooks — rahasia hanya ada di respons ini (dan saat rotasi). */

@@ -133,7 +133,8 @@ php artisan schedule:work                                          # pengingat, 
 ```
 
 Host lokal memakai `*.localhost` (otomatis ke 127.0.0.1, tanpa edit file hosts): `localhost:8000` (landing),
-`app.localhost:8000`, `tap.localhost:8000`, `panel.localhost:8000`.
+`app.localhost:8000`, `tap.localhost:8000`, `panel.localhost:8000`, `wbh.localhost:8000` (dokumentasi webhook untuk developer;
+webhook gateway pembayaran masuk ke `wbh.<domain>/payment`).
 
 **Akun demo** (di halaman login lokal ada tombol masuk satu klik; staf panel memakai password `password123`):
 

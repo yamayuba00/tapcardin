@@ -10,7 +10,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 /**
- * POST {base}/webhooks/payment — kabar dari gateway pembayaran aktif (tanpa CSRF, tanpa sesi).
+ * POST wbh.{base}/payment (alamat lama {base}/webhooks/payment tetap diterima) — kabar dari gateway pembayaran
+ * aktif (tanpa CSRF, tanpa sesi).
  * Tanda tangan sah → isi webhook diproses. Tidak bisa diverifikasi → isi webhook diabaikan, status dikonfirmasi
  * langsung ke API gateway (server-to-server), jadi request palsu tidak pernah melunasi invoice.
  * Selalu membalas 200 untuk webhook yang terbaca agar gateway tidak mengulang tanpa henti.

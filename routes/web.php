@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Marketing\ShowcaseController;
 use App\Http\Controllers\PaymentWebhookController;
+use App\Http\Controllers\Public\WebhookDocsController;
 use App\Http\Controllers\SpaController;
 use App\Http\Controllers\StatusController;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
@@ -17,6 +18,7 @@ use Illuminate\View\Middleware\ShareErrorsFromSession;
 |   panel.{base}  panel pemilik & produksi (sesi terpisah; subdomain diatur tapcard.panel_subdomain)
 |   app.{base}    workspace Personal + login pusat
 |   status.{base} halaman status publik (uptime & info gangguan)
+|   wbh.{base}    webhook masuk (gateway pembayaran, nanti WhatsApp/Telegram) + dokumentasi webhook untuk developer
 |   {slug}.{base} workspace Perusahaan
 */
 $base = config('tapcard.base_domain');
@@ -50,8 +52,17 @@ Route::domain('status.'.$base)->name('status.')->group(function () use ($spa) {
     $spa()->name('spa');
 });
 
+// Webhook masuk & dokumentasi developer — tanpa sesi/CSRF (tidak ada login di sini). Penyedia masuk baru
+// (mis. POST /whatsapp, /telegram) cukup ditambah di grup ini dengan verifikasi tanda tangannya sendiri.
+Route::domain('wbh.'.$base)->withoutMiddleware([StartSession::class, ShareErrorsFromSession::class, PreventRequestForgery::class])
+    ->name('wbh.')->group(function () use ($spa) {
+        Route::post('/payment', PaymentWebhookController::class)->middleware('throttle:120,1')->name('payment');
+        Route::get('/api/catalog', WebhookDocsController::class)->middleware('throttle:60,1')->name('catalog');
+        $spa()->name('spa');
+    });
+
 Route::domain('{workspace}.'.$base)
-    ->where(['workspace' => '(?!(?:tap|admin|panel|www|ws|status)\.)[a-z0-9][a-z0-9-]{0,28}[a-z0-9]'])
+    ->where(['workspace' => '(?!(?:tap|admin|panel|www|ws|status|wbh)\.)[a-z0-9][a-z0-9-]{0,28}[a-z0-9]'])
     ->middleware('workspace')
     ->group(function () use ($spa) {
         require base_path('routes/workspace.php');
@@ -62,7 +73,7 @@ Route::domain($base)->group(function () use ($spa) {
     Route::get('/api/showcase', ShowcaseController::class)->middleware('throttle:60,1')->name('showcase');
     // status layanan langsung untuk landing page (data sama dengan status.{base}, tanpa CORS)
     Route::get('/api/status', StatusController::class)->middleware('throttle:120,1')->name('marketing.status');
-    // notifikasi gateway pembayaran (CSRF dikecualikan untuk webhooks/*)
+    // alamat lama notifikasi gateway pembayaran — alamat resmi kini wbh.{base}/payment (CSRF dikecualikan untuk webhooks/*)
     Route::post('/webhooks/payment', PaymentWebhookController::class)->middleware('throttle:120,1')->name('webhooks.payment');
     $spa()->name('marketing');
 });

@@ -2,6 +2,9 @@
 
 namespace App\Support\Webhooks;
 
+use App\Models\Tenant;
+use App\Models\WebhookEndpoint;
+
 /**
  * Katalog event webhook = dokumentasi di halaman /webhooks. Contoh `data` harus berbentuk persis sama dengan
  * payload asli (dicek tes WebhookTest) agar dokumentasi tidak pernah basi.
@@ -78,6 +81,22 @@ final class WebhookEvents
     public static function keys(): array
     {
         return array_keys(self::all());
+    }
+
+    /** Katalog lengkap untuk dokumentasi (dashboard /webhooks & wbh.{base}): event + contoh amplop + kebijakan kirim ulang. */
+    public static function catalog(Tenant $workspace): array
+    {
+        $sample = fn (string $type, array $data) => WebhookPayload::envelope('evt_01JD0EVENT0000000000000000', $type, $workspace, $data, '2026-11-20T09:15:00+07:00');
+
+        return [
+            'events' => collect(self::all())->map(fn ($e, $key) => [
+                'key' => $key, 'group' => $e['group'], 'label' => $e['label'], 'description' => $e['description'],
+                'volume' => $e['volume'] ?? false, 'sample' => $sample($key, $e['sample']),
+            ])->values()->all(),
+            'ping' => $sample('ping', self::pingSample()),
+            'retry' => Webhooks::BACKOFF,
+            'disable_after' => WebhookEndpoint::DISABLE_AFTER,
+        ];
     }
 
     public static function pingSample(): array

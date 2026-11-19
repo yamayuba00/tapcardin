@@ -36,7 +36,7 @@ Penjelasan setiap isian ada di [`install.env.example`](install.env.example). Fil
 | Mode | Sertifikat | Kapan dipakai |
 |---|---|---|
 | `cloudflare` (disarankan) | Wildcard `*.domain` lewat DNS Cloudflare — isi `CLOUDFLARE_API_TOKEN` (izin *Zone → DNS → Edit*) | Workspace perusahaan (`{slug}.domain`) ikut aman |
-| `http` | `domain`, `www`, `app`, `tap`, `panel`, `ws` | DNS bukan di Cloudflare; subdomain perusahaan belum tercakup |
+| `http` | `domain`, `www`, `app`, `tap`, `panel`, `ws`, `status`, `wbh` | DNS bukan di Cloudflare; subdomain perusahaan belum tercakup |
 | `none` | Self-signed 30 hari | Uji coba saja |
 
 ## 3. Jalankan
@@ -146,7 +146,7 @@ dari luar (mis. UptimeRobot gratis) ke `https://app.<domain>/up`.
   utama, panel (`/up`, ikut mengecek database), dan sertifikat SSL.
 - **Halaman status publik** (`https://status.<domain>`): kondisi layanan, uptime 90 hari, info gangguan &
   maintenance yang ditulis dari panel — tanpa URL internal atau pesan error. Diperbarui realtime.
-- DNS: `status.<domain>` ikut record `*`. Mode SSL `http`: sertifikat perlu nama `status.` — jalankan ulang
+- DNS: `status.<domain>` dan `wbh.<domain>` (webhook masuk + dokumentasi developer) ikut record `*`. Mode SSL `http`: sertifikat perlu nama `status.` — jalankan ulang
   perintah certbot di bagian SSL dengan tambahan `-d status.<domain>` (mode `cloudflare`/wildcard sudah mencakup).
 - Riwayat cek disimpan 90 hari (`tapcard:prune`).
 
@@ -167,7 +167,8 @@ Gateway pembayaran tidak terikat penyedia tertentu: semua diatur lewat `PAYMENT_
 | `PAYMENT_METHOD`, `PAYMENT_METHOD_LABEL` | `QRIS`, `QRIS — semua e-wallet…` | metode yang diminta & teks untuk pengguna |
 | `PAYMENT_WEBHOOK_VERIFY` + `PAYMENT_WEBHOOK_SECRET` / `…_TOKEN` | `signature` + `whsec_…` | verifikasi webhook (`signature`, `token`, atau `none`) |
 
-Daftarkan URL webhook **`https://domain/webhooks/payment`** di dashboard gateway. Pembayaran dikonfirmasi tiga jalur
+Daftarkan URL webhook **`https://wbh.domain/payment`** di dashboard gateway (alamat lama `https://domain/webhooks/payment`
+tetap diterima, jadi gateway yang sudah terdaftar tidak perlu buru-buru diganti). Pembayaran dikonfirmasi tiga jalur
 sekaligus — webhook bertanda tangan sah, cek status ke API saat pengguna kembali dari halaman bayar, dan pencocokan
 otomatis tiap 5 menit — jadi pembayaran tetap tercatat walau webhook terlambat. Webhook yang tanda tangannya tidak sah
 tidak pernah melunasi invoice; statusnya selalu ditanyakan ulang ke API gateway. Ganti gateway = ubah `PAYMENT_*`

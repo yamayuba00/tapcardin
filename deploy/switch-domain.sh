@@ -121,7 +121,7 @@ else
       ;;
     http)
       # blok port 80 yang ada menjadi default_server dan melayani /.well-known/acme-challenge/ untuk host apa pun
-      NAMES=(-d "$NEW"); for s in www app tap panel ws status; do getent ahosts "$s.$NEW" >/dev/null && NAMES+=(-d "$s.$NEW"); done
+      NAMES=(-d "$NEW"); for s in www app tap panel ws status wbh; do getent ahosts "$s.$NEW" >/dev/null && NAMES+=(-d "$s.$NEW"); done
       rm -rf "$LIVE"
       certbot certonly --non-interactive --agree-tos -m "$ADMIN_EMAIL" --cert-name "$NEW" --webroot -w /var/www/letsencrypt "${NAMES[@]}" \
         || die "Sertifikat gagal — pastikan DNS $NEW mengarah ke VPS ini & port 80 terbuka. Tidak ada yang diubah."
@@ -269,7 +269,7 @@ cat <<EOF
 
  Langkah manual:
    1. Google Cloud Console → OAuth → Authorized redirect URI: https://app.$NEW/auth/google/callback
-   2. Dashboard payment gateway → URL webhook: https://$NEW/webhooks/payment
+   2. Dashboard payment gateway → URL webhook: https://wbh.$NEW/payment
    3. Penyedia SMTP → verifikasi domain $NEW (SPF/DKIM) bila ingin MAIL_FROM_ADDRESS memakai domain baru
    4. Domain kustom pelanggan → CNAME diarahkan ke app.$NEW
    5. Pengguna perlu login ulang; aplikasi PWA dipasang ulang dari https://app.$NEW
