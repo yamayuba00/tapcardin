@@ -112,7 +112,8 @@ class StudioRichTextTest extends TestCase
         $this->assertEqualsWithDelta(42.8, $box['x'] + $box['w'] / 2, 0.01); // simetris di sekitar jangkar
         $issues = collect($d['issues']);
         $this->assertFalse($issues->contains(fn ($i) => $i['layer'] === 'ok'));
-        $this->assertTrue($issues->contains(fn ($i) => $i['layer'] === 'big' && str_contains($i['message'], 'safe zone')));
+        // busur R 80 diputar 180° → teks jauh di atas kartu (y ≈ −150 mm): ditandai tidak tercetak
+        $this->assertTrue($issues->contains(fn ($i) => $i['layer'] === 'big' && str_contains($i['message'], 'di luar area cetak')));
     }
 
     public function test_small_script_font_gets_a_legibility_warning(): void

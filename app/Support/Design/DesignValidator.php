@@ -87,6 +87,14 @@ final class DesignValidator
             if (! $box) {
                 continue;
             }
+            // seluruhnya di luar kanvas (termasuk bleed) → tidak tercetak & tidak terlihat di editor
+            $bleed = $this->g->bleed();
+            $canvas = ['x' => -$bleed, 'y' => -$bleed, 'w' => $this->g->width() + 2 * $bleed, 'h' => $this->g->height() + 2 * $bleed];
+            if (! self::intersects($box, $canvas)) {
+                $add($id, 'warning', "{$label($l)} berada di luar area cetak sehingga tidak akan tercetak. Geser masuk atau hapus.");
+
+                continue;
+            }
             // pita selebar kartu yang tertembus lubang lanyard itu wajar; elemen lain diberi tahu
             $fullBand = $l['type'] === 'rect' && $l['w'] >= $this->g->width();
             if ($slot && ! $fullBand && self::intersects($box, $slot)) {
