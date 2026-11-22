@@ -224,7 +224,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
             <AppSelect :model-value="paired?.id ?? ''" :options="cardOptions" searchable clearable placeholder="Belum dipasangkan" @update:model-value="pairWith" />
           </AppField>
           <p class="-mt-2 text-xs text-muted">Kartu yang dipasangkan otomatis mendapat lubang lanyard dan memakai brand kit yang sama.</p>
-          <LanyardSpecPanel :spec="spec" :catalog="catalog.lanyard" @change="setSpec" />
+          <LanyardSpecPanel :spec="spec" :catalog="catalog.lanyard" @change="setSpec" @order="orderPrint" />
         </template>
 
         <template v-else-if="tab === 'props'">

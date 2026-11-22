@@ -148,7 +148,7 @@ Mode lokal (`APP_ENV=local`, `DEV_LOGIN_CODE` diisi 6 digit): tombol akun dummy 
 ## Pengujian
 
 ```bash
-composer test                  # PHPUnit — selalu di database lokal tapcard_test (243 test)
+composer test                  # PHPUnit — selalu di database lokal tapcard_test
 npm test                       # unit test JavaScript
 vendor/bin/pint --test         # format kode PHP
 sh scripts/check-design.sh     # aturan desain & tombol
@@ -176,6 +176,9 @@ tests/Feature/    test API & alur end-to-end
 
 | Status | Fitur |
 |---|---|
-| Berikutnya | Notifikasi email (pengingat tagihan bertahap, kuitansi, follow-up, kartu hilang di-tap) |
-| Direncanakan | Add-on Integrasi CRM (Google Sheets, HubSpot), Apple / Google Wallet untuk kartu digital |
-| Direncanakan | NTAG 424 DNA (tap anti-salin), SSL otomatis untuk domain kustom, Redis & WebSocket saat trafik tinggi |
+| Sudah ada | Pusat notifikasi aplikasi (tap digabung per jam, lead baru/ditugaskan, tagihan) + email (pengingat masa aktif H-30/H-7/H-1, invoice & lunas, kartu hilang di-tap, webhook nonaktif); kuitansi PDF |
+| Sudah ada | Realtime Reverb (antrean `broadcast` sendiri), Redis untuk antrean & cache lewat `deploy/enable-redis.sh` |
+| Sudah ada | Webhook keluar (HMAC, kirim ulang, log) + webhook masuk & dokumentasi publik di `wbh.{domain}` |
+| Berikutnya | 2FA (aplikasi authenticator) untuk staf panel; Panitia Event menugaskan lead; tautkan Google dari subdomain perusahaan |
+| Segera hadir | Merchandise; integrasi WhatsApp, Telegram, HubSpot, Google Sheets, Zoho, Salesforce (daftar minat sudah dibuka) |
+| Direncanakan | Apple / Google Wallet untuk kartu digital, NTAG 424 DNA (tap anti-salin), SSL otomatis untuk domain kustom |

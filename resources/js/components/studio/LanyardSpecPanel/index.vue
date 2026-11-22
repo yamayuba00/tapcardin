@@ -13,7 +13,7 @@ const props = defineProps({
   spec: { type: Object, required: true }, // { width_mm, hardware, print_sides, tile_mm }
   catalog: { type: Object, required: true }, // catalog.lanyard
 })
-const emit = defineEmits(['change'])
+const emit = defineEmits(['change', 'order'])
 const qty = ref(50)
 const quote = ref(null)
 const rupiah = (n) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n ?? 0)
@@ -70,8 +70,8 @@ watch(() => [props.spec.width_mm, props.spec.hardware, props.spec.print_sides, q
         <p class="flex items-baseline justify-between gap-3"><span class="text-sm">Total {{ quote.qty }} pcs</span><span class="font-display text-2xl font-bold">{{ rupiah(quote.total) }}</span></p>
         <p v-if="quote.qty > qty" class="text-xs text-warn">Pesanan minimal {{ quote.min_qty }} pcs.</p>
       </template>
-      <AppButton block disabled title="Pemesanan & pembayaran sedang disiapkan"><ShoppingCart class="size-5" /> Pesan — segera hadir</AppButton>
-      <p class="text-xs text-muted">Harga perkiraan, belum termasuk ongkir. Pemesanan online menyusul bersama modul pesanan & pembayaran.</p>
+      <AppButton block @click="emit('order')"><ShoppingCart class="size-5" /> Pesan cetak lanyard ini</AppButton>
+      <p class="text-xs text-muted">Harga perkiraan, belum termasuk ongkir. Desain disimpan & dicek cetak dulu; ongkir dihitung di halaman pesanan.</p>
     </div>
   </div>
 </template>
