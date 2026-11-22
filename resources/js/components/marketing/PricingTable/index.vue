@@ -1,7 +1,7 @@
 <script setup>
 // Harga dari GET /api/showcase (tabel `plans`, bisa diubah dari panel): paket personal & paket perusahaan per 6 bulan.
 import { computed, ref } from 'vue'
-import { Check } from 'lucide-vue-next'
+import { Check, Clock } from 'lucide-vue-next'
 import AppButton from '@/components/ui/AppButton/index.vue'
 import AppSegmented from '@/components/ui/AppSegmented/index.vue'
 import { config } from '@/config'
@@ -29,11 +29,15 @@ const personalPerks = (p) => [
   'Design Studio + 8 template siap cetak',
   'Tukar Kontak & pipeline koneksi',
 ]
+/** fitur yang dijanjikan paket tetapi belum dibangun — tetap tampil, berlabel "Segera hadir" */
+const SOON = ['teams', 'custom_roles', 'custom_stages', 'lead_fields', 'auto_assign']
 const companyPerks = (p) => [
   p.cards ? `Maksimal ${num(p.cards)} kartu fisik aktif` : 'Kartu fisik tanpa batas',
   p.members ? `Hingga ${num(p.members)} anggota` : 'Anggota tanpa batas',
   `Riwayat analitik ${p.analytics_days} hari`,
-  ...p.features.filter((f) => FEATURE[f]).map((f) => FEATURE[f]),
+  // fitur yang sudah ada dulu, yang segera hadir di akhir daftar
+  ...p.features.filter((f) => FEATURE[f] && !SOON.includes(f)).map((f) => FEATURE[f]),
+  ...p.features.filter((f) => FEATURE[f] && SOON.includes(f)).map((f) => ({ text: FEATURE[f], soon: true })),
 ]
 const list = computed(() => (scope.value === 'personal'
   ? props.plans.map((p, i) => ({ ...p, price: p.price_monthly, perks: personalPerks(p), highlight: i === 1, cta: p.price_monthly ? `Coba ${p.name}` : 'Mulai gratis', unit: '/bulan' }))
@@ -58,7 +62,10 @@ const list = computed(() => (scope.value === 'personal'
           <span v-if="p.price" class="text-muted"> {{ p.unit }}</span>
         </p>
         <ul class="grid gap-2 text-sm">
-          <li v-for="perk in p.perks" :key="perk" class="flex gap-2"><Check class="size-5 flex-none text-ok" aria-hidden="true" /> {{ perk }}</li>
+          <li v-for="perk in p.perks" :key="perk.text ?? perk" :class="['flex gap-2', perk.soon ? 'text-muted' : '']">
+            <component :is="perk.soon ? Clock : Check" :class="['size-5 flex-none', perk.soon ? 'text-muted' : 'text-ok']" aria-hidden="true" />
+            <span>{{ perk.text ?? perk }}<span v-if="perk.soon" class="ml-1.5 rounded-full bg-surface-2 px-2 py-0.5 text-xs font-medium whitespace-nowrap text-info">Segera hadir</span></span>
+          </li>
         </ul>
         <AppButton :variant="p.highlight ? 'primary' : 'secondary'" block :href="`${config.appUrl}/login`">{{ p.cta }}</AppButton>
       </article>

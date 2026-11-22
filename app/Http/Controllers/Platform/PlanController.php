@@ -25,8 +25,8 @@ class PlanController extends PlatformController
 
     public const FEATURES = [
         'pipeline' => 'Pipeline lead', 'reminders' => 'Pengingat follow-up', 'event_mode' => 'Mode Event', 'dynamic_qr' => 'QR aman (dinamis)',
-        'subdomain' => 'Subdomain sendiri', 'custom_domain' => 'Domain kustom', 'teams' => 'Tim', 'custom_roles' => 'Peran kustom',
-        'custom_stages' => 'Tahap pipeline kustom', 'lead_fields' => 'Field lead kustom', 'auto_assign' => 'Penugasan otomatis',
+        'subdomain' => 'Subdomain sendiri', 'custom_domain' => 'Domain kustom', 'teams' => 'Tim (segera hadir)', 'custom_roles' => 'Peran kustom (segera hadir)',
+        'custom_stages' => 'Tahap pipeline kustom (segera hadir)', 'lead_fields' => 'Field lead kustom (segera hadir)', 'auto_assign' => 'Penugasan otomatis (segera hadir)',
         'webhooks' => 'Webhook keluar', 'events_checkin' => 'Check-in event',
     ];
 
