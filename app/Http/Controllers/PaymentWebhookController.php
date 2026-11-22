@@ -6,8 +6,10 @@ use App\Actions\Billing\ApplyPayment;
 use App\Models\Invoice;
 use App\Models\PaymentEvent;
 use App\Services\Payment\PaymentService;
+use App\Support\Hasher;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 
 /**
  * POST wbh.{base}/payment (alamat lama {base}/webhooks/payment tetap diterima) — kabar dari gateway pembayaran
@@ -29,13 +31,18 @@ class PaymentWebhookController extends Controller
             return response()->json(['ok' => true, 'outcome' => $apply->handle($n)]);
         }
 
-        // catat webhook tak terverifikasi untuk audit, lalu tanyakan status sebenarnya ke gateway
+        // tak terverifikasi: dibatasi per IP (sumber sah selalu bertanda tangan), dicatat seperlunya — tanpa isi asli
+        $ip = Hasher::ip($request->ip());
+        if (! RateLimiter::attempt("pay-unverified:$ip", 20, fn () => true, 60)) {
+            return response()->json(['ok' => false], 429);
+        }
         $invoice = Invoice::acrossTenants()->where(fn ($q) => $q->where('public_id', $n->invoiceRef)->orWhere('number', $n->invoiceRef))->first();
-        PaymentEvent::firstOrCreate(['provider' => $n->provider, 'external_id' => $n->externalId], [
-            'tenant_id' => $invoice?->tenant_id, 'invoice_id' => $invoice?->id, 'type' => $n->status,
-            'amount' => $n->amount, 'payload' => $n->payload, 'signature_valid' => false,
+        PaymentEvent::firstOrCreate(['provider' => $n->provider, 'external_id' => mb_substr($n->externalId, 0, 120)], [
+            'tenant_id' => $invoice?->tenant_id, 'invoice_id' => $invoice?->id, 'type' => $n->status, 'amount' => $n->amount,
+            'payload' => ['unverified' => true, 'ip_hash' => $ip, 'bytes' => strlen($request->getContent())], 'signature_valid' => false,
         ]);
-        $confirmed = $invoice ? $gw->fetchStatus($invoice) : null;
+        // satu konfirmasi ke gateway per invoice per menit — banjir request palsu tidak menjadi banjir panggilan API
+        $confirmed = $invoice && RateLimiter::attempt("pay-confirm:{$invoice->id}", 1, fn () => true, 60) ? $gw->fetchStatus($invoice) : null;
 
         return response()->json(['ok' => true, 'outcome' => $confirmed ? $apply->handle($confirmed) : 'unverified']);
     }

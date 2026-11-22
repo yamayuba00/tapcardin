@@ -19,6 +19,8 @@ class PaymentReview extends Model
         'amount_mismatch' => 'Nominal tidak cocok',
         'unknown_invoice' => 'Referensi pembayaran tidak dikenal',
         'paid_after_cancel' => 'Dibayar setelah pesanan / invoice dibatalkan',
+        'duplicate_payment' => 'Invoice dibayar dua kali',
+        'amount_missing' => 'Kabar lunas tanpa nominal',
     ];
 
     protected $guarded = ['id'];

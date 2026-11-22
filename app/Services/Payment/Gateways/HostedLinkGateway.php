@@ -49,7 +49,8 @@ final class HostedLinkGateway implements PaymentGateway
         // kembali ke halaman invoice / pesanan di host workspace yang sama; halaman itu menanyakan status ke gateway
         $back = rtrim((string) preg_replace('/([?&])paid=1(&|$)/', '$1', $returnUrl), '?&');
         $body = array_filter([
-            'order_id' => $invoice->public_id,
+            // link pengganti memakai order_id baru (-r2, -r3, …); webhook dipetakan balik ke invoice di parseWebhook
+            'order_id' => $invoice->public_id.((int) $invoice->payment_attempts > 1 ? '-r'.(int) $invoice->payment_attempts : ''),
             'amount' => (int) $invoice->total,
             'currency' => 'IDR',
             'payment_method_type_code' => $this->c['method'] ?? null,
@@ -69,7 +70,9 @@ final class HostedLinkGateway implements PaymentGateway
             throw new ApiError('payment_unavailable', 'Halaman pembayaran belum bisa dibuat. Coba beberapa saat lagi.', 502);
         }
 
-        return ['url' => (string) $url, 'ref' => (string) $ref];
+        $hours = max(1, (int) ($this->c['expires_hours'] ?? 1));
+
+        return ['url' => (string) $url, 'ref' => (string) $ref, 'expires_at' => now()->addHours($hours)];
     }
 
     public function fetchStatus(Invoice $invoice): ?PaymentNotification
@@ -94,6 +97,7 @@ final class HostedLinkGateway implements PaymentGateway
             method: $this->method($data),
             signatureValid: true, // jawaban langsung dari API gateway (server-to-server, ber-API key)
             payload: $data,
+            paymentRef: (string) ($data['payment_id'] ?? $data['id'] ?? $invoice->payment_ref),
         );
     }
 
@@ -108,6 +112,7 @@ final class HostedLinkGateway implements PaymentGateway
         if (! $ref) {
             return null;
         }
+        $ref = preg_replace('/-r\d+$/', '', (string) $ref); // link pengganti → invoice yang sama
         $type = strtolower((string) ($body['type'] ?? $body['event_type'] ?? $body['event'] ?? ''));
         $status = str_ends_with($type, '.completed') || str_ends_with($type, '.paid') || str_ends_with($type, '.succeeded')
             ? PaymentNotification::PAID
@@ -123,6 +128,7 @@ final class HostedLinkGateway implements PaymentGateway
             method: $this->method($data),
             signatureValid: $this->verified($request),
             payload: $body,
+            paymentRef: isset($data['payment_id']) ? (string) $data['payment_id'] : null,
         );
     }
 

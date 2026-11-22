@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Services\Payment\PaymentService;
 use App\Support\ErrorRate;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
@@ -45,6 +46,10 @@ class Health extends Command
         } catch (Throwable $e) {
             return ['checks' => [['label' => 'Koneksi database', 'value' => $e->getMessage(), 'ok' => false]], 'redis_recommended' => false];
         }
+        // simulator di luar local/testing = pembayaran mati (gagal tertutup) — harus terlihat di panel & alarm
+        $driver = (string) config('payment.driver');
+        $payOk = $driver === 'link' || ($driver === 'simulator' && PaymentService::simulatorAllowed());
+        $checks[] = ['label' => 'Gateway pembayaran', 'value' => $payOk ? $driver : "driver “{$driver}” tidak berlaku di env ".app()->environment(), 'ok' => $payOk];
 
         // antrean dibaca lewat API Queue → benar untuk driver database maupun redis (deploy/enable-redis.sh)
         $onRedis = config('queue.default') === 'redis' || config('cache.default') === 'redis';

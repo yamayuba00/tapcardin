@@ -23,5 +23,6 @@ final class PaymentNotification
         public readonly ?string $method,
         public readonly bool $signatureValid,
         public readonly array $payload,
+        public readonly ?string $paymentRef = null, // id pembayaran di gateway → bayar dobel lewat link lain terdeteksi
     ) {}
 }

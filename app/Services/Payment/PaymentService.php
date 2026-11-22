@@ -2,6 +2,7 @@
 
 namespace App\Services\Payment;
 
+use App\Actions\Billing\ApplyPayment;
 use App\Exceptions\ApiError;
 use App\Models\Invoice;
 use App\Models\Plan;
@@ -22,12 +23,17 @@ final class PaymentService
     public static function gateway(): PaymentGateway
     {
         $driver = (string) config('payment.driver', 'simulator');
-        // simulator tidak pernah menerima uang sungguhan
-        if (($driver === 'simulator' && app()->isProduction()) || ! in_array($driver, ['simulator', 'link'], true)) {
+        // simulator tidak pernah menerima uang sungguhan: hanya local/testing — staging/produksi gagal tertutup
+        if (($driver === 'simulator' && ! self::simulatorAllowed()) || ! in_array($driver, ['simulator', 'link'], true)) {
             throw new ApiError('payment_unavailable', 'Pembayaran online belum dikonfigurasi. Hubungi admin TapCard.', 503);
         }
 
         return $driver === 'link' ? new HostedLinkGateway((array) config('payment.gateway')) : new SimulatorGateway;
+    }
+
+    public static function simulatorAllowed(): bool
+    {
+        return app()->environment(['local', 'testing']);
     }
 
     /** Gateway untuk invoice yang sudah dibuat sebelumnya (kode penyedia tersimpan di invoice). */
@@ -62,15 +68,32 @@ final class PaymentService
 
     /**
      * Buka (atau pakai ulang) sesi bayar untuk invoice terbuka; pengguna kembali ke $returnUrl setelah membayar
-     * (halaman invoice / pesanan, yang lalu menanyakan status ke gateway). @return string URL halaman bayar
+     * (halaman invoice / pesanan, yang lalu menanyakan status ke gateway). Link basi / gagal tidak pernah diberikan:
+     * status link lama ditanyakan dulu (bisa saja sudah dibayar tapi webhook hilang), lalu dibuat link baru.
+     *
+     * @return string URL halaman bayar
      */
     public static function startPayment(Invoice $invoice, User $payer, string $returnUrl): string
     {
-        if (! $invoice->payment_url) {
-            $gw = self::gateway();
-            $pay = $gw->checkout($invoice, $payer, $returnUrl);
-            $invoice->update(['payment_provider' => $gw->code(), 'payment_url' => $pay['url'], 'payment_ref' => $pay['ref']]);
+        $gw = self::gateway();
+        $live = $invoice->payment_provider === $gw->code() ? $invoice->livePaymentUrl() : null;
+        $old = $invoice->payment_ref && $invoice->payment_provider === $gw->code() ? $gw->fetchStatus($invoice) : null;
+        if ($old?->status === PaymentNotification::PAID) {
+            app(ApplyPayment::class)->handle($old);
+            throw new ApiError('invoice_paid', 'Pembayaran untuk invoice ini sudah kami terima. Muat ulang halaman.', 409);
         }
+        if ($live && $old?->status !== PaymentNotification::FAILED) {
+            return $live;
+        }
+
+        $invoice->update(['payment_attempts' => $invoice->payment_attempts + 1]);
+        $pay = $gw->checkout($invoice, $payer, $returnUrl);
+        // link tidak boleh hidup lebih lama dari invoice-nya (invoice checkout berumur 30 menit, link gateway per jam)
+        $expires = $pay['expires_at'] ?? null;
+        if ($expires && $invoice->expires_at && $invoice->expires_at->lt($expires)) {
+            $expires = $invoice->expires_at;
+        }
+        $invoice->update(['payment_provider' => $gw->code(), 'payment_url' => $pay['url'], 'payment_ref' => $pay['ref'], 'payment_url_expires_at' => $expires]);
 
         return (string) $invoice->payment_url;
     }

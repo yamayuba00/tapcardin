@@ -91,7 +91,9 @@ final class CreateCheckout
         $error = match (true) {
             ! $v || ! $v->is_active || $v->applies_to === 'order' => 'Kode voucher tidak ditemukan.',
             ($v->starts_at && $v->starts_at->isFuture()) || ($v->ends_at && $v->ends_at->isPast()) => 'Voucher sudah tidak berlaku.',
-            $v->max_redemptions && $v->redeemed_count >= $v->max_redemptions => 'Kuota voucher sudah habis.',
+            // kuota = sudah terpakai + invoice lain yang masih menunggu bayar dengan voucher ini (reservasi)
+            $v->max_redemptions && $v->redeemed_count + Invoice::acrossTenants()->where('voucher_id', $v->id)->where('tenant_id', '!=', $tenant->id)
+                ->whereIn('status', ['issued', 'overdue'])->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()))->count() >= $v->max_redemptions => 'Kuota voucher sudah habis.',
             $v->plan_keys && ! in_array($plan->key, $v->plan_keys, true) => "Voucher tidak berlaku untuk paket {$plan->name}.",
             VoucherRedemption::where('voucher_id', $v->id)->where('tenant_id', $tenant->id)->exists() => 'Voucher ini sudah pernah dipakai workspace Anda.',
             default => null,

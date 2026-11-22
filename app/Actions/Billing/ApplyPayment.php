@@ -34,8 +34,14 @@ final class ApplyPayment
     {
         // referensi dari gateway = public_id invoice (order_id); kabar internal memakai nomor invoice
         $invoice = Invoice::acrossTenants()->where(fn ($q) => $q->where('number', $e->invoiceRef)->orWhere('public_id', $e->invoiceRef))->first();
+        // "lunas" tanpa nominal tidak pernah dipercaya begitu saja: tanya nominal & status ke gateway (di luar transaksi)
+        $confirmedAmount = null;
+        if ($e->status === PaymentNotification::PAID && $e->amount === null && $e->signatureValid && $invoice) {
+            $c = PaymentService::gatewayFor($invoice->payment_provider)?->fetchStatus($invoice);
+            $confirmedAmount = $c?->status === PaymentNotification::PAID ? $c->amount : null;
+        }
 
-        return DB::transaction(function () use ($e, $invoice) {
+        return DB::transaction(function () use ($e, $invoice, $confirmedAmount) {
             $event = PaymentEvent::firstOrCreate(
                 ['provider' => $e->provider, 'external_id' => $e->externalId],
                 ['tenant_id' => $invoice?->tenant_id, 'invoice_id' => $invoice?->id, 'type' => $e->status,
@@ -57,6 +63,14 @@ final class ApplyPayment
             }
             $invoice = Invoice::acrossTenants()->whereKey($invoice->id)->lockForUpdate()->first();
             if ($invoice->status === 'paid') {
+                // pembayaran KEDUA lewat link lain untuk invoice yang sudah lunas → uang masuk dua kali: tinjau & kembalikan
+                if ($e->status === PaymentNotification::PAID && $e->paymentRef && $invoice->payment_ref && $e->paymentRef !== $invoice->payment_ref) {
+                    PaymentReview::open($event, $invoice, 'duplicate_payment', (int) $invoice->total, $e->amount ?? (int) $invoice->total,
+                        "Invoice {$invoice->number} dibayar lagi lewat pembayaran {$e->paymentRef} padahal sudah lunas. Dana kedua perlu dikembalikan.");
+
+                    return 'rejected';
+                }
+
                 return 'ignored';
             }
             if ($e->status === PaymentNotification::PENDING) {
@@ -67,16 +81,35 @@ final class ApplyPayment
 
                 return 'failed'; // invoice tetap terbuka; pengguna bisa mencoba metode lain
             }
-            if ($e->amount !== null && $e->amount !== (int) $invoice->total) {
+            $amount = $e->amount ?? $confirmedAmount;
+            if ($amount === null) {
+                // gateway tidak menyebut nominal & tidak bisa dikonfirmasi → jangan aktifkan apa pun, staf yang memastikan
+                PaymentReview::open($event, $invoice, 'amount_missing', (int) $invoice->total, null,
+                    "Invoice {$invoice->number}: kabar lunas tanpa nominal dan status tidak bisa dikonfirmasi ke gateway.");
+
+                return 'rejected';
+            }
+            if ($amount !== (int) $invoice->total) {
                 // nominal tidak cocok → jangan aktifkan paket / pesanan, tetapi masukkan ke antrean tinjauan (bisa berarti uang sudah masuk)
-                PaymentReview::open($event, $invoice, 'amount_mismatch', (int) $invoice->total, $e->amount,
-                    "Invoice {$invoice->number}: diterima Rp ".number_format($e->amount, 0, ',', '.').', seharusnya Rp '.number_format((int) $invoice->total, 0, ',', '.').'.');
+                PaymentReview::open($event, $invoice, 'amount_mismatch', (int) $invoice->total, $amount,
+                    "Invoice {$invoice->number}: diterima Rp ".number_format($amount, 0, ',', '.').', seharusnya Rp '.number_format((int) $invoice->total, 0, ',', '.').'.');
 
                 return 'rejected';
             }
 
             $wasVoid = $invoice->status === 'void';
-            $invoice->update(['status' => 'paid', 'paid_at' => now(), 'payment_method' => $e->method]);
+            // langganan dibatalkan lalu tetap dibayar setelah invoice penggantinya lunas → tagihan dobel: tinjau, jangan aktifkan diam-diam
+            if ($wasVoid && $invoice->type === 'subscription' && Invoice::acrossTenants()->where('tenant_id', $invoice->tenant_id)
+                ->where('type', 'subscription')->where('status', 'paid')->whereKeyNot($invoice->id)->where('paid_at', '>=', $invoice->created_at)->exists()) {
+                $invoice->update(['status' => 'paid', 'paid_at' => now(), 'payment_method' => $e->method]);
+                $event->update(['processed_at' => now()]);
+                PaymentReview::open($event, $invoice, 'paid_after_cancel', (int) $invoice->total, $amount,
+                    "Invoice {$invoice->number} dibayar setelah dibatalkan, padahal invoice pengganti sudah lunas. Paket tidak diubah; dana perlu dikembalikan.");
+
+                return 'rejected';
+            }
+            $invoice->update(['status' => 'paid', 'paid_at' => now(), 'payment_method' => $e->method]
+                + ($e->paymentRef && $e->paymentRef !== $invoice->payment_ref ? ['payment_ref' => $e->paymentRef] : []));
             $event->update(['processed_at' => now()]);
 
             if ($invoice->type === 'order') {
@@ -170,8 +203,17 @@ final class ApplyPayment
         }
         $r = VoucherRedemption::firstOrCreate(['voucher_id' => $invoice->voucher_id, 'tenant_id' => $invoice->tenant_id],
             ['invoice_id' => $invoice->id, 'amount' => (int) $invoice->discount]);
-        if ($r->wasRecentlyCreated) {
+        if (! $r->wasRecentlyCreated) {
+            return;
+        }
+        // atomik: dua pembayaran bersamaan tidak bisa melewati kuota (update bersyarat, bukan baca-lalu-tulis)
+        $ok = Voucher::whereKey($invoice->voucher_id)
+            ->where(fn ($q) => $q->whereNull('max_redemptions')->orWhereColumn('redeemed_count', '<', 'max_redemptions'))
+            ->increment('redeemed_count');
+        if (! $ok) {
+            // pembayaran sudah masuk dengan harga diskon → tetap dihormati, tetapi staf diberi tahu kuota terlampaui
             Voucher::whereKey($invoice->voucher_id)->increment('redeemed_count');
+            Audit::platform('voucher.over_quota', $invoice, null, ['voucher' => $invoice->voucher_id, 'invoice' => $invoice->number]);
         }
     }
 }

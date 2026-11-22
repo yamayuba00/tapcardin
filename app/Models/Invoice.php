@@ -19,7 +19,21 @@ class Invoice extends Model
         return [
             'lines' => 'array', 'billing_snapshot' => 'array',
             'issued_at' => 'datetime', 'due_at' => 'datetime', 'paid_at' => 'datetime', 'expires_at' => 'datetime',
+            'payment_url_expires_at' => 'datetime', 'payment_attempts' => 'integer',
         ];
+    }
+
+    /** Link bayar yang masih hidup (≥ 2 menit lagi); null = harus dibuat baru. Simulator tidak berumur. */
+    public function livePaymentUrl(): ?string
+    {
+        if (! $this->payment_url || ! $this->isPayable()) {
+            return null;
+        }
+        if ($this->payment_provider === 'simulator') {
+            return $this->payment_url;
+        }
+
+        return $this->payment_url_expires_at?->isAfter(now()->addMinutes(2)) ? $this->payment_url : null;
     }
 
     public function plan(): BelongsTo

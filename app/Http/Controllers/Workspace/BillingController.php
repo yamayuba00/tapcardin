@@ -232,7 +232,7 @@ class BillingController extends WorkspaceController
             'issued_at' => $i->issued_at?->toIso8601String(), 'due_at' => $i->due_at?->toIso8601String(), 'paid_at' => $i->paid_at?->toIso8601String(),
             // batas bayar untuk hitung mundur; server_now = acuan jam (jam perangkat pengguna bisa meleset)
             'expires_at' => $i->status === 'paid' ? null : $i->expires_at?->toIso8601String(), 'server_now' => now()->toIso8601String(),
-            'payment_method' => $i->payment_method, 'payment_url' => $i->isPayable() ? $i->payment_url : null,
+            'payment_method' => $i->payment_method, 'payment_url' => $i->livePaymentUrl(),
         ];
     }
 }
