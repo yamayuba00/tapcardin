@@ -92,6 +92,13 @@ return [
         'blocked_terms' => array_values(array_filter(array_map('trim', explode(',', (string) env('ORDER_RISK_TERMS', ''))))),
     ],
 
+    // Render server landing page (Vue SSR lewat node, hasil di-cache). Mati → landing tetap SPA biasa.
+    'ssr' => [
+        'enabled' => (bool) env('LANDING_SSR', true),
+        'node' => env('LANDING_SSR_NODE', 'node'),
+        'timeout' => (float) env('LANDING_SSR_TIMEOUT', 5),
+    ],
+
     'reserved_slugs' => [
         'www', 'app', 'admin', 'panel', 'tap', 'ws', 'api', 'mail', 'help', 'status', 'docs', 'blog',
         'cdn', 'static', 'staging', 'dev', 'support', 'billing', 'login', 'auth', 'wbh',

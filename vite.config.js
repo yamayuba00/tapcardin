@@ -8,6 +8,8 @@ export default defineConfig({
     plugins: [
         laravel({
             input: ['resources/css/app.css', 'resources/js/main.js'],
+            // render server beranda marketing → bootstrap/ssr/landing.js (lihat App\Support\Marketing\LandingSsr)
+            ssr: 'resources/js/ssr/landing.js',
             refresh: true,
         }),
         vue({
@@ -32,6 +34,8 @@ export default defineConfig({
             },
         },
     },
+    // bundle SSR mandiri: node_modules dihapus setelah build di server, jadi vue dsb. ikut dibundel
+    ssr: { noExternal: true },
     server: {
         watch: {
             ignored: ['**/storage/framework/views/**'],

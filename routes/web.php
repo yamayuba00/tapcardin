@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Marketing\SeoController;
 use App\Http\Controllers\Marketing\ShowcaseController;
 use App\Http\Controllers\PaymentWebhookController;
 use App\Http\Controllers\Public\WebhookDocsController;
@@ -22,8 +23,12 @@ use Illuminate\View\Middleware\ShareErrorsFromSession;
 |   {slug}.{base} workspace Perusahaan
 */
 $base = config('tapcard.base_domain');
-// `/up` (cek kesehatan untuk pemantau uptime) tidak boleh tertangkap SPA
-$spa = fn () => Route::get('/{path?}', SpaController::class)->where('path', '^(?!api(/|$)|up$).*');
+// robots.txt & sitemap.xml untuk semua host (isi menurut host) — didaftarkan sebelum grup domain
+Route::get('/robots.txt', [SeoController::class, 'robots'])->name('robots');
+Route::get('/sitemap.xml', [SeoController::class, 'sitemap'])->name('sitemap');
+// `/up` (cek kesehatan untuk pemantau uptime), robots.txt & sitemap.xml tidak boleh tertangkap SPA
+// (Laravel mendahulukan rute ber-domain, jadi catch-all SPA harus mengecualikannya)
+$spa = fn () => Route::get('/{path?}', SpaController::class)->where('path', '^(?!api(/|$)|up$|robots\.txt$|sitemap\.xml$).*');
 
 // Resolver publik tanpa sesi: tidak ada login di tap., jadi tiap tap tidak menulis baris `sessions` & cookie.
 // Formulir publik (Tukar Kontak, formulir bio) anonim dan dibatasi throttle — CSRF tidak berarti tanpa sesi.

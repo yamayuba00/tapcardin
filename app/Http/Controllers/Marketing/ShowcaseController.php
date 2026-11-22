@@ -14,6 +14,7 @@ use App\Support\Design\LanyardGeometry;
 use App\Support\Design\LanyardPricing;
 use App\Support\Design\Palette;
 use App\Support\Design\TemplateLibrary;
+use App\Support\Marketing\Landing;
 use App\Support\Qr\SvgRenderer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
@@ -32,7 +33,14 @@ class ShowcaseController extends Controller
 
     public function __invoke(): JsonResponse
     {
-        $data = Cache::remember('showcase:v10', now()->addHour(), function () {
+        // FAQ ikut di sini agar halaman & JSON-LD (FAQPage) memakai satu sumber yang sama
+        return response()->json(['data' => self::data() + ['faq' => Landing::faq(self::data())]])->header('Cache-Control', 'public, max-age=600');
+    }
+
+    /** Data etalase (di-cache 1 jam) — dipakai API ini dan render server landing page (Landing). */
+    public static function data(): array
+    {
+        return Cache::remember('showcase:v11', now()->addHour(), function () {
             $qr = SvgRenderer::payload(config('tapcard.resolver_url').'/c/XXXXXXXXXX?src=qr');
 
             return [
@@ -72,8 +80,6 @@ class ShowcaseController extends Controller
                     ->map(fn (MerchProduct $m) => ['name' => $m->name, 'coming_soon' => $m->status === 'coming_soon'])->values()->all(),
             ];
         });
-
-        return response()->json(['data' => $data])->header('Cache-Control', 'public, max-age=600');
     }
 
     /**

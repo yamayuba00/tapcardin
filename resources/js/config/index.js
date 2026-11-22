@@ -1,5 +1,6 @@
 // Konfigurasi runtime dari shell (data-config) + konteks host (TRD §4.6).
-const el = document.getElementById('app')
+// di render server (SSR landing) tidak ada document: config diisi oleh entri SSR
+const el = typeof document === 'undefined' ? null : document.getElementById('app')
 const raw = el?.dataset.config ? JSON.parse(el.dataset.config) : {}
 
 /** @type {{baseDomain: string, resolverUrl: string, appUrl: string, adminUrl: string, marketingUrl: string, googleEnabled: boolean}} */
@@ -31,7 +32,7 @@ export function takeInitial(key) {
 }
 
 /** 'public' (tap.), 'admin' (panel. — panel pemilik), 'status' (status. — halaman status), 'webhooks' (wbh. — dokumentasi developer), 'marketing' (domain utama), atau 'workspace' (app. & {slug}.) */
-export function hostContext(hostname = window.location.hostname, base = config.baseDomain) {
+export function hostContext(hostname = typeof window === 'undefined' ? config.baseDomain : window.location.hostname, base = config.baseDomain) {
   if (hostname === base) return 'marketing'
   const sub = hostname.endsWith('.' + base) ? hostname.slice(0, -(base.length + 1)) : hostname.split('.')[0]
   if (sub === 'tap') return 'public'

@@ -20,10 +20,14 @@ import SiteHeader from '@/components/marketing/SiteHeader/index.vue'
 import TemplateGallery from '@/components/marketing/TemplateGallery/index.vue'
 import FlipCard from '@/components/studio/FlipCard/index.vue'
 import { marketingApi } from '@/api/public'
-import { config } from '@/config'
-import { useAsync } from '@/composables/useAsync'
+import { config, takeInitial } from '@/config'
 
-const { data: show } = useAsync(() => marketingApi.showcase())
+// Data awal (harga, FAQ, kartu hero) disisipkan server → halaman & render server (SSR) langsung lengkap.
+// Etalase berat (semua template, editor, contoh bio) diambil setelah halaman tampil.
+const initial = takeInitial('landing')
+const full = ref(null)
+const show = computed(() => (full.value ? { ...initial, ...full.value } : initial))
+const heroTemplate = computed(() => full.value?.templates?.[0] ?? initial?.hero ?? null)
 const signup = `${config.appUrl}/login`
 // format sama dengan tabel harga (Rp 49.000)
 const rupiah = (n) => (n == null ? '—' : new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n))
@@ -34,6 +38,7 @@ const heroFlipped = ref(false)
 let timer = null
 onMounted(() => {
   if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) timer = setInterval(() => (heroFlipped.value = !heroFlipped.value), 3800)
+  marketingApi.showcase().then((r) => (full.value = r.data)).catch(() => {})
 })
 onBeforeUnmount(() => clearInterval(timer))
 
@@ -86,17 +91,7 @@ const RELIABLE = [
   { icon: DatabaseBackup, title: 'Backup harian di luar server', text: 'Database dicadangkan setiap malam ke penyimpanan terpisah dan disimpan 30 hari.' },
   { icon: Lock, title: 'Privasi sejak awal', text: 'IP pengunjung hanya disimpan sebagai hash, bio tidak diindeks mesin pencari kecuali Anda izinkan, dan data bisa diekspor atau dihapus kapan saja.' },
 ]
-const faq = computed(() => [
-  { q: 'Apakah orang yang saya temui perlu memasang aplikasi?', a: 'Tidak. Ponsel modern membaca NFC langsung dan membuka bio link di browser. Untuk ponsel tanpa NFC, cukup scan QR di kartu atau di layar ponsel Anda.' },
-  { q: 'Apa beda kartu digital dan kartu fisik?', a: `Kartu digital gratis untuk setiap akun dan langsung aktif: QR di layar & tautan pendek, dengan ${num(digital.value.tap_quota)} tap dan ${digital.value.bio_pages} bio link. Kuota tidak di-reset bulanan; bila habis, tambah ${num(digital.value.topup_taps)} tap seharga ${rupiah(digital.value.topup_price)}. Kartu fisik NFC tanpa batas tap dan bisa punya sampai ${show.value?.physical_bio_pages ?? 3} bio link per kartu.` },
-  { q: 'Bisakah saya mengubah data setelah kartu dicetak?', a: 'Bisa, kapan saja. Chip dan QR berisi alamat permanen kartu, sedangkan isinya (nama, jabatan, tautan, tema) diatur dari akun Anda dan langsung berlaku.' },
-  { q: 'Berapa harga kartu fisik dan berapa lama sampai?', a: `Mulai ${rupiah(cardFrom.value)} per kartu (cetak penuh dua sisi, chip NFC + QR), lanyard mulai ${rupiah(show.value?.lanyard_from)}. Diproduksi setelah pembayaran, lalu dikirim reguler (3–5 hari kerja), ekspres (1–2 hari kerja), atau diambil sendiri.` },
-  { q: 'Bayarnya pakai apa?', a: 'QRIS — semua e-wallet dan mobile banking. Tagihan berlaku 30 menit; bila lewat, cukup bayar lagi dan tagihan baru dibuat otomatis. Pesanan yang tidak dibayar dalam 3 hari dibatalkan otomatis.' },
-  { q: 'Bisa untuk tim atau perusahaan?', a: 'Bisa. Paket Team dan Business dihitung per anggota per bulan, dengan uji coba gratis 14 hari: subdomain atau domain sendiri, kartu & ID badge untuk setiap anggota, peran & izin, Mode Event, dan pembagian lead ke sales.' },
-  { q: 'Bagaimana jika kartu saya hilang?', a: 'Tandai kartu sebagai hilang dari aplikasi. Orang yang men-tap hanya melihat halaman netral tanpa data Anda, Anda diberi tahu waktu & kota tap-nya, dan Anda bisa meminta kartu pengganti dengan bio yang sama.' },
-  { q: 'Apakah data saya aman, dan bisakah dihapus?', a: 'IP pengunjung hanya disimpan sebagai hash dan database dicadangkan setiap hari. Anda bisa mengekspor semua data kapan saja. Menghapus akun mencabut semua kartu seketika; data pribadi dihapus permanen 30 hari kemudian.' },
-  { q: 'Bagaimana saya tahu layanan sedang normal?', a: 'Buka halaman status: kondisi setiap layanan, uptime 90 hari, serta info gangguan & jadwal maintenance diumumkan terbuka di sana dan diperbarui secara langsung.' },
-])
+const faq = computed(() => show.value?.faq ?? [])
 </script>
 
 <template>
@@ -125,7 +120,7 @@ const faq = computed(() => [
         </div>
 
         <div class="relative mx-auto w-full max-w-[520px] pb-10">
-          <FlipCard v-if="show" :front="show.templates[0].preview.landscape.front" :back="show.templates[0].preview.landscape.back" :vars="show.variables" :qr="show.qr" :flipped="heroFlipped" />
+          <FlipCard v-if="heroTemplate" :front="heroTemplate.preview.landscape.front" :back="heroTemplate.preview.landscape.back" :vars="show.variables" :qr="show.qr" :flipped="heroFlipped" />
           <AppSkeleton v-else class="!aspect-[91.6/60] !h-auto w-full" />
           <div class="absolute -bottom-2 left-2 flex items-center gap-3 rounded-md border border-line bg-surface px-4 py-3 text-sm sm:-left-6">
             <span class="grid size-9 place-items-center rounded-full bg-solid-ok text-on-solid"><Check class="size-5" /></span>
@@ -204,7 +199,7 @@ const faq = computed(() => [
             title="Minimalis, siap cetak, enak dipandang"
             text="Setiap template sudah lolos pemeriksaan cetak — safe zone 4 mm, bleed 3 mm, QR minimal 15 mm, dan aman untuk lubang lanyard. QR, ikon NFC, dan logo selalu di posisi yang mudah ditemukan."
           />
-          <TemplateGallery v-if="show" :templates="show.templates" :vars="show.variables" :qr="show.qr" />
+          <TemplateGallery v-if="full" :templates="show.templates" :vars="show.variables" :qr="show.qr" />
           <div v-else class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4"><AppSkeleton v-for="i in 8" :key="i" class="!h-44" /></div>
           <div class="flex flex-wrap items-center gap-4">
             <AppButton :href="signup"><Palette class="size-5" /> Desain sendiri di Design Studio</AppButton>
@@ -220,7 +215,7 @@ const faq = computed(() => [
           title="Desain sendiri, langsung di browser — cobalah di sini"
           text="Editor yang sama dengan di aplikasi: pilih template, geser teks & logo, atur lapisan, lalu desain lanyard yang serasi. Pemeriksaan cetak berjalan otomatis, jadi hasil cetak sesuai yang Anda lihat."
         />
-        <EditorShowcase v-if="show?.editor" :templates="show.templates" :vars="show.variables" :qr="show.qr" :editor="show.editor" />
+        <EditorShowcase v-if="full?.editor" :templates="show.templates" :vars="show.variables" :qr="show.qr" :editor="show.editor" />
         <AppSkeleton v-else class="!h-[560px]" />
         <ul class="grid gap-3 text-sm text-muted sm:grid-cols-2 lg:grid-cols-4">
           <li class="flex gap-2"><Check class="size-5 flex-none text-ok" /> Teks, bentuk, ikon, logo &amp; gambar</li>
@@ -238,7 +233,7 @@ const faq = computed(() => [
             title="Halaman yang terbuka saat kartu di-tap — dan sepenuhnya milik Anda"
             text="Susun halaman dari blok: Simpan ke Kontak HP, kontak & tautan, tombol, teks, video, pembatas, dan formulir. Atur tema, warna aksen, bentuk foto, gaya tombol, dan font — lihat hasilnya langsung sebelum disimpan."
           />
-          <BioShowcase v-if="show" :catalog="show.bio" :sample="show.sample">
+          <BioShowcase v-if="full" :catalog="show.bio" :sample="show.sample">
             <ul class="grid gap-2 text-sm text-muted sm:grid-cols-2">
               <li class="flex gap-2"><Check class="size-5 flex-none text-ok" /> 8 tema selaras template kartu</li>
               <li class="flex gap-2"><Check class="size-5 flex-none text-ok" /> 15 warna aksen, kontras dijaga otomatis</li>

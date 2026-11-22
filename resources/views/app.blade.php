@@ -7,12 +7,24 @@
   <meta property="csp-nonce" nonce="{{ Vite::cspNonce() }}">
   <title>{{ $meta['title'] ?? 'TapCard' }}</title>
   @if ($meta)
-    {{-- Pratinjau tautan (WhatsApp/iMessage) tanpa menunggu JS --}}
+    {{-- Pratinjau tautan (WhatsApp/iMessage) & mesin pencari tanpa menunggu JS --}}
     <meta name="description" content="{{ $meta['description'] }}">
+    @isset($meta['canonical'])<link rel="canonical" href="{{ $meta['canonical'] }}">
+    <meta property="og:url" content="{{ $meta['canonical'] }}">@endisset
     <meta property="og:title" content="{{ $meta['title'] }}">
     <meta property="og:description" content="{{ $meta['description'] }}">
-    <meta property="og:type" content="profile">
-    @if ($meta['image'])<meta property="og:image" content="{{ $meta['image'] }}">@endif
+    <meta property="og:type" content="{{ $meta['og_type'] ?? 'profile' }}">
+    <meta property="og:site_name" content="TapCard">
+    <meta property="og:locale" content="id_ID">
+    @if ($meta['image'])<meta property="og:image" content="{{ $meta['image'] }}">
+    @isset($meta['image_size'])<meta property="og:image:width" content="{{ $meta['image_size'][0] }}"><meta property="og:image:height" content="{{ $meta['image_size'][1] }}">@endisset
+    <meta property="og:image:alt" content="{{ $meta['title'] }}">@endif
+    <meta name="twitter:card" content="{{ $meta['image'] ? 'summary_large_image' : 'summary' }}">
+    <meta name="twitter:title" content="{{ $meta['title'] }}">
+    <meta name="twitter:description" content="{{ $meta['description'] }}">
+    @if ($meta['image'])<meta name="twitter:image" content="{{ $meta['image'] }}">@endif
+    @isset($meta['theme_color'])<meta name="theme-color" content="{{ $meta['theme_color'] }}">@endisset
+    @isset($meta['json_ld'])<script type="application/ld+json" nonce="{{ Vite::cspNonce() }}">{!! json_encode($meta['json_ld'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG) !!}</script>@endisset
   @endif
   <link rel="icon" href="{{ $favicon ?? '/favicon.svg' }}" type="image/svg+xml">
   @if ($pwa ?? null)
@@ -31,7 +43,7 @@
   @vite(['resources/css/app.css', 'resources/js/main.js'])
 </head>
 <body class="bg-bg text-fg antialiased">
-  {{-- Shell SPA: tidak ada UI di sini. Semua tampilan dirender Vue. --}}
-  <div id="app" data-config='@json($config)'></div>
+  {{-- Shell SPA: UI dirender Vue. Beranda marketing berisi HTML hasil render server (SSR) yang diganti Vue saat mount. --}}
+  <div id="app" data-config='@json($config)'>{!! $ssr ?? '' !!}</div>
 </body>
 </html>

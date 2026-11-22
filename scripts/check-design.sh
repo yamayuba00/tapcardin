@@ -7,7 +7,7 @@ fail=0
 paths="resources public mobile/lib"
 exclude='--exclude-dir=build --exclude-dir=fonts --exclude=*.woff2'
 
-if grep -rnE 'gradient|Gradient|<linearGradient|<radialGradient|<meshgradient' $exclude $paths 2>/dev/null \
+if grep -rInE 'gradient|Gradient|<linearGradient|<radialGradient|<meshgradient' $exclude $paths 2>/dev/null \
     | grep -vE 'tokens\.css:|check-design'; then
   echo "✗ Gradien ditemukan (DBD §3.4)"; fail=1
 fi
@@ -16,7 +16,7 @@ if grep -rnE '(box-shadow|text-shadow)\s*:\s*[^n;]' $exclude $paths 2>/dev/null 
   echo "✗ Bayangan selain none ditemukan (DBD §3.4)"; fail=1
 fi
 
-if grep -rnE '#[0-9A-Fa-f]{6}\b|#[0-9A-Fa-f]{3}\b' $exclude --include=*.css --include=*.vue --include=*.js --include=*.blade.php --include=*.svg $paths 2>/dev/null \
+if grep -rInE '#[0-9A-Fa-f]{6}\b|#[0-9A-Fa-f]{3}\b' $exclude --include=*.css --include=*.vue --include=*.js --include=*.blade.php --include=*.svg $paths 2>/dev/null \
     | grep -vE 'resources/css/tokens\.css:|/__tests__/|resources/views/mail/|public/favicon|public/manifest|public/offline.html|public/build/|&#[0-9]+;|#hatch|href="#|#main'; then
   echo "✗ Hex warna di luar tokens.css (DBD §3.4)"; fail=1
 fi

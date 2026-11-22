@@ -8,4 +8,6 @@ import { initPwa } from '@/composables/usePwa'
 applyStoredTheme()
 initPwa()
 
-createApp(App).use(createPinia()).use(router).mount('#app')
+// mount setelah rute awal siap: isi hasil render server (beranda) langsung diganti halaman yang sama, tanpa kedip kosong
+const app = createApp(App).use(createPinia()).use(router)
+router.isReady().then(() => app.mount('#app'))

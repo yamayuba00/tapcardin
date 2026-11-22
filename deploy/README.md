@@ -174,6 +174,16 @@ otomatis tiap 5 menit — jadi pembayaran tetap tercatat walau webhook terlambat
 tidak pernah melunasi invoice; statusnya selalu ditanyakan ulang ke API gateway. Ganti gateway = ubah `PAYMENT_*`
 lalu rilis ulang; bila bentuk API-nya berbeda, tambah satu kelas di `app/Services/Payment/Gateways/`.
 
+## SEO landing page
+
+- Beranda dirender server (Vue SSR): `npm run build` juga membangun `bootstrap/ssr/landing.js`, lalu PHP menjalankannya
+  dengan `node` saat cache kosong (hasil di-cache sehari / sampai harga & paket berubah). Node sudah terpasang oleh
+  `install.sh`; matikan dengan `LANDING_SSR=false` bila perlu — landing tetap tampil sebagai SPA.
+- `robots.txt` & `sitemap.xml` dibuat Laravel per host. Server lama: perbarui blok `location = /robots.txt` dari
+  `deploy/nginx/tapcard.conf` (sekarang diteruskan ke Laravel), lalu `sudo nginx -t && sudo systemctl reload nginx`.
+  File `public/robots.txt` sudah dihapus.
+- Setelah rilis, daftarkan `https://<domain>/sitemap.xml` di Google Search Console.
+
 ## Kapan pindah ke Redis
 
 Default `database` (PostgreSQL) untuk antrean, cache, dan sesi sudah cukup untuk awal. Pindahkan **antrean & cache**

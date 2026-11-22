@@ -3,7 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Auth\AuthController;
+use App\Support\Design\Palette;
 use App\Support\HostTenant;
+use App\Support\Marketing\Landing;
+use App\Support\Marketing\LandingSsr;
 use Database\Seeders\DummyAccountSeeder;
 use Illuminate\Http\Response;
 
@@ -16,14 +19,33 @@ class SpaController extends Controller
 {
     public function __invoke(): Response
     {
+        $host = request()->getHost();
+        if ($host === config('tapcard.base_domain')) {
+            // situs marketing: beranda dirender lengkap untuk mesin pencari; jalur lain = 404 SPA → jangan diindeks
+            return request()->path() === '/' ? $this->landing() : $this->render()->header('X-Robots-Tag', 'noindex');
+        }
+
         return $this->render();
+    }
+
+    /** Beranda marketing: meta & JSON-LD lengkap, data awal tersisip, HTML hasil render server bila tersedia. */
+    private function landing(): Response
+    {
+        $c = Landing::critical();
+        $url = request()->getSchemeAndHttpHost();
+
+        return $this->render(['initial' => ['landing' => $c]], [
+            'title' => Landing::TITLE, 'description' => Landing::DESCRIPTION, 'image' => $url.Landing::OG_IMAGE, 'image_size' => [1200, 630],
+            'og_type' => 'website', 'canonical' => "$url/", 'theme' => 'dark', 'lang' => 'id', 'theme_color' => Palette::hex('onyx-950'),
+            'json_ld' => Landing::jsonLd($c, $url), 'font' => 'IBM Plex Sans',
+        ], ssr: true);
     }
 
     /**
      * @param  array  $extra  ditambahkan ke config SPA (mis. `initial` = data awal halaman)
      * @param  array|null  $meta  {title, description, image, theme, lang} untuk <head>
      */
-    public function render(array $extra = [], ?array $meta = null, int $status = 200): Response
+    public function render(array $extra = [], ?array $meta = null, int $status = 200, bool $ssr = false): Response
     {
         $base = config('tapcard.base_domain');
         $port = request()->getPort();
@@ -40,34 +62,43 @@ class SpaController extends Controller
             default => ['/manifest.webmanifest', 'TapCard', '/icons/apple-touch-icon.png'],
         };
 
-        return response()->view('app', [
+        $config = [
+            'baseDomain' => $base,
+            'resolverUrl' => config('tapcard.resolver_url'),
+            'appUrl' => "$scheme://app.$base$suffix",
+            'adminUrl' => "$scheme://".config('tapcard.panel_subdomain').".$base$suffix",
+            'marketingUrl' => "$scheme://$base$suffix",
+            'statusUrl' => "$scheme://status.$base$suffix",
+            'googleEnabled' => (bool) config('services.google.client_id'),
+            // subdomain / domain kustom perusahaan: nama & logo untuk halaman login bermerek
+            'tenant' => ! $panel && ($t = HostTenant::resolve($host)) ? HostTenant::brand($t) : null,
+            // Realtime (Reverb): alamat publik WebSocket untuk Echo; null → SSE/polling seperti sebelumnya
+            'realtime' => config('broadcasting.default') === 'reverb' && config('broadcasting.connections.reverb.key') ? [
+                'key' => config('broadcasting.connections.reverb.key'),
+                'host' => config('broadcasting.connections.reverb.options.host'),
+                'port' => (int) config('broadcasting.connections.reverb.options.port'),
+                'tls' => config('broadcasting.connections.reverb.options.scheme') === 'https',
+            ] : null,
+            // Hanya terisi di APP_ENV=local: akun dummy satu klik (app. tanpa Google; panel pakai password ini).
+            'devLogin' => AuthController::devLogin() ? [
+                'password' => DummyAccountSeeder::DEV_PASSWORD,
+                'accounts' => collect(DummyAccountSeeder::ACCOUNTS)
+                    ->map(fn ($v, $email) => ['email' => $email, 'name' => $v[0], 'staff' => $v[1] !== null])->values(),
+            ] : null,
+        ] + $extra;
+
+        $response = response()->view('app', [
             'meta' => $meta,
             'pwa' => $pwa,
             'favicon' => $panel ? '/favicon-admin.svg' : '/favicon.svg',
-            'config' => [
-                'baseDomain' => $base,
-                'resolverUrl' => config('tapcard.resolver_url'),
-                'appUrl' => "$scheme://app.$base$suffix",
-                'adminUrl' => "$scheme://".config('tapcard.panel_subdomain').".$base$suffix",
-                'marketingUrl' => "$scheme://$base$suffix",
-                'statusUrl' => "$scheme://status.$base$suffix",
-                'googleEnabled' => (bool) config('services.google.client_id'),
-                // subdomain / domain kustom perusahaan: nama & logo untuk halaman login bermerek
-                'tenant' => ! $panel && ($t = HostTenant::resolve($host)) ? HostTenant::brand($t) : null,
-                // Realtime (Reverb): alamat publik WebSocket untuk Echo; null → SSE/polling seperti sebelumnya
-                'realtime' => config('broadcasting.default') === 'reverb' && config('broadcasting.connections.reverb.key') ? [
-                    'key' => config('broadcasting.connections.reverb.key'),
-                    'host' => config('broadcasting.connections.reverb.options.host'),
-                    'port' => (int) config('broadcasting.connections.reverb.options.port'),
-                    'tls' => config('broadcasting.connections.reverb.options.scheme') === 'https',
-                ] : null,
-                // Hanya terisi di APP_ENV=local: akun dummy satu klik (app. tanpa Google; panel pakai password ini).
-                'devLogin' => AuthController::devLogin() ? [
-                    'password' => DummyAccountSeeder::DEV_PASSWORD,
-                    'accounts' => collect(DummyAccountSeeder::ACCOUNTS)
-                        ->map(fn ($v, $email) => ['email' => $email, 'name' => $v[0], 'staff' => $v[1] !== null])->values(),
-                ] : null,
-            ] + $extra,
+            'config' => $config,
+            'ssr' => $ssr ? LandingSsr::render(['config' => $config]) : null,
         ], $status)->header('Cache-Control', 'no-cache, private');
+        // aplikasi & panel (app., panel., subdomain/domain perusahaan) bukan untuk mesin pencari
+        if ($pwa !== null) {
+            $response->header('X-Robots-Tag', 'noindex, nofollow');
+        }
+
+        return $response;
     }
 }
