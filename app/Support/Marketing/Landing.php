@@ -29,6 +29,7 @@ final class Landing
             'hero' => $hero ? ['key' => $hero['key'], 'name' => $hero['name'], 'preview' => ['landscape' => $hero['preview']['landscape']]] : null,
             'template_count' => count($s['templates']),
             'variables' => $s['variables'],
+            'sample' => $s['sample'], // profil contoh: hasil tap di visual hero
             'qr' => $s['qr'],
             'plans' => $s['plans'],
             'company_plans' => $s['company_plans'],

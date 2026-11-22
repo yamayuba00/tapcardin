@@ -92,6 +92,10 @@ return [
         'blocked_terms' => array_values(array_filter(array_map('trim', explode(',', (string) env('ORDER_RISK_TERMS', ''))))),
     ],
 
+    // Nomor WhatsApp tim sales untuk tombol "Hubungi Sales" di landing (kode negara, angka saja, mis. 6281234567890).
+    // Kosong → tombol disembunyikan.
+    'sales_whatsapp' => preg_replace('/\D/', '', (string) env('TAPCARD_SALES_WHATSAPP', '')),
+
     // Render server landing page (Vue SSR lewat node, hasil di-cache). Mati → landing tetap SPA biasa.
     'ssr' => [
         'enabled' => (bool) env('LANDING_SSR', true),

@@ -6,13 +6,14 @@ import { Menu, X } from 'lucide-vue-next'
 import AppButton from '@/components/ui/AppButton/index.vue'
 import BrandLogo from '@/components/common/BrandLogo/index.vue'
 import { config } from '@/config'
+import { track } from '@/lib/track'
 
 const LINKS = [
   { id: 'cara-kerja', label: 'Cara kerja' },
-  { id: 'template', label: 'Template' },
-  { id: 'bio-link', label: 'Bio link' },
+  { id: 'kartu', label: 'Kartu' },
+  { id: 'template', label: 'Desain' },
   { id: 'fitur', label: 'Fitur' },
-  { id: 'perusahaan', label: 'Perusahaan' },
+  { id: 'perusahaan', label: 'Organisasi' },
   { id: 'harga', label: 'Harga' },
   { id: 'faq', label: 'FAQ' },
 ]
@@ -67,7 +68,7 @@ function go(id) {
       </nav>
       <div class="ml-auto hidden items-center gap-2 sm:flex">
         <AppButton variant="ghost" :href="`${config.appUrl}/login`">Masuk</AppButton>
-        <AppButton :href="`${config.appUrl}/login`">Mulai gratis</AppButton>
+        <AppButton :href="`${config.appUrl}/login`" data-event="cta_click" data-location="header" @click="track('cta_click', { location: 'header' })">Buat kartu gratis</AppButton>
       </div>
       <AppButton variant="ghost" icon class="ml-auto sm:ml-0 lg:hidden" :aria-label="open ? 'Tutup menu' : 'Buka menu'" :aria-expanded="open" @click="open = !open">
         <component :is="open ? X : Menu" class="size-5" />
@@ -80,7 +81,7 @@ function go(id) {
         @click="go(l.id)"
       ><span class="size-1.5 rounded-full" :class="active === l.id ? 'bg-accent' : 'bg-transparent'" aria-hidden="true"></span>{{ l.label }}</a>
       <div class="mt-2 grid gap-2 sm:hidden">
-        <AppButton block :href="`${config.appUrl}/login`">Mulai gratis</AppButton>
+        <AppButton block :href="`${config.appUrl}/login`" data-event="cta_click" data-location="menu" @click="track('cta_click', { location: 'menu' })">Buat kartu gratis</AppButton>
         <AppButton variant="secondary" block :href="`${config.appUrl}/login`">Masuk</AppButton>
       </div>
     </nav>

@@ -82,6 +82,18 @@ class LandingSeoTest extends TestCase
         $this->get($this->host('tap', '/sitemap.xml'))->assertNotFound();
     }
 
+    public function test_sales_whatsapp_number_reaches_the_landing_only_when_configured(): void
+    {
+        $config = fn (string $html) => json_decode(html_entity_decode(preg_match("#data-config='([^']*)'#", $html, $m) ? $m[1] : '{}'), true);
+
+        config(['tapcard.sales_whatsapp' => '']);
+        $this->assertNull($config($this->get($this->base())->getContent())['salesWhatsapp']);
+
+        config(['tapcard.sales_whatsapp' => '6281234567890']);
+        $this->assertSame('6281234567890', $config($this->get($this->base())->getContent())['salesWhatsapp']);
+        $this->assertNull($config($this->get($this->host('app', '/login'))->getContent())['salesWhatsapp'], 'hanya situs marketing');
+    }
+
     public function test_apps_are_noindex_while_marketing_and_public_profiles_are_not(): void
     {
         $this->get($this->host('app', '/login'))->assertOk()->assertHeader('X-Robots-Tag', 'noindex, nofollow');
