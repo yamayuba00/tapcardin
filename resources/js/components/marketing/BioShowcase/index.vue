@@ -4,11 +4,22 @@
 import { computed, reactive } from 'vue'
 import AppSegmented from '@/components/ui/AppSegmented/index.vue'
 import PublicProfileView from '@/components/profile/PublicProfileView/index.vue'
-import { BIO_DEFAULTS, resolveTheme, themeStyle } from '@/lib/bioTheme'
+import { BIO_DEFAULTS, resolveTheme } from '@/lib/bioTheme'
 
 const props = defineProps({ catalog: { type: Object, required: true }, sample: { type: Object, required: true } })
 const choice = reactive({ ...BIO_DEFAULTS })
 const profile = computed(() => ({ ...props.sample, theme: resolveTheme(props.catalog, choice) }))
+// warna latar & aksen bawaan tiap preset (kelas token, bukan style inline — CSP melarang style atribut di HTML SSR)
+const SWATCH = {
+  onyx: ['bg-onyx-950', 'bg-champagne-500'],
+  ivory: ['bg-bone-50', 'bg-champagne-500'],
+  garis: ['bg-bone-0', 'bg-ink-950'],
+  kreatif: ['bg-onyx-950', 'bg-coral-300'],
+  natural: ['bg-bone-100', 'bg-umber-600'],
+  metal: ['bg-onyx-800', 'bg-bone-200'],
+  sage: ['bg-bone-50', 'bg-sage-700'],
+  korporat: ['bg-bone-0', 'bg-sky-700'],
+}
 const CONTROLS = [
   { key: 'header', label: 'Header', options: [{ value: 'center', label: 'Tengah' }, { value: 'left', label: 'Kiri' }, { value: 'cover', label: 'Sampul' }] },
   { key: 'links', label: 'Tautan', options: [{ value: 'list', label: 'Daftar' }, { value: 'buttons', label: 'Tombol' }, { value: 'grid', label: 'Grid' }] },
@@ -31,8 +42,8 @@ const CONTROLS = [
             class="cursor-pointer inline-flex h-10 items-center gap-2 rounded-full border border-line pr-4 pl-1.5 text-sm aria-pressed:border-accent aria-pressed:text-accent-text"
             @click="choice.preset = p.key"
           >
-            <span :data-theme="p.mode" :style="themeStyle(p)" class="grid size-7 place-items-center rounded-full border border-line bg-bg">
-              <span class="size-3 rounded-full bg-accent"></span>
+            <span :data-theme="p.mode" :class="['grid size-7 place-items-center rounded-full border border-line', SWATCH[p.key]?.[0] ?? 'bg-bg']">
+              <span :class="['size-3 rounded-full', SWATCH[p.key]?.[1] ?? 'bg-accent']"></span>
             </span>
             {{ p.name }}
           </button>

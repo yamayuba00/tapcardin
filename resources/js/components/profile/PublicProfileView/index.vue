@@ -3,7 +3,7 @@
 // teks, video, pemisah, kontak & tautan; urutan bebas) → Tukar Kontak.
 // Tema (preset, aksen, tata letak header, bentuk foto, sudut, gaya tombol & tautan, font) dari App\Support\Bio\BioTheme;
 // warna masuk sebagai variabel CSS semantik di subtree ini, jadi tetap memakai token DBD (tanpa hex).
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { Mail, MessageCircle, Phone, UserPlus, Users } from 'lucide-vue-next'
 import BioBlock from '@/components/profile/BioBlock/index.vue'
 import ContactLink from '@/components/profile/ContactLink/index.vue'
@@ -18,6 +18,11 @@ const exchanging = ref(false)
 
 const t = computed(() => ({ ...BIO_DEFAULTS, ...props.profile.theme }))
 const style = computed(() => themeStyle(props.profile.theme))
+// variabel tema diterapkan lewat CSSOM setelah tampil: atribut style di HTML SSR diblokir CSP
+const root = ref(null)
+const applyTheme = () => Object.entries(style.value).forEach(([k, v]) => root.value?.style.setProperty(k, v))
+onMounted(applyTheme)
+watch(style, applyTheme)
 const corner = computed(() => CORNER_CLASS[t.value.corners])
 const role = computed(() => [props.profile.title, props.profile.company].filter(Boolean).join(' · '))
 const qris = ref(null) // gambar QRIS yang dibuka layar penuh
@@ -44,7 +49,7 @@ const nameCls = computed(() => [
 </script>
 
 <template>
-  <div class="min-h-full bg-bg text-fg" :data-theme="t.mode" :style="style">
+  <div ref="root" class="min-h-full bg-bg text-fg" :data-theme="t.mode">
     <main class="mx-auto flex min-h-full w-full max-w-[480px] flex-col">
       <!-- Header: cover = pita aksen + foto menumpang; left = foto di kiri; center = klasik -->
       <header v-if="t.header === 'cover'" class="relative grid justify-items-center text-center">
