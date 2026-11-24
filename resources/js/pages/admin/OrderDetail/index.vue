@@ -29,6 +29,8 @@ const { data: o } = useAsync(() => adminApi.order(id))
 const { busy, run } = useAction()
 const shipping = ref(false)
 const ship = reactive({ courier: '', tracking_number: '' })
+const tracking = ref(null)
+const refreshTracking = async () => { tracking.value = (await adminApi.orderTracking(id).catch(() => ({ data: null }))).data }
 const cancelling = ref(false)
 const reason = ref('')
 const printing = ref(null) // item yang sedang dipratinjau/diunduh file cetaknya
@@ -174,6 +176,15 @@ async function doRefund() {
             </template>
             <p v-if="o.shipping.notes" class="text-muted">Catatan: {{ o.shipping.notes }}</p>
             <p v-if="o.shipping.tracking_number">Resi {{ o.shipping.courier }} <span class="font-mono font-semibold">{{ o.shipping.tracking_number }}</span></p>
+            <div v-if="o.shipping.tracking_number" class="grid gap-2">
+              <AppButton variant="secondary" @click="refreshTracking">Perbarui status resi</AppButton>
+              <div v-if="tracking" class="grid gap-1 text-sm">
+                <p class="label">{{ tracking.summary }} <span v-if="tracking.simulated" class="text-warn normal-case">· simulasi, bukan data kurir sungguhan</span></p>
+                <ol class="grid gap-1">
+                  <li v-for="h in tracking.history" :key="h.at" class="flex justify-between gap-3"><span>{{ h.label }} · {{ h.location }}</span><span class="font-mono text-xs text-muted">{{ dateTime(h.at) }}</span></li>
+                </ol>
+              </div>
+            </div>
             <p v-if="o.invoice" class="text-muted">Invoice <RouterLink :to="`/finance/invoices/${o.invoice.id}`" class="font-mono">{{ o.invoice.number }}</RouterLink> · {{ o.invoice.status }}</p>
           </div>
         </AppPanel>

@@ -101,6 +101,7 @@ Route::middleware(['auth:staff', 'platform'])->prefix('api')->name('api.')->grou
     Route::post('/orders/{order}/ship', [OrderController::class, 'ship'])->name('orders.ship');
     Route::post('/orders/{order}/deliver', [OrderController::class, 'deliver'])->name('orders.deliver');
     Route::post('/orders/{order}/cancel', [OrderController::class, 'cancel'])->name('orders.cancel');
+    Route::get('/orders/{order}/tracking', [OrderController::class, 'tracking'])->name('orders.tracking');
 
     Route::get('/domains', [DomainController::class, 'index'])->name('domains');
     Route::post('/domains', [DomainController::class, 'store'])->name('domains.store');
@@ -141,6 +142,7 @@ Route::middleware(['auth:staff', 'platform'])->prefix('api')->name('api.')->grou
     Route::patch('/vouchers/{voucher}', [VoucherController::class, 'update'])->name('vouchers.update');
 
     Route::get('/catalog', [CatalogController::class, 'show'])->name('catalog');
+    Route::patch('/catalog/shipping-rates/{id}', [CatalogController::class, 'saveZoneRate'])->whereNumber('id')->name('catalog.rates.update');
     Route::post('/catalog/lanyard-widths', [CatalogController::class, 'saveWidth'])->name('catalog.widths.store');
     Route::patch('/catalog/lanyard-widths/{id}', [CatalogController::class, 'saveWidth'])->name('catalog.widths.update');
     Route::post('/catalog/lanyard-hardware', [CatalogController::class, 'saveHardware'])->name('catalog.hardware.store');

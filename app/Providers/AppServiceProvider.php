@@ -7,6 +7,8 @@ use App\Authz\PlatformAccess;
 use App\Database\PostgresConnection;
 use App\Support\Crockford;
 use App\Support\Hasher;
+use App\Support\Shipping\DummyShippingProvider;
+use App\Support\Shipping\ShippingProvider;
 use App\Tenancy\CurrentTenant;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Connection;
@@ -25,6 +27,11 @@ class AppServiceProvider extends ServiceProvider
         $this->app->scoped(CurrentTenant::class);
         $this->app->scoped(Access::class);
         $this->app->scoped(PlatformAccess::class);
+
+        $this->app->bind(ShippingProvider::class, fn () => match (config('services.shipping.driver')) {
+            'dummy' => new DummyShippingProvider,
+            default => throw new \RuntimeException('Driver ongkir belum didukung: '.config('services.shipping.driver')),
+        });
 
         // tanggal ke Postgres selalu membawa offset zona waktu (lihat App\Database\PostgresConnection)
         Connection::resolverFor('pgsql', fn ($pdo, $database, $prefix, $config) => new PostgresConnection($pdo, $database, $prefix, $config));

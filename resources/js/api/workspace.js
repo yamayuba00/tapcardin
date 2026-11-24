@@ -157,6 +157,7 @@ export const ordersApi = {
   check: (id) => http.post(`/api/orders/${id}/check`),
   cancel: (id) => http.post(`/api/orders/${id}/cancel`),
   received: (id) => http.post(`/api/orders/${id}/received`),
+  tracking: (id) => http.get(`/api/orders/${id}/tracking`),
   /** Ringkasan harga final (subtotal, ongkir, promo, total) dari server. */
   quote: (body) => http.post('/api/orders/quote', body),
 }

@@ -22,6 +22,8 @@ const route = useRoute()
 const router = useRouter()
 const id = route.params.id
 const { data: o } = useAsync(() => ordersApi.get(id))
+const track = ref(null)
+watch(() => o.value?.shipping?.tracking_number, async (no) => { if (no) track.value = (await ordersApi.tracking(id).catch(() => ({ data: null }))).data }, { immediate: true })
 const { busy, run } = useAction()
 const confirmCancel = ref(false)
 
@@ -100,6 +102,13 @@ async function cancel() {
               <p class="text-muted">{{ o.shipping.address_line }}{{ o.shipping.district ? `, Kec. ${o.shipping.district}` : '' }}, {{ o.shipping.city }}{{ o.shipping.province ? `, ${o.shipping.province}` : '' }} {{ o.shipping.postal_code }}</p>
             </template>
             <p v-if="o.shipping.tracking_number" class="rounded-md bg-surface-2 px-3 py-2">Resi {{ o.shipping.courier }} <span class="font-mono font-semibold">{{ o.shipping.tracking_number }}</span></p>
+            <div v-if="track" class="grid gap-2 rounded-md border border-line p-3 text-sm">
+              <p class="label">Pelacakan kurir · {{ track.summary }}</p>
+              <p v-if="track.simulated" class="text-xs text-warn">Simulasi — bukan data kurir sungguhan.</p>
+              <ol class="grid gap-1">
+                <li v-for="h in track.history" :key="h.at" class="flex justify-between gap-3"><span>{{ h.label }} <span class="text-muted">· {{ h.location }}</span></span><span class="font-mono text-xs text-muted">{{ new Date(h.at).toLocaleString('id-ID') }}</span></li>
+              </ol>
+            </div>
             <p v-if="o.shipping.notes" class="text-muted">Catatan: {{ o.shipping.notes }}</p>
             <p v-if="['shipped', 'delivered'].includes(o.status)" class="text-muted">Kartu sudah tertaut ke akun Anda — begitu tiba, tempelkan ke ponsel untuk mengaktifkan (tanpa kode).</p>
           </div>

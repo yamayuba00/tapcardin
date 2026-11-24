@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Services\Payment\PaymentService;
 use App\Support\ErrorRate;
+use App\Support\Shipping\ShippingProvider;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -73,6 +74,10 @@ class Health extends Command
 
         $taps = DB::table('taps')->where('created_at', '>=', now()->subDay())->count();
         // `advisory` = saran kapasitas, bukan kerusakan → tidak memicu alarm email (tapcard:alert)
+        // tarif & resi masih simulasi: di produksi ini harus ditandai (pesanan kurir tidak menerima tarif dummy)
+        $shipping = app(ShippingProvider::class);
+        $checks[] = ['label' => 'Ongkir', 'value' => $shipping->simulated() ? 'simulasi (tarif placeholder)' : 'penyedia sungguhan',
+            'ok' => ! ($shipping->simulated() && app()->isProduction())] + $hint('Isi tarif sungguhan & pasang penyedia ongkir');
         $checks[] = ['label' => 'Tap 24 jam', 'value' => number_format($taps, 0, ',', '.'), 'ok' => $taps < 50000, 'advisory' => true] + $hint('> ±50.000/hari → pasang Redis');
 
         // tap jatuh ke partisi DEFAULT = partisi bulan itu belum dibuat (scheduler mati) — bulan itu tak bisa dipartisi lagi

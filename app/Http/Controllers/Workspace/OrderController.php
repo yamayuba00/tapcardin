@@ -21,6 +21,7 @@ use App\Support\Http\Table;
 use App\Support\Indonesia;
 use App\Support\Notify;
 use App\Support\Qr\SvgRenderer;
+use App\Support\Shipping\ShippingProvider;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -94,6 +95,8 @@ class OrderController extends WorkspaceController
             'shipping.province' => ['nullable', 'string', 'max:80'],
             'shipping.postal_code' => ['nullable', 'string', 'max:10'], // format dicek CreateOrder::validateAddress (semua kolom sekaligus)
             'shipping.notes' => ['nullable', 'string', 'max:300'],
+            'shipping.courier' => ['nullable', 'string', 'max:20', Rule::in(['JNE', 'J&T', 'SiCepat'])],
+            'shipping.service' => ['nullable', 'string', 'max:20', Rule::in(['REG', 'YES'])],
             'promo' => ['nullable', 'string', 'max:32'],
             'cart' => ['sometimes', 'array', 'max:20'],
             'cart.*' => ['string', 'size:26'],
@@ -115,11 +118,16 @@ class OrderController extends WorkspaceController
             'items.*.quantity' => ['required', 'integer', 'min:1', 'max:5000'],
             'method' => ['required', 'string', 'max:32'],
             'promo' => ['nullable', 'string', 'max:32'],
+            'province' => ['nullable', 'string', 'max:80'],
+            'courier' => ['nullable', 'string', 'max:20', Rule::in(['JNE', 'J&T', 'SiCepat'])],
+            'service' => ['nullable', 'string', 'max:20', Rule::in(['REG', 'YES'])],
         ]);
-        $q = $create->quote($this->tenant(), $this->user(), $data['items'], $data['method'], $data['promo'] ?? null);
+        $q = $create->quote($this->tenant(), $this->user(), $data['items'], $data['method'], $data['promo'] ?? null,
+            ['province' => $data['province'] ?? null, 'courier' => $data['courier'] ?? null, 'service' => $data['service'] ?? null]);
 
         return response()->json(['data' => [
             'subtotal' => $q['subtotal'], 'shipping' => $q['shipping'], 'discount' => $q['discount'], 'total' => $q['total'],
+            'courier' => $q['courier'], 'service' => $q['service'], 'etd' => $q['etd'],
             'promo' => $q['voucher'] ? ['code' => $q['voucher']->code, 'description' => $q['voucher']->description] : null,
             'lines' => array_map(fn ($l) => ['label' => $l['label'], 'quantity' => $l['quantity'], 'unit_price' => $l['unit_price'], 'total' => $l['total']], $q['lines']),
         ]]);
@@ -181,6 +189,18 @@ class OrderController extends WorkspaceController
         Audit::tenant($order->tenant_id, 'order.delivered', $order, null, ['by' => 'customer']);
 
         return response()->json(['data' => self::detail($order->fresh())]);
+    }
+
+    /** GET /api/orders/{order}/tracking — status resi dari penyedia ongkir (simulasi di luar produksi). */
+    public function tracking(Order $order): JsonResponse
+    {
+        $this->own($order);
+        if (! $order->courier || ! $order->tracking_number) {
+            return response()->json(['data' => null]);
+        }
+        $t = app(ShippingProvider::class)->track($order->tracking_number, $order->courier);
+
+        return response()->json(['data' => $t + ['courier' => $order->courier, 'awb' => $order->tracking_number]]);
     }
 
     private function own(Order $order): void

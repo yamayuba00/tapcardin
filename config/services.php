@@ -41,6 +41,13 @@ return [
         'redirect' => env('GOOGLE_REDIRECT_URI'),
     ],
 
+    // Ongkir ekspedisi: 'dummy' = tarif placeholder & pelacakan simulasi (lihat App\Support\Shipping).
+    'shipping' => [
+        'driver' => env('SHIPPING_DRIVER', 'dummy'),
+        'origin_zone' => env('SHIPPING_ORIGIN_ZONE', 'Jawa-Bali'),
+        'weight_gram_per_item' => (int) env('SHIPPING_WEIGHT_PER_ITEM_GRAM', 15),
+    ],
+
     // Pembayaran langganan diatur di config/payment.php (PAYMENT_*).
 
 ];

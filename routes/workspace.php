@@ -169,6 +169,7 @@ Route::middleware('auth')->prefix('api')->name('api.')->group(function () {
     Route::post('/orders/{order}/check', [OrderController::class, 'check'])->middleware('throttle:30,1')->name('orders.check');
     Route::post('/orders/{order}/cancel', [OrderController::class, 'cancel'])->name('orders.cancel');
     Route::post('/orders/{order}/received', [OrderController::class, 'received'])->name('orders.received');
+    Route::get('/orders/{order}/tracking', [OrderController::class, 'tracking'])->name('orders.tracking');
     Route::post('/billing/tap-topup', [BillingController::class, 'topup'])->middleware('throttle:20,1')->name('billing.topup');
     Route::post('/billing/voucher', [BillingController::class, 'voucher'])->middleware('throttle:20,1')->name('billing.voucher');
     Route::post('/billing/cancel', [BillingController::class, 'cancel'])->name('billing.cancel');

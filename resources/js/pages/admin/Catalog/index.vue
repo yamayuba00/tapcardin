@@ -25,10 +25,12 @@ const types = ref([])
 const addons = ref([])
 const products = ref([])
 const shipping = ref([])
+const rates = ref([])
 watch(c, (v) => {
   if (!v) return
   products.value = v.card_products.map((p) => ({ ...p }))
   shipping.value = v.shipping_methods.map((m) => ({ ...m }))
+  rates.value = v.shipping_rates.map((r) => ({ ...r }))
   addons.value = v.addons.map((a) => ({ ...a, featuresText: (a.features ?? []).join('\n'), price_monthly: a.price_monthly ?? '' }))
   widths.value = v.lanyard_widths.map((w) => ({ ...w }))
   hardware.value = v.lanyard_hardware.map((h) => ({ ...h }))
@@ -56,6 +58,9 @@ async function addHardware() {
 async function saveProduct(p) {
   const res = await run(() => adminApi.saveCardProduct(p.public_id, { name: p.name, description: p.description || null, is_active: p.is_active, ...ints(p, ['price', 'min_qty', 'sort']) }), `${p.name} disimpan.`).catch(() => null)
   if (res) c.value = res.data
+}
+async function saveRate(r) {
+  await run(() => adminApi.saveShippingRate(r.id, { base_cost: Number(r.base_cost), per_kg_cost: Number(r.per_kg_cost), etd_min_days: Number(r.etd_min_days), etd_max_days: Number(r.etd_max_days) }), `Tarif ${r.zone} · ${r.courier} ${r.service} disimpan.`).catch(() => null)
 }
 async function saveShipping(m) {
   const res = await run(() => adminApi.saveShipping(m.public_id, { name: m.name, eta: m.eta || null, is_active: m.is_active, needs_address: m.needs_address, ...ints(m, ['price', 'sort']) }), `${m.name} disimpan.`).catch(() => null)
@@ -103,6 +108,29 @@ async function saveType(t, patch) {
       </div>
     </AppPanel>
 
+    <AppPanel title="Tarif ekspedisi per zona" flush>
+      <p class="px-4 pt-3 text-sm text-muted">Ongkir = tarif dasar + (berat dibulatkan ke atas per kg × tarif per kg). Baris bertanda PLACEHOLDER belum diisi tarif sungguhan.</p>
+      <div class="overflow-x-auto">
+        <table class="w-full min-w-[760px] text-sm table-stack">
+          <thead>
+            <tr class="text-left text-muted">
+              <th class="px-4 py-2 font-medium">Zona</th><th class="px-4 py-2 font-medium">Kurir · layanan</th><th class="px-4 py-2 font-medium">Tarif dasar (Rp)</th>
+              <th class="px-4 py-2 font-medium">Per kg (Rp)</th><th class="px-4 py-2 font-medium">ETD min–maks (hari)</th><th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="r in rates" :key="r.id" class="border-t border-line">
+              <td data-label="Zona" class="px-4 py-2">{{ r.zone }} <span v-if="r.is_placeholder" class="text-xs text-warn">PLACEHOLDER</span></td>
+              <td data-label="Kurir · layanan" class="px-4 py-2 font-mono">{{ r.courier }} · {{ r.service }}</td>
+              <td data-label="Tarif dasar" class="px-4 py-2"><AppInput v-model="r.base_cost" type="number" min="0" class="max-w-32" :aria-label="`Tarif dasar ${r.zone} ${r.courier} ${r.service}`" /></td>
+              <td data-label="Per kg" class="px-4 py-2"><AppInput v-model="r.per_kg_cost" type="number" min="0" class="max-w-32" :aria-label="`Per kg ${r.zone} ${r.courier} ${r.service}`" /></td>
+              <td data-label="ETD" class="px-4 py-2 flex gap-2"><AppInput v-model="r.etd_min_days" type="number" min="0" class="max-w-20" aria-label="ETD minimum" /><AppInput v-model="r.etd_max_days" type="number" min="0" class="max-w-20" aria-label="ETD maksimum" /></td>
+              <td class="px-4 py-2 text-right"><AppButton variant="secondary" :loading="busy" @click="saveRate(r)"><Save class="size-4" /> Simpan</AppButton></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </AppPanel>
     <AppPanel title="Pengiriman" flush>
       <div class="overflow-x-auto">
         <table class="w-full min-w-[760px] text-sm table-stack">

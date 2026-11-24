@@ -8,6 +8,7 @@ use App\Models\ContactType;
 use App\Models\LanyardHardware;
 use App\Models\LanyardWidth;
 use App\Models\ShippingMethod;
+use App\Models\ShippingZoneRate;
 use App\Support\Audit;
 use App\Support\Contacts\ContactTypes;
 use Illuminate\Http\JsonResponse;
@@ -25,6 +26,7 @@ class CatalogController extends PlatformController
         return $this->ok([
             'card_products' => CardProduct::orderBy('sort')->get()->map(fn (CardProduct $p) => $p->only(['public_id', 'key', 'name', 'description', 'price', 'min_qty', 'sort', 'is_active']) + ['chip_type' => $p->chip_type->value]),
             'shipping_methods' => ShippingMethod::orderBy('sort')->get()->map(fn ($m) => $m->only(['public_id', 'key', 'name', 'eta', 'price', 'needs_address', 'sort', 'is_active'])),
+            'shipping_rates' => ShippingZoneRate::orderBy('zone_code')->orderBy('courier')->orderBy('service')->get()->map(fn ($r) => ['id' => $r->id, 'zone' => $r->zone_code, 'courier' => $r->courier, 'service' => $r->service, 'base_cost' => $r->base_cost, 'per_kg_cost' => $r->per_kg_cost, 'etd_min_days' => $r->etd_min_days, 'etd_max_days' => $r->etd_max_days, 'is_placeholder' => $r->is_placeholder]),
             'lanyard_widths' => LanyardWidth::orderBy('sort')->get()->map(fn ($w) => $w->only(['public_id', 'width_mm', 'label', 'price_single', 'price_double', 'min_qty', 'sort', 'is_active'])),
             'lanyard_hardware' => LanyardHardware::orderBy('sort')->get()->map(fn ($h) => $h->only(['public_id', 'key', 'name', 'description', 'price', 'sort', 'is_active'])),
             'addons' => Addon::withCount('interests')->orderBy('sort')->get()->map(fn (Addon $a) => $a->only([
@@ -79,6 +81,24 @@ class CatalogController extends PlatformController
         Audit::platform($id ? 'catalog.card_product.updated' : 'catalog.card_product.created', $p, $before, $p->toArray());
 
         return $this->show();
+    }
+
+    /** PATCH /api/catalog/shipping-rates/{id} — isi tarif sungguhan untuk satu zona, kurir, dan layanan. */
+    public function saveZoneRate(Request $request, int $id): JsonResponse
+    {
+        $this->can('catalog.manage');
+        $data = $request->validate([
+            'base_cost' => ['required', 'integer', 'min:0', 'max:10000000'],
+            'per_kg_cost' => ['required', 'integer', 'min:0', 'max:10000000'],
+            'etd_min_days' => ['required', 'integer', 'min:0', 'max:60'],
+            'etd_max_days' => ['required', 'integer', 'gte:etd_min_days', 'max:60'],
+        ]);
+        $r = ShippingZoneRate::findOrFail($id);
+        $before = $r->only(array_keys($data));
+        $r->update($data + ['is_placeholder' => false]);
+        Audit::platform('catalog.shipping_rate.updated', $r, $before, $r->only(array_keys($data)));
+
+        return response()->json(['data' => ['id' => $r->id, 'is_placeholder' => false]]);
     }
 
     public function saveShipping(Request $request, ?string $id = null): JsonResponse

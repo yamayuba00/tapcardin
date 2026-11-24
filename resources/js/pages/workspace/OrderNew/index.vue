@@ -117,7 +117,9 @@ watch([cat, cart], ([c, items]) => {
 })
 
 // ── pengiriman ─────────────────────────────────────────────
-const ship = reactive({ method: '', recipient_name: '', recipient_phone: '', province: '', city: '', district: '', address_line: '', postal_code: '', notes: '' })
+const ship = reactive({ method: '', courier: '', service: '', recipient_name: '', recipient_phone: '', province: '', city: '', district: '', address_line: '', postal_code: '', notes: '' })
+const COURIERS = [{ value: 'JNE', label: 'JNE' }, { value: 'J&T', label: 'J&T' }, { value: 'SiCepat', label: 'SiCepat' }]
+const SERVICES = [{ value: 'REG', label: 'Reguler' }, { value: 'YES', label: 'Cepat (YES / EZ)' }]
 const touched = reactive({})
 const serverErrors = ref({})
 const method = computed(() => cat.value?.shipping.find((m) => m.key === ship.method))
@@ -156,7 +158,8 @@ async function refreshQuote() {
   if (!payload.value.length || !ship.method) return (quote.value = null)
   quoting.value = true
   try {
-    quote.value = (await ordersApi.quote({ items: payload.value, method: ship.method, promo: appliedPromo.value || null })).data
+    const courierPart = ship.method === 'kurir' ? { province: ship.province, courier: ship.courier, service: ship.service } : {}
+    quote.value = (await ordersApi.quote({ items: payload.value, method: ship.method, promo: appliedPromo.value || null, ...courierPart })).data
   } catch (e) {
     if (e.fields?.promo) {
       promoError.value = e.fields.promo[0]
@@ -169,7 +172,7 @@ async function refreshQuote() {
     quoting.value = false
   }
 }
-watch([payload, () => ship.method, appliedPromo], () => { clearTimeout(qt); qt = setTimeout(refreshQuote, 250) }, { deep: true })
+watch([payload, () => ship.method, () => ship.province, () => ship.courier, () => ship.service, appliedPromo], () => { clearTimeout(qt); qt = setTimeout(refreshQuote, 250) }, { deep: true })
 function applyPromo() {
   promoError.value = ''
   appliedPromo.value = promo.value.trim().toUpperCase()
@@ -282,6 +285,11 @@ async function submit() {
               <span class="font-mono text-sm">{{ m.price ? rupiah(m.price) : 'Gratis' }}</span>
             </button>
           </div>
+          <div v-if="ship.method === 'kurir'" class="grid gap-3 sm:grid-cols-2">
+            <AppField label="Kurir *"><AppSelect v-model="ship.courier" :options="COURIERS" placeholder="Pilih kurir" aria-label="Kurir" /></AppField>
+            <AppField label="Layanan *"><AppSelect v-model="ship.service" :options="SERVICES" placeholder="Pilih layanan" aria-label="Layanan" /></AppField>
+            <p class="text-xs text-muted sm:col-span-2">Ongkir dihitung dari provinsi tujuan. Tarif sementara simulasi sampai kontrak kurir aktif.</p>
+          </div>
           <template v-if="method?.needs_address">
             <p class="flex items-center gap-2 text-sm text-muted">
               Semua kolom bertanda * wajib diisi agar kiriman sampai.
@@ -318,7 +326,7 @@ async function submit() {
             <dl class="grid gap-2 text-sm" :aria-busy="quoting">
               <div v-for="it in chosen" :key="it.id" class="flex justify-between gap-3"><dt class="min-w-0 truncate">{{ it.quantity }} × {{ kindLabel(it) }} · {{ it.design.name }}</dt><dd class="font-mono">{{ rupiah(it.unit_price * it.quantity) }}</dd></div>
               <div class="flex justify-between gap-3 border-t border-line pt-2"><dt class="text-muted">Subtotal</dt><dd class="font-mono">{{ rupiah(quote?.subtotal ?? 0) }}</dd></div>
-              <div class="flex justify-between gap-3 text-muted"><dt class="flex items-center gap-1"><Truck class="size-4" /> {{ method?.name ?? 'Pengiriman' }}</dt><dd class="font-mono">{{ quote?.shipping ? rupiah(quote.shipping) : 'Gratis' }}</dd></div>
+              <div class="flex justify-between gap-3 text-muted"><dt class="flex items-center gap-1"><Truck class="size-4" /> {{ quote?.courier ? `${quote.courier} ${quote.service} · ${quote.etd}` : (method?.name ?? 'Pengiriman') }}</dt><dd class="font-mono">{{ quote?.shipping ? rupiah(quote.shipping) : 'Gratis' }}</dd></div>
               <div v-if="quote?.discount" class="flex justify-between gap-3 text-ok"><dt class="flex items-center gap-1"><Tag class="size-4" /> Promo {{ quote.promo?.code }}</dt><dd class="font-mono">−{{ rupiah(quote.discount) }}</dd></div>
               <div class="flex justify-between gap-3 border-t border-line pt-2 text-base font-semibold"><dt>Total</dt><dd class="font-display text-xl">{{ quote ? rupiah(quote.total) : '…' }}</dd></div>
             </dl>

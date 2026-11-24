@@ -18,6 +18,7 @@ use App\Support\Http\Table;
 use App\Support\Notify;
 use App\Support\OrderRisk;
 use App\Support\Qr\SvgRenderer;
+use App\Support\Shipping\ShippingProvider;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -138,6 +139,19 @@ class OrderController extends PlatformController
     }
 
     /** Kirim: kartu yang lolos QC di batch pesanan ikut ditandai terkirim (siap diaktifkan). */
+    /** GET /api/orders/{order}/tracking — status resi dari penyedia ongkir untuk staf. */
+    public function tracking(string $order): JsonResponse
+    {
+        $this->can('orders.view');
+        $o = $this->find($order);
+        if (! $o->courier || ! $o->tracking_number) {
+            return response()->json(['data' => null]);
+        }
+        $t = app(ShippingProvider::class)->track($o->tracking_number, $o->courier);
+
+        return response()->json(['data' => $t + ['courier' => $o->courier, 'awb' => $o->tracking_number]]);
+    }
+
     public function ship(Request $request, string $order, ShipBatch $shipBatch): JsonResponse
     {
         $this->can('orders.manage');
