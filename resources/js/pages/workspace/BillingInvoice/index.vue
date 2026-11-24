@@ -117,7 +117,7 @@ async function pay() {
       <tfoot class="text-right">
         <tr><td colspan="2" class="pt-3 text-muted">Subtotal</td><td class="pt-3 font-mono">{{ rupiah(inv.subtotal) }}</td></tr>
         <tr v-if="inv.discount"><td colspan="2" class="text-muted">Diskon</td><td class="font-mono">−{{ rupiah(inv.discount) }}</td></tr>
-        <tr><td colspan="2" class="text-muted">Pajak</td><td class="font-mono">{{ inv.tax ? rupiah(inv.tax) : 'Termasuk' }}</td></tr>
+        <tr v-if="inv.tax"><td colspan="2" class="text-muted">PPN</td><td class="font-mono">{{ rupiah(inv.tax) }}</td></tr>
         <tr class="text-base font-semibold"><td colspan="2" class="pt-2">Total</td><td class="pt-2 font-display text-xl">{{ rupiah(inv.total) }}</td></tr>
       </tfoot>
     </table>

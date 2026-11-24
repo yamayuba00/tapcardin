@@ -207,7 +207,7 @@ const COLUMNS = [
           <AppButton v-if="cta(p) && canManage" :variant="p.key === current?.key ? 'secondary' : 'primary'" block @click="choosing = p">{{ cta(p) }} <ArrowRight class="size-5" /></AppButton>
         </article>
       </div>
-      <p class="flex items-center gap-2 text-sm text-muted"><Lock class="size-4" /> <template v-if="gateway">Pembayaran aman lewat {{ gateway.simulator ? 'gateway simulasi (mode pengembangan)' : gateway.name }}.</template><template v-else>Pembayaran online sedang disiapkan.</template> Harga sudah termasuk pajak.</p>
+      <p class="flex items-center gap-2 text-sm text-muted"><Lock class="size-4" /> <template v-if="gateway">Pembayaran aman lewat {{ gateway.simulator ? 'gateway simulasi (mode pengembangan)' : gateway.name }}.</template><template v-else>Pembayaran online sedang disiapkan.</template></p>
     </section>
 
     <!-- riwayat invoice -->
