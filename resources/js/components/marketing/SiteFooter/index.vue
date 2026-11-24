@@ -30,6 +30,6 @@ const year = new Date().getFullYear()
         <a :href="config.statusUrl" class="text-muted no-underline hover:text-fg">Status layanan</a>
       </nav>
     </div>
-    <p class="border-t border-line px-4 py-6 text-center text-xs text-muted">© {{ year }} TapCard. Dibuat di Indonesia.</p>
+    <p class="border-t border-line px-4 py-6 text-center text-xs text-muted">© {{ year }} TapCard dan Teknovasi Robotika Indonesia Maju. Dibuat di Indonesia.</p>
   </footer>
 </template>
