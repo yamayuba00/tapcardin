@@ -32,3 +32,6 @@ docs
 /deploy/setup-vps.md
 /deploy/vps-dari-nol.md
 /bootstrap/ssr
+
+# panduan worker (tidak di-commit)
+/deploy/worker.md
