@@ -141,7 +141,8 @@ async function copy() {
           </div>
           <p class="text-sm text-muted">NFC {{ num(card.stats_30.nfc) }} · QR {{ num(card.stats_30.qr) }} · lainnya {{ num(card.stats_30.other) }}</p>
           <div class="flex items-center gap-3">
-            <img :src="card.qr_svg_url" alt="QR kartu" width="96" height="96" class="flex-none rounded-sm bg-bone-0 p-1" />
+            <img v-if="card.status === 'active'" :src="card.qr_svg_url" alt="QR kartu" width="96" height="96" class="flex-none rounded-sm bg-bone-0 p-1" />
+            <p v-else class="flex-none text-sm text-muted">QR tidak ditampilkan karena kartu tidak aktif.</p>
             <div class="grid min-w-0 gap-2">
               <span class="truncate font-mono text-sm">{{ card.url }}</span>
               <AppButton variant="ghost" @click="copy"><Copy class="size-5" /> Salin tautan</AppButton>

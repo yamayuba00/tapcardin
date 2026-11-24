@@ -63,7 +63,8 @@ onBeforeUnmount(() => wake?.release?.())
 
       <!-- QR selalu gelap di atas terang agar terbaca semua kamera, apa pun tema aplikasi -->
       <div class="w-full rounded-lg bg-bone-0 p-5" data-theme="light">
-        <img :src="card.qr_svg_url" :alt="`QR bio link ${name}`" class="block aspect-square w-full" width="360" height="360" />
+        <img v-if="card.status === 'active'" :src="card.qr_svg_url" :alt="`QR bio link ${name}`" class="block aspect-square w-full" width="360" height="360" />
+        <p v-else class="text-center text-sm text-muted">QR tidak ditampilkan karena kartu tidak aktif.</p>
       </div>
       <p v-if="card.qr_rotation" class="text-sm text-muted">QR ini berganti tiap {{ card.qr_rotation.days }} hari (paket Free) — yang tampil di sini selalu yang terbaru.</p>
 

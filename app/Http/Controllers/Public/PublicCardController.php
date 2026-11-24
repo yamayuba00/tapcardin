@@ -6,6 +6,7 @@ use App\Actions\Cards\CardView;
 use App\Actions\Cards\ShareQr;
 use App\Actions\Events\EventForCard;
 use App\Actions\Leads\CreateConnection;
+use App\Enums\CardStatus;
 use App\Enums\LeadSource;
 use App\Exceptions\ApiError;
 use App\Http\Controllers\Controller;
@@ -152,10 +153,12 @@ class PublicCardController extends Controller
     public function qr(string $token): Response
     {
         $card = Card::acrossTenants()->where('card_token', $token)->firstOrFail();
+        // kartu hilang, dijeda, atau dicabut: QR tidak ditampilkan sama sekali (kartu belum diaktifkan tetap bisa dipindai untuk aktivasi)
+        abort_if(in_array($card->status, [CardStatus::Lost, CardStatus::Paused, CardStatus::Revoked], true), 404);
         $rotating = ShareQr::rotationDays($card) !== null;
 
         return response(SvgRenderer::forUrl(ShareQr::url($card)), 200, [
-            'Content-Type' => 'image/svg+xml', 'Cache-Control' => $rotating ? 'private, max-age=300' : 'public, max-age=86400',
+            'Content-Type' => 'image/svg+xml', 'Cache-Control' => $rotating ? 'private, max-age=300' : 'public, max-age=300',
         ]);
     }
 

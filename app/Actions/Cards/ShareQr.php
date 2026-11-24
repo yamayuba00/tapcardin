@@ -3,6 +3,7 @@
 namespace App\Actions\Cards;
 
 use App\Authz\PlanFeatures;
+use App\Enums\CardStatus;
 use App\Models\Card;
 use App\Models\CardShareCode;
 use App\Models\Tenant;
@@ -59,6 +60,7 @@ final class ShareQr
         $row = CardShareCode::where('code', $code)->first();
         $card = $row && $row->expires_at->isFuture() ? Card::acrossTenants()->find($row->card_id) : null;
 
-        return $card?->qrUrl();
+        // kartu hilang / dinonaktifkan / dicabut: QR lama tidak boleh lagi membawa ke profil
+        return $card && $card->status === CardStatus::Active ? $card->qrUrl() : null;
     }
 }
