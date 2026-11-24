@@ -121,6 +121,8 @@ class OrderTest extends TestCase
         $this->app_('GET', "/orders/{$o['order']['id']}")->assertJsonPath('data.status', 'paid');
         $this->assertSame(0, Subscription::withoutGlobalScope(TenantScope::class)->count());
         $this->assertDatabaseHas('notifications', ['user_id' => $rina->id, 'type' => 'order_status']);
+        $notes = fn () => DB::table('notifications')->where('user_id', $rina->id)->where('type', 'order_status')->count();
+        $seen = $notes();
         $this->app_('POST', "/orders/{$o['order']['id']}/cancel")->assertJsonPath('error.code', 'order_not_cancellable');
 
         // akun baru + nilai besar → bertanda risiko: produksi diblokir sampai ditinjau
@@ -129,10 +131,14 @@ class OrderTest extends TestCase
         $this->panel('GET', "/orders/{$o['order']['id']}")->assertJsonPath('data.review.status', 'pending')->assertJsonPath('data.review.flags.0.code', 'new_account');
         $this->panel('POST', "/orders/{$o['order']['id']}/production")->assertStatus(409)->assertJsonPath('error.code', 'review_required');
         $this->panel('POST', "/orders/{$o['order']['id']}/review", ['decision' => 'approve', 'note' => 'Desain & alamat wajar'])->assertOk()->assertJsonPath('data.review.status', 'approved');
+        $this->assertGreaterThan($seen, $notes(), 'tinjauan disetujui memberi tahu pemesan');
+        $seen = $notes();
 
         // panel: mulai produksi → 1 batch untuk item kartu, masuk workspace pemesan
         $p = $this->panel('POST', "/orders/{$o['order']['id']}/production")->assertOk()->assertJsonPath('data.status', 'in_production')->json('data');
         $this->assertCount(1, $p['batches']);
+        $this->assertGreaterThan($seen, $notes(), 'produksi dimulai memberi tahu pemesan');
+        $seen = $notes();
         $batch = Batch::where('public_id', $p['batches'][0]['id'])->firstOrFail();
         $this->assertSame([2, $rina->id, $rina->personal_tenant_id], [$batch->quantity, $batch->holder_user_id, $batch->tenant_id]);
         $this->panel('GET', "/batches/{$batch->public_id}")->assertJsonPath('data.order.number', $o['order']['number']);
@@ -148,8 +154,11 @@ class OrderTest extends TestCase
         }
         $this->panel('POST', "/orders/{$o['order']['id']}/ship", [])->assertJsonPath('error.code', 'tracking_required');
         $this->panel('POST', "/orders/{$o['order']['id']}/ship", ['courier' => 'JNE', 'tracking_number' => 'JNE123'])->assertOk()->assertJsonPath('data.status', 'shipped');
+        $this->assertGreaterThan($seen, $notes(), 'dikirim memberi tahu pemesan');
+        $seen = $notes();
         $this->assertSame(CardStatus::Unclaimed, $cards[0]->fresh()->status);
         $this->panel('POST', "/orders/{$o['order']['id']}/deliver")->assertOk()->assertJsonPath('data.status', 'delivered');
+        $this->assertGreaterThan($seen, $notes(), 'diterima memberi tahu pemesan');
 
         // pemesan mengaktifkan kartu tanpa kode (dia pembelinya)
         $this->actingAs($rina);

@@ -48,6 +48,10 @@ async function pay() {
   if (u.origin === window.location.origin) router.push(u.pathname + u.search)
   else window.location.assign(res.data.payment_url)
 }
+async function received() {
+  const res = await run(() => ordersApi.received(id), 'Terima kasih, pesanan ditandai diterima.').catch(() => null)
+  if (res) o.value = res.data
+}
 async function cancel() {
   const res = await run(() => ordersApi.cancel(id), 'Pesanan dibatalkan.').catch(() => null)
   confirmCancel.value = false
@@ -64,6 +68,7 @@ async function cancel() {
         <AppButton variant="ghost" @click="confirmCancel = true"><X class="size-5" /> Batalkan</AppButton>
         <AppButton :loading="busy" @click="pay"><QrCode class="size-5" /> Bayar {{ rupiah(o.total) }} dengan QRIS</AppButton>
       </template>
+      <AppButton v-if="o.status === 'shipped'" :loading="busy" @click="received">Saya sudah menerima pesanan</AppButton>
       <AppButton v-if="o.invoice" variant="secondary" :to="`/billing/invoices/${o.invoice.id}`"><Receipt class="size-5" /> {{ o.status === 'pending_payment' ? 'Invoice' : 'Kuitansi' }}</AppButton>
     </PageHeader>
 

@@ -19,6 +19,7 @@ use App\Support\Design\LanyardPricing;
 use App\Support\Design\Variables;
 use App\Support\Http\Table;
 use App\Support\Indonesia;
+use App\Support\Notify;
 use App\Support\Qr\SvgRenderer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -163,6 +164,21 @@ class OrderController extends WorkspaceController
         Invoice::withoutGlobalScopes()->where('order_id', $order->id)->whereIn('status', ['issued', 'overdue'])->update(['status' => 'void']);
         $order->update(['status' => 'cancelled', 'cancelled_at' => now(), 'cancel_reason' => 'Dibatalkan pemesan']);
         Audit::tenant($order->tenant_id, 'order.cancelled', $order, null, ['by' => 'customer']);
+
+        return response()->json(['data' => self::detail($order->fresh())]);
+    }
+
+    /** Pemesan menandai pesanan sudah diterima — hanya pemesan sendiri, dan hanya setelah pesanan dikirim. */
+    public function received(Order $order): JsonResponse
+    {
+        $this->access()->authorize('orders.create');
+        abort_unless($order->user_id === $this->user()->id, 404);
+        if ($order->status !== 'shipped') {
+            throw new ApiError('order_not_shipped', 'Konfirmasi diterima hanya bisa setelah pesanan dikirim.');
+        }
+        $order->update(['status' => 'delivered', 'delivered_at' => now()]);
+        Notify::user($order->user_id, $order->tenant_id, 'order_status', ['id' => $order->public_id, 'number' => $order->number, 'status' => 'delivered', 'label' => $order->label(), 'tracking' => $order->tracking_number]);
+        Audit::tenant($order->tenant_id, 'order.delivered', $order, null, ['by' => 'customer']);
 
         return response()->json(['data' => self::detail($order->fresh())]);
     }
