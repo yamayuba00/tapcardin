@@ -228,6 +228,28 @@ Server block di atas hanya melayani `domain` & `*.domain`; untuk domain kustom t
 sertifikatnya sendiri (`certbot certonly --webroot -w /var/www/letsencrypt -d kartu.perusahaan.com`), atau pakai proxy
 dengan TLS on-demand (mis. Caddy) di depan Nginx.
 
+### SSL domain kustom (Caddy)
+
+Dipakai agar setiap domain pelanggan mendapat sertifikat otomatis tanpa menambah server block. Caddy menerima TLS untuk
+semua host dan bertanya ke `/internal/caddy-ask` sebelum menerbitkan sertifikat; yang diizinkan hanya domain utama,
+subdomain bawaan, workspace perusahaan yang tidak disuspend, dan domain kustom yang aktif dengan paket yang mencakupnya.
+
+Pasang (sekali, di server yang sudah terpasang `deploy/install.sh`):
+
+```bash
+sudo TAPCARD_DOMAIN=tapcardin.my.id bash /var/www/tapcard/current/deploy/caddy/install.sh --dry-run   # hanya cetak langkah
+sudo TAPCARD_DOMAIN=tapcardin.my.id bash /var/www/tapcard/current/deploy/caddy/install.sh
+```
+
+Skrip memasang Caddy dari repositori resmi, memindahkan Nginx ke `127.0.0.1:8081` (HTTP saja, konfigurasi lama
+dicadangkan sebagai `tapcard.conf.bak-<waktu>`), lalu mematikan `certbot.timer`. Tidak ada `.env` baru.
+
+Untuk pelanggan: arahkan CNAME domain mereka ke `app.<domain>`, lalu verifikasi di panel. Sertifikat terbit saat
+domain pertama kali dibuka (bisa beberapa detik).
+
+Cek: `curl -I https://kartu.perusahaan.com/` (harus 200 dan sertifikat valid), `journalctl -u caddy -f` untuk galat
+penerbitan. Catatan: Caddy memakai port 80 dan 443; pastikan tidak ada layanan lain di kedua port.
+
 ## Pindah domain
 
 ```bash

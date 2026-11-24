@@ -1,0 +1,25 @@
+# TapCard — Caddy di depan semua host (placeholder TAPCARD_DOMAIN diganti deploy/caddy/install.sh).
+# Sertifikat domain kustom diterbitkan saat pertama diakses, hanya jika Laravel mengizinkan (/internal/caddy-ask),
+# sehingga host acak tidak pernah mendapat sertifikat. Aplikasi tetap di Nginx internal (127.0.0.1:8081).
+{
+	on_demand_tls {
+		ask http://127.0.0.1:8081/internal/caddy-ask
+	}
+}
+
+# Realtime (Reverb): langsung ke Reverb, tanpa lewat Nginx.
+ws.TAPCARD_DOMAIN {
+	reverse_proxy 127.0.0.1:8080
+}
+
+# Semua host lain (domain utama, app., tap., panel., status., wbh., perusahaan, dan domain kustom).
+https:// {
+	tls {
+		on_demand
+	}
+	reverse_proxy 127.0.0.1:8081 {
+		header_up Host {host}
+		header_up X-Forwarded-Proto {scheme}
+		header_up X-Forwarded-For {remote_host}
+	}
+}

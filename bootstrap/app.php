@@ -2,6 +2,7 @@
 
 use App\Exceptions\ApiError;
 use App\Http\Controllers\SpaController;
+use App\Http\Middleware\CaddyAskMiddleware;
 use App\Http\Middleware\EnsureNotBlocked;
 use App\Http\Middleware\EnsurePlatformStaff;
 use App\Http\Middleware\ResolveWorkspace;
@@ -28,6 +29,10 @@ return Application::configure(basePath: dirname(__DIR__))
     // otorisasi channel privat Reverb: POST /api/broadcasting/auth (sesi app., sama dengan API workspace)
     ->withBroadcasting(__DIR__.'/../routes/channels.php', ['prefix' => 'api', 'middleware' => ['web', 'auth']])
     ->withMiddleware(function (Middleware $middleware): void {
+        // Caddy on-demand TLS bertanya sebelum routing (agar tidak tertangkap rute host); lihat CaddyAskMiddleware
+        $middleware->prepend(CaddyAskMiddleware::class);
+        // Caddy berjalan di depan di server yang sama: percayai X-Forwarded-* dari loopback saja (IP klien & https asli)
+        $middleware->trustProxies(at: ['127.0.0.1', '::1']);
         $middleware->web(prepend: [UseAdminSession::class], append: [SecurityHeaders::class, EnsureNotBlocked::class]);
         $middleware->alias([
             'workspace' => ResolveWorkspace::class,
