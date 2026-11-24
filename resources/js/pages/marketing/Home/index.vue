@@ -116,8 +116,9 @@ const RELIABLE = [
               <AppButton size="lg" variant="secondary" href="#cara-kerja" class="max-sm:hidden">Lihat cara kerja</AppButton>
             </div>
             <p class="max-w-[540px] text-lg text-muted">
-              Tempelkan kartu ke ponsel lawan bicara atau minta mereka scan QR-nya: profil Anda terbuka dan kontak tersimpan —
-              tanpa aplikasi. Mulai dengan kartu digital gratis, pesan kartu fisik saat siap.
+              Kartu ini berisi profil Anda. Orang lain cukup menempelkan kartu ke HP mereka, atau memindai QR-nya,
+              lalu profil Anda langsung terbuka dan mereka bisa menyimpan kontak Anda. Tanpa install aplikasi.
+              Mulai gratis dengan kartu digital, pesan kartu fisik kapan saja.
             </p>
             <ul class="flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted">
               <li class="flex items-center gap-2"><Check class="size-4 text-ok" aria-hidden="true" /> Gratis {{ num(digital.tap_quota) }} tap, tanpa kartu kredit</li>
