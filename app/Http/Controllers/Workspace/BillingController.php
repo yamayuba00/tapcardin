@@ -32,7 +32,8 @@ class BillingController extends WorkspaceController
         ['Riwayat analitik', 'limit:analytics_days', 'hari'],
         ['QR aman (dinamis) sekali pakai', 'feature:dynamic_qr', null],
         ['Pengingat follow-up', 'feature:reminders', null],
-        ['Mode Event & pipeline lead', 'feature:event_mode', null],
+        ['Mode Event (acara & kartu di acara)', 'feature:event_mode', null],
+        ['Check-in peserta acara (scan di lokasi)', 'feature:events_checkin', null],
     ];
 
     public function show(): JsonResponse

@@ -3,7 +3,7 @@
 // bayar gateway), tagihan terbuka / masa tenggang, batal/lanjutkan langganan, riwayat invoice (server-side).
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowRight, Check, CircleCheck, Lock, QrCode, Receipt, Smartphone, Sparkles, TriangleAlert, X } from 'lucide-vue-next'
+import { ArrowRight, Check, CircleCheck, Lock, QrCode, Receipt, Smartphone, TriangleAlert, X } from 'lucide-vue-next'
 import AppBadge from '@/components/ui/AppBadge/index.vue'
 import AppButton from '@/components/ui/AppButton/index.vue'
 import AppMeter from '@/components/ui/AppMeter/index.vue'
@@ -64,11 +64,20 @@ if (route.query.paid) {
   router.replace({ query: {} })
 }
 
+const planNow = computed(() => b.value?.plans?.find((x) => x.key === current.value?.key))
+// paket aktif: satu tombol — "Beli paket ini" saat uji coba, selain itu "Perpanjang paket ini"
 function cta(p) {
   if (p.free) return null
-  if (p.key === current.value?.key) return { active: 'Perpanjang', trialing: 'Mulai berlangganan' }[sub.value?.status] ?? 'Aktifkan lagi'
-  return `Upgrade ke ${p.name}`
+  if (p.key === current.value?.key) return sub.value?.status === 'trialing' ? 'Beli paket ini' : 'Perpanjang paket ini'
+  // lebih mahal = naik paket; lebih murah = pindah ke paket yang lebih kecil
+  const up = !planNow.value || price(p) >= price(planNow.value)
+  return up ? `Naik ke ${p.name}` : `Pindah ke ${p.name}`
 }
+const periodNote = computed(() => {
+  if (!choosing.value || !current.value) return ''
+  if (choosing.value.key !== current.value.key) return 'Paket baru aktif hari ini. Sisa masa paket lama tidak dihitung.'
+  return 'Masa aktif ditambah dari tanggal berakhir paket Anda sekarang. Jika sudah berakhir, dihitung mulai hari ini.'
+})
 async function applyVoucher() {
   voucherError.value = ''
   if (!voucherCode.value.trim()) return
@@ -168,9 +177,13 @@ const COLUMNS = [
     <section class="grid gap-4">
       <div class="grid gap-3 sm:flex sm:flex-wrap sm:items-center sm:justify-between">
         <h2 class="text-xl">Pilih paket</h2>
-        <AppSegmented v-if="cycles.length > 1" v-model="cycle" label="Siklus tagihan" :options="cycles.map((c) => ({ value: c, label: CYCLE[c][0] }))" class="w-full sm:w-auto" />
-        <p v-else-if="b.company" class="text-sm text-muted">Langganan workspace per 6 bulan. Kartu fisik dipesan terpisah.</p>
+        <div v-if="cycles.length > 1" class="grid gap-1.5">
+          <span class="label">Periode tagihan</span>
+          <AppSegmented v-model="cycle" label="Periode tagihan" :options="cycles.map((c) => ({ value: c, label: CYCLE[c][0] }))" class="w-full sm:w-auto" />
+        </div>
+        <p v-else-if="b.company" class="text-sm text-muted">Langganan workspace dibayar per 6 bulan. Kartu fisik dipesan terpisah.</p>
       </div>
+      <p class="text-xs text-muted">✓ termasuk · <span class="line-through">dicoret</span> = tidak termasuk di paket ini.</p>
       <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <article
           v-for="p in b.plans" :key="p.key"
@@ -179,7 +192,6 @@ const COLUMNS = [
           <div class="flex items-center justify-between gap-2">
             <h3 class="font-display text-xl font-bold">{{ p.name }}</h3>
             <AppBadge v-if="p.key === current?.key" tone="ok">Paket saat ini</AppBadge>
-            <span v-else-if="!p.free" class="inline-flex items-center gap-1 text-xs text-accent-text"><Sparkles class="size-4" /> Rekomendasi</span>
           </div>
           <p>
             <span class="font-display text-[34px] leading-none font-bold">{{ p.free ? 'Gratis' : rupiah(price(p)) }}</span>
@@ -223,6 +235,7 @@ const COLUMNS = [
       <div v-if="voucher" class="flex justify-between gap-3 text-ok"><dt>Voucher {{ voucher.code }}</dt><dd class="font-mono">−{{ rupiah(voucher.discount) }}</dd></div>
       <div class="flex justify-between gap-3 border-t border-line pt-2 text-base font-semibold"><dt>Total</dt><dd class="font-display text-xl">{{ rupiah(total) }}</dd></div>
     </dl>
+    <p v-if="periodNote" class="text-sm text-muted">{{ periodNote }}</p>
     <form class="grid gap-1" @submit.prevent="applyVoucher">
       <label for="voucher-code" class="label">Kode voucher (opsional)</label>
       <div class="flex gap-2">
