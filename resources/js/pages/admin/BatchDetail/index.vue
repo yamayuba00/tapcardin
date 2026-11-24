@@ -1,4 +1,5 @@
 <script setup>
+import { download } from '@/api/client'
 // AFD F-04 — generate → bundle vendor → encode → QC → kirim.
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
@@ -122,7 +123,7 @@ async function act(fn, message) {
           <AppButton v-if="b.status === 'draft' && !b.generation" :loading="busy" @click="act(() => adminApi.generateBatch(id), 'Token sedang dibuat di latar — halaman ini diperbarui otomatis.')">1 · Buat token & kode aktivasi</AppButton>
           <AppButton v-else-if="b.status === 'draft' && !b.generation.running" :loading="busy" @click="act(() => adminApi.generateBatch(id), 'Dilanjutkan dari kartu terakhir.')">Lanjutkan pembuatan token</AppButton>
           <template v-if="b.has_bundle && !b.uniform">
-            <AppButton variant="secondary" :href="adminApi.bundleUrl(id)" title="Hanya untuk vendor cetak — tidak diperlukan untuk encode, QC, atau aktivasi"><Download class="size-5" /> Bundle vendor cetak (CSV, opsional)</AppButton>
+            <AppButton variant="secondary" @click="download(adminApi.bundleUrl(id), 'bundle.zip')" title="Hanya untuk vendor cetak — tidak diperlukan untuk encode, QC, atau aktivasi"><Download class="size-5" /> Bundle vendor cetak (CSV, opsional)</AppButton>
             <AppButton variant="secondary" :to="`/batches/${id}/print`"><QrCode class="size-5" /> Lembar QR</AppButton>
           </template>
           <AppButton v-if="nextStatus('sent_to_print')" variant="secondary" :loading="busy" @click="act(() => adminApi.batchStatus(id, 'sent_to_print'), 'Ditandai dikirim ke vendor')">Tandai dikirim ke vendor</AppButton>

@@ -33,6 +33,8 @@ abstract class TestCase extends BaseTestCase
     protected function setUp(): void
     {
         parent::setUp();
+        config(['services.tap_api.key' => 'test-api-key']);
+        $this->withHeader('X-Tap-Key', 'test-api-key');
         if ($clock = getenv('TEST_CLOCK')) {
             $this->travelTo(Carbon::parse($clock));
         }

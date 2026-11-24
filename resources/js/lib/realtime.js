@@ -1,3 +1,4 @@
+import { apiKeyHeader } from '@/api/client'
 // Realtime lewat Laravel Reverb (protokol Pusher) + Laravel Echo. Dimuat dinamis hanya di halaman yang memakainya,
 // jadi halaman publik (bio link) tidak ikut membawa pustaka WebSocket. Alamat & kunci dari config server (SpaController).
 
@@ -26,7 +27,7 @@ async function createEcho(cfg, onState) {
         fetch('/api/broadcasting/auth', {
           method: 'POST',
           credentials: 'same-origin',
-          headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...csrf() },
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...csrf(), ...apiKeyHeader() },
           body: JSON.stringify({ socket_id: socketId, channel_name: channel.name }),
         })
           .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`auth ${r.status}`))))

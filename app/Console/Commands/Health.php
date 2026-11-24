@@ -72,6 +72,13 @@ class Health extends Command
         $failed = DB::table('failed_jobs')->where('failed_at', '>=', now()->subDay())->count();
         $checks[] = ['label' => 'Job gagal 24 jam', 'value' => (string) $failed, 'ok' => $failed === 0];
 
+        $apiKey = (string) config('services.tap_api.key');
+        $checks[] = $apiKey !== ''
+            ? ['label' => 'Kunci API', 'value' => 'Terpasang', 'ok' => true]
+            : (app()->environment('production')
+                ? ['label' => 'Kunci API', 'value' => 'Kunci API belum diatur', 'ok' => false]
+                : ['label' => 'Kunci API', 'value' => 'Belum diatur (lokal)', 'ok' => true, 'advisory' => true]);
+
         $taps = DB::table('taps')->where('created_at', '>=', now()->subDay())->count();
         // `advisory` = saran kapasitas, bukan kerusakan → tidak memicu alarm email (tapcard:alert)
         // tarif & resi masih simulasi: di produksi ini harus ditandai (pesanan kurir tidak menerima tarif dummy)

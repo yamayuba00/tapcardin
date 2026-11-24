@@ -5,6 +5,7 @@ use App\Http\Controllers\SpaController;
 use App\Http\Middleware\CaddyAskMiddleware;
 use App\Http\Middleware\EnsureNotBlocked;
 use App\Http\Middleware\EnsurePlatformStaff;
+use App\Http\Middleware\RequireTapApiKey;
 use App\Http\Middleware\ResolveWorkspace;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\UseAdminSession;
@@ -34,6 +35,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Caddy berjalan di depan di server yang sama: percayai X-Forwarded-* dari loopback saja (IP klien & https asli)
         $middleware->trustProxies(at: ['127.0.0.1', '::1']);
         $middleware->web(prepend: [UseAdminSession::class], append: [SecurityHeaders::class, EnsureNotBlocked::class]);
+        $middleware->append(RequireTapApiKey::class);
         $middleware->alias([
             'workspace' => ResolveWorkspace::class,
             'platform' => EnsurePlatformStaff::class,

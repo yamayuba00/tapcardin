@@ -1,4 +1,5 @@
 <script setup>
+import { download } from '@/api/client'
 // Daftar hadir event: jumlah, siapa saja (terbaru di atas, diperbarui tiap 15 detik), ekspor CSV, batalkan check-in yang salah.
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { Download, ScanLine, Undo2 } from 'lucide-vue-next'
@@ -34,7 +35,7 @@ onBeforeUnmount(() => clearInterval(timer))
   <AppPanel :title="`Daftar hadir · ${list.meta.value?.total ?? 0}`" flush>
     <template #actions>
       <AppButton v-if="auth.can('events.checkin')" variant="ghost" :to="`/events/${eventId}/checkin`"><ScanLine class="size-4" /> Check-in peserta</AppButton>
-      <AppButton variant="ghost" :href="checkinsApi.exportUrl(eventId)"><Download class="size-4" /> CSV</AppButton>
+      <AppButton variant="ghost" @click="download(checkinsApi.exportUrl(eventId), 'checkin.csv')"><Download class="size-4" /> CSV</AppButton>
     </template>
     <DataTable
       dense :columns="COLUMNS" :rows="list.rows.value" :meta="list.meta.value" :sort="list.sort.value" :loading="list.loading.value"

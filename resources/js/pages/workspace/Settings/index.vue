@@ -1,4 +1,5 @@
 <script setup>
+import { download } from '@/api/client'
 // U-15 — akun, tautan @handle, preferensi notifikasi (NT-02), paket & pemakaian, izin (RL-09), ekspor & hapus akun (PV-02).
 import { computed, reactive, ref, watch } from 'vue'
 import { CircleCheck, CreditCard, Download, LogOut, Moon, Plus, ShieldCheck, Smartphone, Trash2 } from 'lucide-vue-next'
@@ -201,7 +202,7 @@ async function destroy() {
     <AppPanel title="Privasi & data">
       <div class="grid gap-4">
         <p class="text-sm text-muted">Unduh profil, kartu, koneksi, dan riwayat tap 24 bulan dalam format JSON.</p>
-        <div><AppButton variant="secondary" :href="meApi.exportUrl"><Download class="size-5" /> Unduh data saya</AppButton></div>
+        <div><AppButton variant="secondary" @click="download(meApi.exportUrl, 'data-saya')"><Download class="size-5" /> Unduh data saya</AppButton></div>
         <hr class="border-line" />
         <p class="text-sm text-muted">Menghapus akun mencabut semua kartu. Data pribadi disimpan tersembunyi 30 hari, lalu dihapus permanen. Mendaftar lagi nanti = akun baru yang kosong.</p>
         <div><AppButton variant="danger" @click="deleting = true"><Trash2 class="size-5" /> Hapus akun</AppButton></div>

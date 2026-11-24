@@ -70,6 +70,8 @@ class SpaController extends Controller
             'marketingUrl' => "$scheme://$base$suffix",
             'statusUrl' => "$scheme://status.$base$suffix",
             'googleEnabled' => (bool) config('services.google.client_id'),
+            // kunci API untuk pemanggilan dari halaman web (bukan host tap.: kartu tidak memanggil API gerbang)
+            'apiKey' => str_starts_with($host, 'tap.') ? null : config('services.tap_api.key'),
             // situs marketing: tombol "Hubungi Sales" (WhatsApp); null → disembunyikan
             'salesWhatsapp' => $host === $base ? (config('tapcard.sales_whatsapp') ?: null) : null,
             // subdomain / domain kustom perusahaan: nama & logo untuk halaman login bermerek

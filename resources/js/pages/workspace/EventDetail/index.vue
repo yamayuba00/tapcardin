@@ -1,4 +1,5 @@
 <script setup>
+import { download } from '@/api/client'
 // U-09 — ringkasan event (tap, pengunjung, simpan kontak, koneksi per tahap) + daftar koneksi event (server-side) + ekspor CSV.
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -78,7 +79,7 @@ async function destroy() {
       </template>
       <AppButton v-if="auth.can('events.checkin')" :to="`/events/${id}/checkin`"><ScanLine class="size-5" /> Check-in peserta</AppButton>
       <AppButton variant="ghost" @click="editing = true"><Pencil class="size-5" /> Ubah</AppButton>
-      <AppButton v-if="auth.can('leads.export.*')" variant="secondary" :href="exportHref"><Download class="size-5" /> Ekspor koneksi</AppButton>
+      <AppButton v-if="auth.can('leads.export.*')" variant="secondary" @click="download(exportHref, 'peserta-event.csv')"><Download class="size-5" /> Ekspor koneksi</AppButton>
       <AppButton v-if="e.is_active" variant="secondary" :loading="busy" @click="deactivate"><Power class="size-5" /> Matikan Mode Event</AppButton>
       <AppButton v-else-if="e.status !== 'past'" :loading="busy" @click="act(() => eventsApi.activate(id), 'Mode Event aktif')"><Radio class="size-5" /> Saya sedang di sini</AppButton>
     </PageHeader>

@@ -250,6 +250,18 @@ domain pertama kali dibuka (bisa beberapa detik).
 Cek: `curl -I https://kartu.perusahaan.com/` (harus 200 dan sertifikat valid), `journalctl -u caddy -f` untuk galat
 penerbitan. Catatan: Caddy memakai port 80 dan 443; pastikan tidak ada layanan lain di kedua port.
 
+## Kunci API (X-Tap-Key)
+
+Semua `/api` memerlukan header `X-Tap-Key`, kecuali endpoint tap (NFC/QR tidak bisa membawa header) dan aliran SSE notifikasi.
+
+1. Buat kunci: `openssl rand -hex 32`
+2. Isi di `.env` produksi: `TAPCARD_API_KEY=<kunci>`
+3. Muat ulang konfigurasi dan layanan: `php artisan config:cache`, lalu `sudo supervisorctl restart tapcard-queue tapcard-broadcast tapcard-webhooks tapcard-reverb` (dan `php-fpm` bila memakai opcache).
+
+Kunci ikut terkirim ke halaman web (sumber JavaScript terbaca siapa pun), jadi ini penghalang akses iseng, bukan rahasia.
+Aplikasi Flutter/mobile (bila ada) harus mengirim header yang sama: simpan kunci di konfigurasi build, jangan di kode sumber publik.
+`php artisan tapcard:health` menampilkan status kunci: gagal bila produksi belum mengisinya.
+
 ## Pindah domain
 
 ```bash

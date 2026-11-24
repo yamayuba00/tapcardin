@@ -1,4 +1,5 @@
 <script setup>
+import { download } from '@/api/client'
 // U-06 — daftar koneksi/lead server-side: cari, filter (tahap, sumber, follow-up, event), urut kolom,
 // halaman & jumlah per halaman tersimpan di URL. Input manual, ekspor CSV sesuai cakupan izin.
 // Filter per kartu; daftar dimuat ulang otomatis tiap 1 menit (koneksi dari Tukar Kontak langsung muncul).
@@ -86,7 +87,7 @@ watch(list.rows, auto.touch)
 const hidden = computed(() => list.meta.value?.hidden ?? 0)
 const menu = computed(() => [
   auth.can('leads.edit.*') && { label: 'Impor CSV', icon: FileUp, onSelect: () => router.push('/connections/import') },
-  auth.can('leads.export.*') && { label: 'Ekspor CSV (sesuai filter)', icon: Download, onSelect: () => (window.location.href = exportHref.value) },
+  auth.can('leads.export.*') && { label: 'Ekspor CSV (sesuai filter)', icon: Download, onSelect: () => download(exportHref.value, 'kontak.csv') },
   auth.can('billing.view') && { label: 'Kirim ke CRM — segera hadir', icon: Blocks, onSelect: () => router.push('/addons') },
 ].filter(Boolean))
 const filtered = computed(() => Object.values(filters).some(Boolean))

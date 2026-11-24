@@ -50,4 +50,7 @@ return [
 
     // Pembayaran langganan diatur di config/payment.php (PAYMENT_*).
 
+    // Kunci akses API (header X-Tap-Key). Penghalang akses iseng, bukan rahasia: kunci di halaman web terbaca di sumber JS.
+    'tap_api' => ['key' => env('TAPCARD_API_KEY')],
+
 ];
