@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 namespace Tests\Feature;
 
@@ -36,7 +36,7 @@ class BioPagesTest extends TestCase
         $this->assertArrayHasKey($key, $res->json('error.fields') ?? [], (string) $res->getContent());
     }
 
-    /** makeCard() memasang kartu fisik ke profil pertama — profil kartu digital; cabut kartu digitalnya agar berlaku batas kartu fisik. */
+    /** makeCard() memasang kartu fisik ke profil pertama â€” profil kartu digital; cabut kartu digitalnya agar berlaku batas kartu fisik. */
     private function physicalOnly(User $user): void
     {
         Card::acrossTenants()->where(['holder_user_id' => $user->id, 'form' => Card::DIGITAL])->update(['status' => 'revoked']);
@@ -86,8 +86,8 @@ class BioPagesTest extends TestCase
         ], ['theme' => ['preset' => 'ivory', 'links' => 'grid']])->assertOk();
         $this->assertSame(['text', 'button', 'video', 'divider', 'contacts', 'save_contact'], array_column($saved->json('data.blocks'), 'type'));
         $this->assertSame($page['blocks'][1]['id'], $saved->json('data.blocks.4.id'), 'blok yang ada diperbarui, bukan dibuat ulang');
-        $this->assertSame('Simpan ke Kontak HP', $saved->json('data.blocks.5.data.label'), 'teks kosong → teks bawaan');
-        $this->assertSame('https://wa.me/6281234567890', $saved->json('data.blocks.1.data.url'), 'tanpa skema → https://');
+        $this->assertSame('Simpan ke Kontak HP', $saved->json('data.blocks.5.data.label'), 'teks kosong â†’ teks bawaan');
+        $this->assertSame('https://wa.me/6281234567890', $saved->json('data.blocks.1.data.url'), 'tanpa skema â†’ https://');
 
         $blocks = $this->getJson($this->host('tap', "/api/c/{$card->card_token}"))
             ->assertJsonPath('data.profile.theme.preset', 'ivory')->json('data.profile.blocks');
@@ -142,6 +142,9 @@ class BioPagesTest extends TestCase
         $this->save($bio1, $main, [['type' => 'button', 'data' => ['label' => 'Portofolio', 'url' => 'https://behance.net/rina']]])->assertOk();
         $this->postJson($this->pagesUrl($bio1), ['name' => 'Event'])->assertCreated();
 
+        $rina->personalTenant->update(['plan_id' => \App\Models\Plan::where('key', 'personal_pro')->value('id')]);
+        $rina->unsetRelation('personalTenant');
+        \App\Authz\PlanFeatures::forget($rina->personalTenant);
         $second = $this->makeCard(CardStatus::Unclaimed, buyer: $rina);
         $this->postJson($this->host('app', '/api/cards/activate'), ['token' => $second->card_token])->assertOk();
         $pages2 = $this->getJson($this->pagesUrl($second->fresh()->profile->public_id))->json('data');

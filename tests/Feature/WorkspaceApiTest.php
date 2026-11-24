@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 namespace Tests\Feature;
 
@@ -14,7 +14,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
-/** Endpoint JSON pulau Vue workspace Personal (BSD §8.4). */
+/** Endpoint JSON pulau Vue workspace Personal (BSD Â§8.4). */
 class WorkspaceApiTest extends TestCase
 {
     use RefreshDatabase;
@@ -74,6 +74,9 @@ class WorkspaceApiTest extends TestCase
         $this->patchJson($this->host('app', "/api/profiles/{$bio1->public_id}"), ['title' => 'Konsultan Pajak'])->assertOk();
 
         // kartu kedua: dapat salinan bio terakhir, bukan profil yang sama
+        $rina->personalTenant->update(['plan_id' => \App\Models\Plan::where('key', 'personal_pro')->value('id')]);
+        $rina->unsetRelation('personalTenant');
+        \App\Authz\PlanFeatures::forget($rina->personalTenant);
         $second = $this->makeCard(CardStatus::Unclaimed, buyer: $rina);
         $this->postJson($this->host('app', '/api/cards/activate'), ['token' => $second->card_token])->assertOk();
         $bio2 = $second->fresh()->profile;
@@ -151,7 +154,7 @@ class WorkspaceApiTest extends TestCase
         $this->get('http://localhost/')->assertOk()->assertSee('id="app"', false);
     }
 
-    /** Regresi: `editor.widths.find is not a function` — daftar katalog harus array JSON, tetap saat dibaca dari cache. */
+    /** Regresi: `editor.widths.find is not a function` â€” daftar katalog harus array JSON, tetap saat dibaca dari cache. */
     public function test_landing_showcase_catalog_lists_stay_json_arrays_when_cached(): void
     {
         foreach ([1, 2] as $_) { // panggilan ke-2 membaca dari cache

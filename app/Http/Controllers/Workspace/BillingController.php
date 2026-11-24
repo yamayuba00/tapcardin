@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 namespace App\Http\Controllers\Workspace;
 
@@ -22,7 +22,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
-/** OR-05 — Paket & tagihan: paket aktif + pemakaian, perbandingan paket, checkout, invoice, batal/lanjutkan langganan. */
+/** OR-05 â€” Paket & tagihan: paket aktif + pemakaian, perbandingan paket, checkout, invoice, batal/lanjutkan langganan. */
 class BillingController extends WorkspaceController
 {
     /** Daftar fitur yang dibandingkan di halaman paket: [label, kunci limit | fitur, satuan]. */
@@ -34,6 +34,7 @@ class BillingController extends WorkspaceController
         ['Pengingat follow-up', 'feature:reminders', null],
         ['Mode Event (acara & kartu di acara)', 'feature:event_mode', null],
         ['Check-in peserta acara (scan di lokasi)', 'feature:events_checkin', null],
+        ['Tap kartu digital tanpa batas', 'feature:unlimited_digital_taps', null],
     ];
 
     public function show(): JsonResponse
@@ -65,7 +66,7 @@ class BillingController extends WorkspaceController
         ]]);
     }
 
-    /** POST /api/billing/checkout {plan, cycle} → invoice + URL halaman bayar. */
+    /** POST /api/billing/checkout {plan, cycle} â†’ invoice + URL halaman bayar. */
     public function checkout(Request $request, CreateCheckout $create): JsonResponse
     {
         $this->access()->authorize('billing.manage');
@@ -81,7 +82,7 @@ class BillingController extends WorkspaceController
     }
 
     /**
-     * POST /api/billing/tap-topup — tambahan kuota tap kartu digital milik pengguna ini di workspace ini. Kartunya milik
+     * POST /api/billing/tap-topup â€” tambahan kuota tap kartu digital milik pengguna ini di workspace ini. Kartunya milik
      * pribadi, jadi pemegang boleh membeli tanpa izin kelola tagihan workspace.
      */
     public function topup(Request $request, CreateTapTopup $create): JsonResponse
@@ -129,13 +130,13 @@ class BillingController extends WorkspaceController
             // ringkasan setelah lunas: paket & masa aktif yang kini berjalan
             'active_period' => $invoice->status === 'paid' && $invoice->type === 'subscription'
                 ? Subscription::where('tenant_id', $invoice->tenant_id)->first()?->activePeriod() : null,
-            // tagihan kedaluwarsa → tempat membuat tagihan baru
+            // tagihan kedaluwarsa â†’ tempat membuat tagihan baru
             'renew_to' => match (true) {
                 $invoice->type === 'topup' => '/settings',
                 (bool) $invoice->order_id => '/orders',
                 default => '/billing',
             },
-            // halaman tujuan setelah bayar (pesanan kartu → halaman pesanan, tambahan tap → pengaturan)
+            // halaman tujuan setelah bayar (pesanan kartu â†’ halaman pesanan, tambahan tap â†’ pengaturan)
             'return_to' => match (true) {
                 $invoice->type === 'topup' => '/settings',
                 $invoice->order_id && ($o = Order::withoutGlobalScopes()->find($invoice->order_id)) !== null => "/orders/{$o->public_id}",
@@ -144,7 +145,7 @@ class BillingController extends WorkspaceController
         ]]);
     }
 
-    /** POST /api/billing/invoices/{id}/pay — buka (lagi) halaman bayar invoice yang masih terbuka. */
+    /** POST /api/billing/invoices/{id}/pay â€” buka (lagi) halaman bayar invoice yang masih terbuka. */
     public function pay(Request $request, Invoice $invoice): JsonResponse
     {
         $this->authorizeInvoice($invoice, 'billing.manage');
@@ -158,7 +159,7 @@ class BillingController extends WorkspaceController
     }
 
     /**
-     * POST /api/billing/invoices/{id}/check — tanya status pembayaran langsung ke gateway (dipakai saat pengguna kembali
+     * POST /api/billing/invoices/{id}/check â€” tanya status pembayaran langsung ke gateway (dipakai saat pengguna kembali
      * dari halaman bayar, sebelum/tanpa menunggu webhook). Hasilnya lewat jalur yang sama: ApplyPayment.
      */
     public function check(Invoice $invoice, ApplyPayment $apply): JsonResponse
@@ -171,7 +172,7 @@ class BillingController extends WorkspaceController
         return response()->json(['data' => self::presentInvoice($invoice->fresh('plan'))]);
     }
 
-    /** POST /api/billing/invoices/{id}/simulate {result, method} — hanya gateway simulator (lokal/test). */
+    /** POST /api/billing/invoices/{id}/simulate {result, method} â€” hanya gateway simulator (lokal/test). */
     public function simulate(Request $request, Invoice $invoice, ApplyPayment $apply): JsonResponse
     {
         $this->authorizeInvoice($invoice, 'billing.manage');
@@ -182,7 +183,7 @@ class BillingController extends WorkspaceController
         return response()->json(['data' => ['outcome' => $outcome] + self::presentInvoice($invoice->fresh('plan'))]);
     }
 
-    /** POST /api/billing/cancel — berhenti di akhir periode (fitur berbayar tetap jalan sampai tanggal itu). */
+    /** POST /api/billing/cancel â€” berhenti di akhir periode (fitur berbayar tetap jalan sampai tanggal itu). */
     public function cancel(Request $request): JsonResponse
     {
         $this->access()->authorize('billing.manage');

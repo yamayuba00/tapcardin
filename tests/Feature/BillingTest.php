@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 namespace Tests\Feature;
 
@@ -12,7 +12,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
-/** OR-05 — paket & tagihan: checkout, gateway (simulator & payment link), aktivasi paket, siklus langganan. */
+/** OR-05 â€” paket & tagihan: checkout, gateway (simulator & payment link), aktivasi paket, siklus langganan. */
 class BillingTest extends TestCase
 {
     use RefreshDatabase;
@@ -39,7 +39,7 @@ class BillingTest extends TestCase
         $this->assertSame(49000 * 12 - 490000, $pro['yearly_saving']);
         $this->assertTrue(collect($pro['compare'])->firstWhere('label', 'QR aman (dinamis) sekali pakai')['value']);
         $this->assertSame('simulator', $d['gateway']['code']);
-        $this->assertSame(2, $d['usage'][0]['limit']);
+        $this->assertSame(1, $d['usage'][0]['limit']);
     }
 
     public function test_checkout_and_simulated_payment_upgrade_to_pro_and_unlock_dynamic_qr(): void
@@ -76,7 +76,7 @@ class BillingTest extends TestCase
         $this->actingAs($this->makeUser('lain@example.com', 'Lain'))->api('GET', "/billing/invoices/{$c['invoice']['id']}")->assertNotFound();
     }
 
-    /** Gateway "link" (mis. QRIS) dengan konfigurasi PAYMENT_* — tanpa nama penyedia di kode. */
+    /** Gateway "link" (mis. QRIS) dengan konfigurasi PAYMENT_* â€” tanpa nama penyedia di kode. */
     private function useLinkGateway(array $webhook = []): void
     {
         config(['payment.driver' => 'link', 'payment.gateway' => [
@@ -133,13 +133,13 @@ class BillingTest extends TestCase
         $this->actingAs($this->makeUser());
         $id = $this->api('POST', '/billing/checkout', ['plan' => 'personal_pro', 'cycle' => 'monthly'])->json('data.invoice.id');
 
-        // tanda tangan palsu → isi webhook diabaikan; API gateway bilang masih pending → tetap belum lunas
+        // tanda tangan palsu â†’ isi webhook diabaikan; API gateway bilang masih pending â†’ tetap belum lunas
         $forged = ['type' => 'payment.completed', 'data' => ['payment_id' => 'pay_9', 'order_id' => $id, 'amount' => 49000, 'status' => 'completed']];
         $this->signedWebhook($forged, 'evt_palsu', 'kunci-salah')->assertOk()->assertJsonPath('outcome', 'pending');
         $this->assertSame('issued', $this->invoices()->first()->status);
         $this->assertDatabaseHas('payment_events', ['external_id' => 'evt_palsu', 'signature_valid' => false]);
 
-        // pengguna kembali dari halaman bayar → cek status ke gateway → lunas
+        // pengguna kembali dari halaman bayar â†’ cek status ke gateway â†’ lunas
         $this->api('POST', "/billing/invoices/$id/check")->assertOk()->assertJsonPath('data.status', 'paid');
     }
 
@@ -177,7 +177,7 @@ class BillingTest extends TestCase
         $id = $this->api('POST', '/billing/checkout', ['plan' => 'personal_pro', 'cycle' => 'monthly'])->json('data.invoice.id');
         $this->api('POST', "/billing/invoices/$id/simulate", ['result' => 'paid', 'method' => 'QRIS'])->assertOk();
 
-        // H-7 → invoice perpanjangan + notifikasi
+        // H-7 â†’ invoice perpanjangan + notifikasi
         $this->travel(25)->days();
         $this->artisan('tapcard:subscriptions')->assertSuccessful();
         $renewal = $this->invoices()->where('status', 'issued')->firstOrFail();
@@ -191,7 +191,7 @@ class BillingTest extends TestCase
         $this->api('POST', "/billing/invoices/{$renewal->public_id}/simulate", ['result' => 'paid', 'method' => 'QRIS'])->assertJsonPath('data.status', 'paid');
         $this->assertEquals($end->copy()->addMonthNoOverflow()->toDateString(), Subscription::withoutGlobalScope(TenantScope::class)->first()->current_period_end->toDateString());
 
-        // batal di akhir periode → turun ke Free saat periode habis
+        // batal di akhir periode â†’ turun ke Free saat periode habis
         $this->api('POST', '/billing/cancel')->assertOk()->assertJsonPath('data.subscription.cancel_at_period_end', true);
         $this->travel(40)->days();
         $this->artisan('tapcard:subscriptions')->assertSuccessful();

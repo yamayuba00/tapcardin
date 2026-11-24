@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 namespace App\Http\Controllers\Platform;
 
@@ -14,7 +14,7 @@ use Illuminate\Validation\Rule;
 /**
  * Paket & harga (platform.plans.manage): personal bulanan/tahunan, perusahaan per 6 bulan; batas, fitur, tampil di halaman harga.
  * Perubahan harga berlaku untuk tagihan berikutnya; batas & fitur langsung berlaku (cache paket tenant dibersihkan).
- * Paket yang dipakai tidak bisa dihapus — sembunyikan saja (is_public = false).
+ * Paket yang dipakai tidak bisa dihapus â€” sembunyikan saja (is_public = false).
  */
 class PlanController extends PlatformController
 {
@@ -27,7 +27,7 @@ class PlanController extends PlatformController
         'pipeline' => 'Pipeline lead', 'reminders' => 'Pengingat follow-up', 'event_mode' => 'Mode Event', 'dynamic_qr' => 'QR aman (dinamis)',
         'subdomain' => 'Subdomain sendiri', 'custom_domain' => 'Domain kustom', 'teams' => 'Tim (segera hadir)', 'custom_roles' => 'Peran kustom (segera hadir)',
         'custom_stages' => 'Tahap pipeline kustom (segera hadir)', 'lead_fields' => 'Field lead kustom (segera hadir)', 'auto_assign' => 'Penugasan otomatis (segera hadir)',
-        'webhooks' => 'Webhook keluar', 'events_checkin' => 'Check-in event',
+        'webhooks' => 'Webhook keluar', 'events_checkin' => 'Check-in event', 'unlimited_digital_taps' => 'Tap kartu digital tanpa batas',
     ];
 
     public function index(): JsonResponse

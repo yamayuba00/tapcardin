@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 namespace App\Actions\Cards;
 
@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 
 /**
- * PRD §8 / TRD §6.2 — apa yang dilihat pengunjung saat kartu di-tap, sekaligus mencatat tap.
+ * PRD Â§8 / TRD Â§6.2 â€” apa yang dilihat pengunjung saat kartu di-tap, sekaligus mencatat tap.
  * Dipakai oleh shell `/c/{token}` (data disisipkan ke HTML pertama) dan API `/api/c/{token}`.
  */
 final class ResolveCard
@@ -32,9 +32,9 @@ final class ResolveCard
         $quotaEmpty = false;
         if ($view->tenantId && in_array($view->status, ['active', 'lost', 'paused'], true)) {
             $count = self::countable($request, $view->cardId);
-            // kartu digital: tap unik memakai kuota paket; kuota habis → profil tidak dibuka & tap tidak dicatat
+            // kartu digital: tap unik memakai kuota paket; kuota habis â†’ profil tidak dibuka & tap tidak dicatat
             if ($view->digital && $view->status === 'active') {
-                $quotaEmpty = ! ($count ? TapQuota::consume($view->cardId, $view->holderUserId, $view->tenantId) : TapQuota::available($view->cardId));
+                $quotaEmpty = ! ($count ? TapQuota::consume($view->cardId, $view->holderUserId, $view->tenantId) : TapQuota::available($view->cardId, $view->tenantId));
             }
             if ($count && ! $quotaEmpty) {
                 RecordTap::dispatch($view->tenantId, $view->cardId, TapContext::fromRequest($request));
@@ -63,8 +63,8 @@ final class ResolveCard
             'indexable' => (bool) ($view->profile['is_indexable'] ?? false),
             // judul & pratinjau tautan (WhatsApp/iMessage) tanpa menunggu JS
             'meta' => $p ? [
-                'title' => trim($p['display_name'].' — '.implode(' · ', array_filter([$p['title'], $p['company']])), ' —'),
-                'description' => $p['bio'] ? mb_strimwidth($p['bio'], 0, 160, '…') : 'Simpan kontak '.$p['display_name'].' dengan satu ketukan.',
+                'title' => trim($p['display_name'].' â€” '.implode(' Â· ', array_filter([$p['title'], $p['company']])), ' â€”'),
+                'description' => $p['bio'] ? mb_strimwidth($p['bio'], 0, 160, 'â€¦') : 'Simpan kontak '.$p['display_name'].' dengan satu ketukan.',
                 'image' => $p['avatar_url'],
                 'theme' => $p['theme']['mode'] ?? 'dark',
                 'lang' => $p['locale'] ?? 'id',
@@ -91,7 +91,7 @@ final class ResolveCard
 
     /**
      * Satu tap per pengunjung (IP + browser) per kartu dalam `tap_dedupe_minutes`: refresh, buka ulang, atau spam
-     * tidak menambah statistik & notifikasi. Bukan per IP saja — satu IP dipakai banyak orang (Wi-Fi kantor/event,
+     * tidak menambah statistik & notifikasi. Bukan per IP saja â€” satu IP dipakai banyak orang (Wi-Fi kantor/event,
      * CGNAT operator seluler), jadi pengunjung berbeda di jaringan yang sama tetap terhitung. Bot & pratinjau link diabaikan.
      */
     private static function countable(Request $request, int $cardId): bool
