@@ -17,7 +17,7 @@ final class EmailContent
     public const DEFAULT_ON = [
         'invoice_due' => true, 'invoice_paid' => true, 'plan_changed' => true, 'workspace_expired' => true, 'subscription_past_due' => true,
         'grace_ending' => true, 'subscription_reminder' => true, 'trial_ending' => true, 'order_status' => true, 'order_unpaid' => true, 'tap_quota' => true, 'lost_card_tapped' => true,
-        'webhook_disabled' => true,
+        'webhook_disabled' => true, 'domain_unverified' => true,
     ];
 
     /** Selalu dikirim, tidak bisa dimatikan (tidak tampil di daftar preferensi). */
@@ -188,6 +188,16 @@ final class EmailContent
                     'Tambah kuota sebelum habis agar profil Anda tetap bisa dibuka.',
                 ],
                 'action' => ['label' => 'Tambah kuota tap', 'path' => '/settings'],
+                'tone' => 'warn',
+            ],
+            'domain_unverified' => [
+                'subject' => 'Domain kustom Anda tidak lagi terverifikasi',
+                'title' => 'Domain kustom perlu diperiksa',
+                'lines' => [
+                    "Record TXT verifikasi untuk **{$d['domain']}** tidak lagi ditemukan di DNS.",
+                    'Domain dinonaktifkan sementara sampai record dipasang kembali dan diverifikasi ulang oleh tim TapCard.',
+                ],
+                'action' => ['label' => 'Buka pengaturan', 'path' => '/settings'],
                 'tone' => 'warn',
             ],
             'lost_card_tapped' => [

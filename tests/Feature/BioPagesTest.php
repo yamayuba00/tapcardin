@@ -1,11 +1,13 @@
-﻿<?php
+<?php
 
 namespace Tests\Feature;
 
+use App\Authz\PlanFeatures;
 use App\Enums\CardStatus;
 use App\Models\BioBlock;
 use App\Models\BioPage;
 use App\Models\Card;
+use App\Models\Plan;
 use App\Models\ProductEvent;
 use App\Models\User;
 use App\Support\Bio\BioBlocks;
@@ -142,9 +144,9 @@ class BioPagesTest extends TestCase
         $this->save($bio1, $main, [['type' => 'button', 'data' => ['label' => 'Portofolio', 'url' => 'https://behance.net/rina']]])->assertOk();
         $this->postJson($this->pagesUrl($bio1), ['name' => 'Event'])->assertCreated();
 
-        $rina->personalTenant->update(['plan_id' => \App\Models\Plan::where('key', 'personal_pro')->value('id')]);
+        $rina->personalTenant->update(['plan_id' => Plan::where('key', 'personal_pro')->value('id')]);
         $rina->unsetRelation('personalTenant');
-        \App\Authz\PlanFeatures::forget($rina->personalTenant);
+        PlanFeatures::forget($rina->personalTenant);
         $second = $this->makeCard(CardStatus::Unclaimed, buyer: $rina);
         $this->postJson($this->host('app', '/api/cards/activate'), ['token' => $second->card_token])->assertOk();
         $pages2 = $this->getJson($this->pagesUrl($second->fresh()->profile->public_id))->json('data');

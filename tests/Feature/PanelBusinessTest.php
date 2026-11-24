@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Authz\PlanFeatures;
 use App\Enums\CardStatus;
 use App\Models\Invoice;
 use App\Models\StaffAccount;
@@ -132,6 +133,8 @@ class PanelBusinessTest extends TestCase
     {
         $rina = $this->makeUser();
         $tenant = $rina->personalTenant;
+        $tenant->update(['limit_overrides' => ['features' => ['custom_domain' => true]]]); // paket perorangan tidak punya fitur ini: beri lewat override
+        PlanFeatures::forget($tenant);
         $this->actingAs($this->staff('platform_owner'));
         $this->panel('POST', '/domains', ['tenant' => $tenant->public_id, 'domain' => 'kartu.localhost'])->assertJsonPath('error.code', 'domain_reserved');
         $d = $this->panel('POST', '/domains', ['tenant' => $tenant->public_id, 'domain' => 'https://Kartu.Acme.com/'])->assertCreated()->json('data');
@@ -149,14 +152,14 @@ class PanelBusinessTest extends TestCase
                 return $this->records[$name] ?? [];
             }
         });
-        $this->panel('POST', "/domains/{$d['id']}/verify")->assertOk()->assertJsonPath('data.status', 'pending')->assertJsonPath('data.last_error', fn ($e) => str_contains($e, 'belum ditemukan'));
+        $this->panel('POST', "/domains/{$d['id']}/verify")->assertStatus(202)->assertJsonPath('data.status', 'pending')->assertJsonPath('data.last_error', fn ($e) => str_contains($e, 'belum ditemukan'));
 
         $this->actingAs($rina);
         $this->getJson('http://kartu.acme.com/api/billing')->assertNotFound();
 
         app(DnsResolver::class)->records['_tapcard.kartu.acme.com'] = ["tapcard-verify=$token"];
         $this->actingAs($this->staff('platform_owner', 'owner2@tapcard.test'));
-        $this->panel('POST', "/domains/{$d['id']}/verify")->assertOk()->assertJsonPath('data.status', 'active');
+        $this->panel('POST', "/domains/{$d['id']}/verify")->assertStatus(202)->assertJsonPath('data.status', 'active');
 
         $this->actingAs($rina);
         $this->getJson('http://kartu.acme.com/api/billing')->assertOk()->assertJsonPath('data.plan.key', 'personal_free');

@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Authz\PlanFeatures;
 use App\Enums\TenantType;
 use App\Exceptions\ApiError;
 use App\Models\Tenant;
@@ -93,8 +94,10 @@ class ResolveWorkspace
     private function tenantByDomain(string $host): ?Tenant
     {
         $id = Cache::remember("tenant:domain:$host", 300, fn () => TenantDomain::where('domain', strtolower($host))->where('status', 'active')->value('tenant_id') ?? 0);
+        $tenant = $id ? Tenant::find($id) : null;
 
-        return $id ? Tenant::find($id) : null;
+        // paket yang sudah kehilangan fitur tidak lagi membuka domain (sinkron juga lewat DomainPlanGuard)
+        return $tenant && PlanFeatures::has($tenant, 'custom_domain') ? $tenant : null;
     }
 
     private function companyBySlug(string $slug, Request $request): Tenant|Response

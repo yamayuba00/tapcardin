@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\TenantStatus;
 use App\Enums\TenantType;
+use App\Support\Domains\DomainPlanGuard;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -25,6 +26,15 @@ class Tenant extends Model
         'require_impersonation_notice' => false,
         'lost_reasons' => ['Harga', 'Waktu belum tepat', 'Pilih kompetitor', 'Tidak merespons', 'Lainnya'],
     ];
+
+    protected static function booted(): void
+    {
+        static::updated(function (self $tenant) {
+            if ($tenant->wasChanged('plan_id') || $tenant->wasChanged('limit_overrides')) {
+                DomainPlanGuard::sync($tenant);
+            }
+        });
+    }
 
     protected function casts(): array
     {

@@ -4,10 +4,10 @@ namespace App\Http\Controllers\Platform;
 
 use App\Authz\PlanFeatures;
 use App\Exceptions\ApiError;
+use App\Jobs\VerifyDomain;
 use App\Models\Tenant;
 use App\Models\TenantDomain;
 use App\Support\Audit;
-use App\Support\Dns\DnsResolver;
 use App\Support\Http\Table;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -55,23 +55,18 @@ class DomainController extends PlatformController
         return $this->ok(self::present($d->fresh('tenant')) + ['plan_allows' => PlanFeatures::has($tenant, 'custom_domain')], 201);
     }
 
-    /** POST /api/domains/{id}/verify — cek TXT; cocok → aktif. */
-    public function verify(TenantDomain $domain, DnsResolver $dns): JsonResponse
+    /** POST /api/domains/{id}/verify — cek TXT di antrean (202); hasilnya muncul saat panel memuat ulang. */
+    public function verify(TenantDomain $domain): JsonResponse
     {
         $this->can('tenants.manage');
-        $found = $dns->txt($domain->txtName());
-        $ok = in_array($domain->txtValue(), array_map('trim', $found), true);
-        $domain->update([
-            'last_checked_at' => now(),
-            'last_error' => $ok ? null : ($found ? 'TXT ditemukan tetapi nilainya tidak cocok.' : 'TXT record belum ditemukan (propagasi DNS bisa sampai 24 jam).'),
-            ...($ok ? ['status' => 'active', 'verified_at' => now()] : []),
-        ]);
-        $this->forget($domain);
-        if ($ok) {
-            Audit::platform('domain.verified', $domain, null, ['domain' => $domain->domain]);
+        $tenant = Tenant::findOrFail($domain->tenant_id);
+        if (! PlanFeatures::has($tenant, 'custom_domain')) {
+            throw new ApiError('plan_required', 'Paket workspace ini belum mencakup Domain kustom. Upgrade paket dulu.', 402, ['feature' => 'custom_domain']);
         }
+        Cache::put(VerifyDomain::checkingKey($domain->id), true, 120);
+        VerifyDomain::dispatch($domain->id);
 
-        return $this->ok(self::present($domain->load('tenant')));
+        return $this->ok(self::present($domain->fresh()->load('tenant')), 202);
     }
 
     /** PATCH /api/domains/{id} {status} — aktifkan manual (hanya pemilik platform) / nonaktifkan. */
@@ -79,6 +74,9 @@ class DomainController extends PlatformController
     {
         $this->can('tenants.manage');
         $data = $request->validate(['status' => ['required', Rule::in(['active', 'disabled'])]]);
+        if ($data['status'] === 'active' && ! PlanFeatures::has(Tenant::findOrFail($domain->tenant_id), 'custom_domain')) {
+            throw new ApiError('plan_required', 'Paket workspace ini belum mencakup Domain kustom. Upgrade paket dulu.', 402, ['feature' => 'custom_domain']);
+        }
         if ($data['status'] === 'active' && ! $domain->verified_at) {
             $this->can('system.manage'); // tanpa verifikasi DNS hanya untuk pemilik platform
         }
@@ -108,6 +106,7 @@ class DomainController extends PlatformController
     {
         return [
             'id' => $d->public_id, 'domain' => $d->domain, 'status' => $d->status,
+            'checking' => Cache::has(VerifyDomain::checkingKey($d->id)),
             'tenant' => $d->tenant ? ['id' => $d->tenant->public_id, 'name' => $d->tenant->name] : null,
             'dns' => [
                 ['type' => 'TXT', 'name' => $d->txtName(), 'value' => $d->txtValue()],

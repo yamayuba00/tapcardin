@@ -1,11 +1,13 @@
-﻿<?php
+<?php
 
 namespace Tests\Feature;
 
+use App\Authz\PlanFeatures;
 use App\Enums\CardStatus;
 use App\Models\Card;
 use App\Models\LeadStage;
 use App\Models\Notification;
+use App\Models\Plan;
 use App\Models\Profile;
 use App\Support\Bio\BioTheme;
 use App\Tenancy\TenantScope;
@@ -74,9 +76,9 @@ class WorkspaceApiTest extends TestCase
         $this->patchJson($this->host('app', "/api/profiles/{$bio1->public_id}"), ['title' => 'Konsultan Pajak'])->assertOk();
 
         // kartu kedua: dapat salinan bio terakhir, bukan profil yang sama
-        $rina->personalTenant->update(['plan_id' => \App\Models\Plan::where('key', 'personal_pro')->value('id')]);
+        $rina->personalTenant->update(['plan_id' => Plan::where('key', 'personal_pro')->value('id')]);
         $rina->unsetRelation('personalTenant');
-        \App\Authz\PlanFeatures::forget($rina->personalTenant);
+        PlanFeatures::forget($rina->personalTenant);
         $second = $this->makeCard(CardStatus::Unclaimed, buyer: $rina);
         $this->postJson($this->host('app', '/api/cards/activate'), ['token' => $second->card_token])->assertOk();
         $bio2 = $second->fresh()->profile;

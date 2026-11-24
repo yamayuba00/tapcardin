@@ -1,6 +1,6 @@
 // Notifikasi: teks manusiawi & tautan tujuan per tipe — dipakai toast, lonceng, dan halaman Notifikasi.
 
-export const TYPES = ['tap', 'lead_new', 'lost_card_tapped', 'saved_back', 'reminder_due', 'import_done', 'invoice_paid', 'invoice_due', 'plan_changed', 'workspace_expired', 'order_status', 'announcement', 'tap_quota', 'subscription_past_due', 'grace_ending', 'subscription_reminder', 'trial_ending', 'order_unpaid', 'webhook_disabled', 'lead_assigned']
+export const TYPES = ['tap', 'lead_new', 'lost_card_tapped', 'domain_unverified', 'saved_back', 'reminder_due', 'import_done', 'invoice_paid', 'invoice_due', 'plan_changed', 'workspace_expired', 'order_status', 'announcement', 'tap_quota', 'subscription_past_due', 'grace_ending', 'subscription_reminder', 'trial_ending', 'order_unpaid', 'webhook_disabled', 'lead_assigned']
 
 export const messages = {
   tap: (d) => ((d.count ?? 1) > 1
@@ -9,6 +9,7 @@ export const messages = {
   lead_new: (d) => `${d.name} terhubung${d.company ? ' · ' + d.company : ''}`,
   lead_assigned: (d) => (d.count > 1 ? `${d.by} menugaskan ${d.count} lead ke Anda` : `${d.by} menugaskan ${d.name} ke Anda`),
   lost_card_tapped: (d) => `Kartu hilang Anda baru di-tap${d.city ? ' di ' + d.city : ''}`,
+  domain_unverified: (d) => `Record verifikasi ${d.domain} tidak lagi ditemukan — domain perlu diperiksa`,
   saved_back: (d) => `${d.name} menyimpan Anda sebagai koneksi. Buka Scan untuk simpan balik.`,
   reminder_due: (d) => `Waktunya follow-up ${d.name}${d.note ? ' · ' + d.note : ''}`,
   invoice_paid: (d) => (d.label ? `Pembayaran ${d.number} berhasil — ${d.label} aktif` : `Pembayaran ${d.number} berhasil — paket ${d.plan} aktif`),

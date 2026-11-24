@@ -30,6 +30,7 @@ class MeController extends WorkspaceController
         'tap' => 'Kartu di-tap',
         'lead_new' => 'Koneksi baru (Tukar Kontak)',
         'lost_card_tapped' => 'Kartu hilang di-tap',
+        'domain_unverified' => 'Domain kustom tidak lagi terverifikasi',
         'reminder_due' => 'Pengingat follow-up jatuh tempo',
         'saved_back' => 'Seseorang menyimpan Anda (Mode Reader)',
         'import_done' => 'Impor CSV selesai',

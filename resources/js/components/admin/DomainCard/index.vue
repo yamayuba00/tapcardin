@@ -1,6 +1,6 @@
 <script setup>
 // Satu domain kustom: status, record DNS yang harus dipasang pelanggan (salin), verifikasi, aktif/nonaktif, hapus.
-import { ref } from 'vue'
+import { onBeforeUnmount, ref } from 'vue'
 import { Copy, RefreshCw, Trash2 } from 'lucide-vue-next'
 import AppBadge from '@/components/ui/AppBadge/index.vue'
 import AppButton from '@/components/ui/AppButton/index.vue'
@@ -17,16 +17,33 @@ const auth = useAuthStore()
 const toast = useToastStore()
 const { busy, run } = useAction()
 const confirming = ref(false)
+const checking = ref(!!props.domain.checking)
+let timer = null
+onBeforeUnmount(() => clearTimeout(timer))
 const STATUS = { pending: ['warn', 'Menunggu DNS'], active: ['ok', 'Aktif'], disabled: ['muted', 'Nonaktif'] }
 
 async function copy(v) {
   try { await navigator.clipboard.writeText(v); toast.ok('Disalin.') } catch { toast.error('Tidak bisa menyalin — salin manual.') }
 }
+// verifikasi jalan di antrean: panel memuat ulang daftar sampai status keluar dari "sedang diperiksa"
 async function verify() {
   const res = await run(() => adminApi.verifyDomain(props.domain.id)).catch(() => null)
   if (!res) return
   emit('update', res.data)
-  res.data.status === 'active' ? toast.ok(`${res.data.domain} terverifikasi & aktif.`) : toast.error(res.data.last_error ?? 'Belum terverifikasi.')
+  checking.value = !!res.data.checking
+  if (checking.value) poll(0)
+}
+async function poll(tries) {
+  timer = setTimeout(async () => {
+    const list = await adminApi.domains({ q: props.domain.domain }).catch(() => null)
+    const row = list?.data?.find((x) => x.id === props.domain.id)
+    if (row && !row.checking) {
+      checking.value = false
+      emit('update', row)
+      row.status === 'active' ? toast.ok(`${row.domain} terverifikasi & aktif.`) : toast.error(row.last_error ?? 'Belum terverifikasi.')
+    } else if (tries < 20) poll(tries + 1)
+    else checking.value = false
+  }, 2000)
 }
 async function setStatus(status) {
   const res = await run(() => adminApi.setDomainStatus(props.domain.id, status), status === 'active' ? 'Domain diaktifkan.' : 'Domain dinonaktifkan.').catch(() => null)
@@ -71,7 +88,7 @@ async function remove() {
     <p v-else class="text-sm text-muted">Terverifikasi {{ dateTime(domain.verified_at) }}. Dashboard workspace bisa dibuka di domain ini.</p>
 
     <div v-if="auth.can('tenants.manage')" class="flex flex-wrap gap-2">
-      <AppButton v-if="domain.status === 'pending'" :loading="busy" @click="verify"><RefreshCw class="size-4" /> Cek DNS sekarang</AppButton>
+      <AppButton v-if="domain.status === 'pending'" :loading="busy || checking" :disabled="checking" @click="verify"><RefreshCw class="size-4" /> {{ checking ? 'Sedang diperiksa…' : 'Cek DNS sekarang' }}</AppButton>
       <AppButton v-if="domain.status === 'pending' && auth.can('system.manage')" variant="secondary" :loading="busy" @click="setStatus('active')">Aktifkan tanpa verifikasi</AppButton>
       <AppButton v-if="domain.status === 'active'" variant="secondary" :loading="busy" @click="setStatus('disabled')">Nonaktifkan</AppButton>
       <AppButton v-if="domain.status === 'disabled'" variant="secondary" :loading="busy" @click="setStatus('active')">Aktifkan lagi</AppButton>
