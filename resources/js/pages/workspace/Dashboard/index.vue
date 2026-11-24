@@ -10,6 +10,7 @@ import AppEmpty from '@/components/ui/AppEmpty/index.vue'
 import AppPanel from '@/components/ui/AppPanel/index.vue'
 import AppSkeleton from '@/components/ui/AppSkeleton/index.vue'
 import CompanySummary from '@/components/company/CompanySummary/index.vue'
+import LeadFunnel from '@/components/dashboard/LeadFunnel/index.vue'
 import KpiCard from '@/components/common/KpiCard/index.vue'
 import MiniChart from '@/components/common/MiniChart/index.vue'
 import PageHeader from '@/components/common/PageHeader/index.vue'
@@ -125,6 +126,8 @@ const empty = computed(() => data.value && data.value.kpi.taps_30 === 0 && data.
         </AppButton>
       </AppPanel>
     </div>
+
+    <AppPanel v-if="!empty && data.funnel?.some((s) => s.count)" title="Funnel lead"><LeadFunnel :stages="data.funnel" /></AppPanel>
 
     <AppPanel v-if="data.cards.list.length" title="Kartu">
       <template #actions><span class="text-sm text-muted">{{ data.cards.active }} aktif</span></template>

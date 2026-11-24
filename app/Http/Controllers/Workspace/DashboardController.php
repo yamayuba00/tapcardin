@@ -6,6 +6,7 @@ use App\Enums\CardStatus;
 use App\Http\Resources\Present;
 use App\Models\Card;
 use App\Models\Connection;
+use App\Models\LeadStage;
 use App\Models\Tap;
 use App\Support\Onboarding;
 use App\Support\TapStats;
@@ -57,6 +58,11 @@ class DashboardController extends WorkspaceController
                 'title' => $c->name.' terhubung', 'meta' => array_values(array_filter([$c->company])),
             ]))->sortByDesc('at')->values()->take(10)->all();
 
+            // funnel lead terbuka per tahap (tanpa lead yang sudah ditutup); cakupan sama dengan kartu lain
+            $stageCounts = (clone $connections)->whereNull('closed_at')->selectRaw('stage_id, count(*) n')->groupBy('stage_id')->pluck('n', 'stage_id');
+            $funnel = LeadStage::orderBy('sort')->get(['id', 'name', 'color'])
+                ->map(fn (LeadStage $st) => ['id' => $st->id, 'name' => $st->name, 'color' => $st->color, 'count' => (int) ($stageCounts[$st->id] ?? 0)])->values()->all();
+
             $cards = Card::query()->when(! $scopeAll, fn ($q) => $q->where('holder_user_id', $uid))
                 ->select('status', DB::raw('count(*) as n'))->groupBy('status')->pluck('n', 'status');
 
@@ -72,6 +78,7 @@ class DashboardController extends WorkspaceController
                 ],
                 'series' => $days,
                 'recent' => $recent,
+                'funnel' => $funnel,
                 'cards' => [
                     'active' => (int) ($cards[CardStatus::Active->value] ?? 0),
                     'total' => (int) $cards->sum(),

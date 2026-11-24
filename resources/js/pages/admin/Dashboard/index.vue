@@ -1,7 +1,7 @@
 <script setup>
 // PL-01 — pengguna, kartu per status, rasio aktivasi ≤ 7 hari, tap, batch berjalan; MRR & pendapatan untuk pemilik.
 import { computed } from 'vue'
-import { CopyPlus } from 'lucide-vue-next'
+import { CircleAlert, CopyPlus } from 'lucide-vue-next'
 import AppBadge from '@/components/ui/AppBadge/index.vue'
 import AppButton from '@/components/ui/AppButton/index.vue'
 import AppPanel from '@/components/ui/AppPanel/index.vue'
@@ -14,7 +14,7 @@ import { adminApi } from '@/api/admin'
 import { useAsync } from '@/composables/useAsync'
 import { CARD_STATUS, delta, num, rupiah } from '@/lib/format'
 
-const { data: m } = useAsync(() => adminApi.dashboard())
+const { data: m, error, reload } = useAsync(() => adminApi.dashboard())
 const total = (cards) => Object.values(cards).reduce((a, b) => a + b, 0)
 // antrean yang menunggu orang ini (null = bukan wewenangnya; 0 = kosong)
 const todo = computed(() => {
@@ -31,8 +31,17 @@ const todo = computed(() => {
 
 <template>
   <PageHeader eyebrow="Panel pemilik" title="Dashboard" />
-  <AppSkeleton v-if="!m" class="!h-28" />
-  <template v-else>
+  <div v-if="error" class="flex items-center gap-3 rounded-md border border-line-strong bg-surface-2 px-4 py-3 text-sm" role="alert">
+    <CircleAlert class="size-5 text-danger" /><span class="flex-1">{{ error.message }}</span>
+    <AppButton variant="ghost" @click="reload">Muat ulang</AppButton>
+  </div>
+  <AppSkeleton v-if="!m && !error" class="!h-28" />
+  <template v-if="m">
+    <div class="grid grid-cols-[repeat(auto-fit,minmax(170px,1fr))] gap-4">
+      <RouterLink to="/finance?tab=subscriptions" class="no-underline"><KpiCard label="Langganan habis dalam 7 hari" :value="num(m.risk.subscriptions_ending)" hint="Aktif, uji coba, atau masa tenggang" /></RouterLink>
+      <RouterLink to="/finance?tab=invoices" class="no-underline"><KpiCard label="Invoice gagal atau terlambat" :value="num(m.risk.invoices_failed)" :hint="m.attention?.payment_reviews != null ? `${num(m.attention.payment_reviews)} tinjauan pembayaran terbuka` : 'Belum dibayar lewat jatuh tempo'" /></RouterLink>
+      <RouterLink to="/domains" class="no-underline"><KpiCard label="Domain bermasalah" :value="num(m.risk.domains_problem)" hint="Menunggu DNS atau dinonaktifkan" /></RouterLink>
+    </div>
     <div class="grid grid-cols-[repeat(auto-fit,minmax(170px,1fr))] gap-4">
       <KpiCard label="Pengguna" :value="num(m.users)" :hint="`+${m.users_7} dalam 7 hari`" />
       <KpiCard label="Kartu aktif" :value="num(m.cards.active)" :hint="`dari ${num(total(m.cards))} kartu`" />

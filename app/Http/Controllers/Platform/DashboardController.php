@@ -7,11 +7,14 @@ use App\Enums\CardStatus;
 use App\Models\ApprovalRequest;
 use App\Models\Batch;
 use App\Models\Card;
+use App\Models\Invoice;
 use App\Models\Order;
 use App\Models\PaymentReview;
 use App\Models\Refund;
+use App\Models\Subscription;
 use App\Models\Tap;
 use App\Models\Tenant;
+use App\Models\TenantDomain;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
@@ -59,6 +62,16 @@ class DashboardController extends PlatformController
             'refunds_decide' => $access->has('finance.refund.approve') ? Refund::where('status', 'requested')->count() : null,
             'refunds_payout' => $access->has('finance.refund.payout') ? Refund::where('status', 'approved')->count() : null,
             'orders_review' => $access->has('orders.review') ? Order::acrossTenants()->where('status', 'paid')->where('review_status', 'pending')->count() : null,
+        ];
+        // risiko pendapatan & operasional: tidak di-cache supaya angka langsung mengikuti kondisi terbaru
+        $week = now()->addDays(7);
+        $m['risk'] = [
+            'subscriptions_ending' => Subscription::acrossTenants()->where(fn ($q) => $q
+                ->whereIn('status', ['active', 'trialing'])->whereBetween('current_period_end', [now(), $week])
+                ->orWhere(fn ($g) => $g->where('status', 'past_due')->whereBetween('grace_until', [now(), $week])))->count(),
+            'invoices_failed' => Invoice::acrossTenants()->where(fn ($q) => $q
+                ->where('status', 'overdue')->orWhere(fn ($g) => $g->where('status', 'issued')->where('due_at', '<', now())))->count(),
+            'domains_problem' => TenantDomain::whereIn('status', ['pending', 'disabled'])->whereNotNull('last_error')->count(),
         ];
         $m['show_business'] = $access->has('dashboard.business');
         $m['business'] = $m['show_business'] ? Cache::remember('platform:finance:'.intdiv(now()->timestamp, 300), 300, fn () => FinanceController::metrics()) : null;
