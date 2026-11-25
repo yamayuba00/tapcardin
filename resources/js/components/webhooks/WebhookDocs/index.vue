@@ -29,13 +29,13 @@ TS=$(date +%s)
 BODY='${body}'
 SIG=$(printf '%s.%s' "$TS" "$BODY" | openssl dgst -sha256 -hmac "$SECRET" | sed 's/^.* //')
 
-curl -sS -X POST "$URL" \
-  -H 'Content-Type: application/json' \
-  -H 'X-TapCard-Event: ${ev?.key ?? 'ping'}' \
-  -H "X-TapCard-Timestamp: $TS" \
-  -H "X-TapCard-Signature: v1=$SIG" \
-  -H 'User-Agent: TapCard-Webhooks/1.0' \
-  -d "$BODY" -w '\nHTTP %{http_code}\n'`
+curl -sS -X POST "$URL" \\
+  -H 'Content-Type: application/json' \\
+  -H 'X-TapCard-Event: ${ev?.key ?? 'ping'}' \\
+  -H "X-TapCard-Timestamp: $TS" \\
+  -H "X-TapCard-Signature: v1=$SIG" \\
+  -H 'User-Agent: TapCard-Webhooks/1.0' \\
+  -d "$BODY" -w '\\nHTTP %{http_code}\\n'`
 })
 
 // Sisi penerima: simpan body mentah dulu, lalu hitung ulang tanda tangan dengan header yang masuk.
@@ -55,7 +55,7 @@ async function copy(text) {
 </script>
 
 <template>
-  <div class="grid gap-4">
+  <div class="grid min-w-0 gap-4">
     <AppSegmented v-model="tab" label="Dokumentasi" :options="[{ value: 'events', label: 'Event & contoh' }, { value: 'signature', label: 'Tanda tangan' }, { value: 'retry', label: 'Kirim ulang & tips' }]" />
 
     <div v-if="tab === 'events'" class="grid gap-4 lg:grid-cols-[minmax(0,260px)_minmax(0,1fr)]">
@@ -72,14 +72,14 @@ async function copy(text) {
           <h3 class="font-mono">{{ event.key }}</h3>
           <p class="text-sm text-muted">{{ event.label }} — {{ event.description }}</p>
         </div>
-        <div class="relative">
+        <div class="relative min-w-0">
           <button type="button" class="absolute top-2 right-2 grid size-9 cursor-pointer place-items-center rounded-md bg-surface text-muted hover:text-fg" aria-label="Salin contoh JSON" @click="copy(json(event.sample))"><Copy class="size-4" /></button>
-          <pre class="max-h-[480px] overflow-auto rounded-md bg-surface-2 p-4 font-mono text-xs">{{ json(event.sample) }}</pre>
+          <pre class="max-h-[480px] max-w-full overflow-auto rounded-md bg-surface-2 p-4 font-mono text-xs">{{ json(event.sample) }}</pre>
         </div>
       </article>
     </div>
 
-    <div v-else-if="tab === 'signature'" class="grid gap-3 text-sm">
+    <div v-else-if="tab === 'signature'" class="grid min-w-0 gap-3 text-sm">
       <p>Setiap permintaan adalah <b>POST</b> JSON (<span class="font-mono">Content-Type: application/json</span>) dengan header:</p>
       <ul class="grid gap-1 font-mono text-xs">
         <li><b>X-TapCard-Event</b> — jenis event, mis. lead.created</li>
@@ -88,13 +88,13 @@ async function copy(text) {
         <li><b>X-TapCard-Signature</b> — v1=HMAC-SHA256(rahasia, timestamp + "." + body) dalam hex</li>
       </ul>
       <p class="text-muted">Hitung ulang tanda tangan dari body <b>mentah</b>, bandingkan dengan perbandingan waktu-konstan, dan tolak timestamp yang lebih tua dari 5 menit.</p>
-      <div class="relative">
+      <div class="relative min-w-0">
         <button type="button" class="absolute top-2 right-2 grid size-9 cursor-pointer place-items-center rounded-md bg-surface text-muted hover:text-fg" aria-label="Salin contoh cURL" @click="copy(curlSnippet)"><Copy class="size-4" /></button>
-        <pre class="max-h-[480px] overflow-auto rounded-md bg-surface-2 p-4 font-mono text-xs">{{ curlSnippet }}</pre>
+        <pre class="max-h-[480px] max-w-full overflow-auto rounded-md bg-surface-2 p-4 font-mono text-xs">{{ curlSnippet }}</pre>
       </div>
-      <div class="relative">
+      <div class="relative min-w-0">
         <button type="button" class="absolute top-2 right-2 grid size-9 cursor-pointer place-items-center rounded-md bg-surface text-muted hover:text-fg" aria-label="Salin kode verifikasi" @click="copy(verifySnippet)"><Copy class="size-4" /></button>
-        <pre class="max-h-[480px] overflow-auto rounded-md bg-surface-2 p-4 font-mono text-xs">{{ verifySnippet }}</pre>
+        <pre class="max-h-[480px] max-w-full overflow-auto rounded-md bg-surface-2 p-4 font-mono text-xs">{{ verifySnippet }}</pre>
       </div>
     </div>
 
