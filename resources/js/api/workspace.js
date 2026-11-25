@@ -169,6 +169,14 @@ export const ordersApi = {
 }
 
 /** Keranjang cetak (kartu, ID badge, lanyard). */
+/** Draf checkout wizard: pilihan item keranjang, alamat, promo disimpan di server; pay membuat pesanan sekali. */
+export const checkoutApi = {
+  create: (body = {}) => http.post('/api/checkouts', body),
+  get: (id) => http.get(`/api/checkouts/${id}`),
+  update: (id, body) => http.patch(`/api/checkouts/${id}`, body),
+  pay: (id) => http.post(`/api/checkouts/${id}/pay`),
+}
+
 export const cartApi = {
   list: () => http.get('/api/cart'),
   add: (body) => http.post('/api/cart', body),

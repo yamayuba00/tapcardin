@@ -44,7 +44,7 @@ export default [
       { path: 'merch/:id', name: 'merch-studio', component: page('MerchStudio'), meta: { title: 'Editor merchandise', nav: 'designs', fullscreen: true } },
       { path: 'analytics', name: 'analytics', component: page('Analytics'), meta: { title: 'Analitik', nav: 'analytics' } },
       { path: 'orders', name: 'orders', component: page('Orders'), meta: { title: 'Pesanan', nav: 'orders' } },
-      { path: 'orders/new', name: 'order-new', component: page('OrderNew'), meta: { title: 'Keranjang & checkout', nav: 'orders' } },
+      { path: 'orders/new/:checkout?', name: 'order-new', component: page('OrderNew'), meta: { title: 'Keranjang & checkout', nav: 'orders' } },
       { path: 'orders/:id', name: 'order-detail', component: page('OrderDetail'), meta: { title: 'Pesanan', nav: 'orders' } },
       { path: 'billing', name: 'billing', component: page('Billing'), meta: { title: 'Paket & tagihan', nav: 'billing' } },
       { path: 'receipts/:id', name: 'receipt', component: page('Receipt'), meta: { title: 'Kuitansi', nav: 'billing' } },

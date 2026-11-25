@@ -20,7 +20,7 @@ import PageHeader from '@/components/common/PageHeader/index.vue'
 import { kitVars } from '@/lib/design'
 import CardSide from '@/components/studio/CardSide/index.vue'
 import LanyardStrip from '@/components/studio/LanyardStrip/index.vue'
-import { cartApi, ordersApi } from '@/api/workspace'
+import { cartApi, checkoutApi, ordersApi } from '@/api/workspace'
 import { useAction, useAsync } from '@/composables/useAsync'
 import { rupiah } from '@/lib/format'
 import { useToastStore } from '@/stores/toast'
@@ -73,7 +73,7 @@ function setCart(items, select = []) {
 }
 async function loadCart() {
   const res = await cartApi.list()
-  setCart(res.data, res.data.map((i) => i.id)) // semua item tercentang saat halaman dibuka
+  setCart(res.data, pickFromDraft(res.data)) // tanpa draf: semua item tercentang saat halaman dibuka
 }
 loadCart()
 
@@ -140,8 +140,8 @@ const serverErrors = ref({})
 const method = computed(() => cat.value?.shipping.find((m) => m.key === ship.method))
 watch(cat, (c) => {
   if (!c) return
-  ship.method = c.shipping.find((m) => m.needs_address)?.key ?? c.shipping[0]?.key ?? ''
-  if (c.last_address) Object.assign(ship, c.last_address)
+  ship.method ||= c.shipping.find((m) => m.needs_address)?.key ?? c.shipping[0]?.key ?? ''
+  if (c.last_address && !ship.recipient_name) Object.assign(ship, c.last_address)
 }, { once: true })
 const provinceOptions = computed(() => (cat.value?.provinces ?? []).map((p) => ({ value: p, label: p })))
 const RULES = {
@@ -221,9 +221,9 @@ async function submit() {
     return toast.error(`Lengkapi ${missing.value} kolom pengiriman yang ditandai merah.`)
   }
   serverErrors.value = {}
-  const res = await run(() => ordersApi.create({
-    items: payload.value, shipping: { ...ship }, promo: appliedPromo.value || null, cart: chosen.value.map((i) => i.id),
-  })).catch((e) => {
+  if (!checkout.value) return toast.error('Sesi checkout belum siap. Muat ulang halaman.')
+  await flushDraft()
+  const res = await run(() => checkoutApi.pay(checkout.value.id)).catch((e) => {
     serverErrors.value = e.fields ?? {}
     if (e.fields?.promo) promoError.value = e.fields.promo[0]
     return null
@@ -233,6 +233,60 @@ async function submit() {
   if (u.origin === window.location.origin) router.push(u.pathname + u.search)
   else window.location.assign(res.data.payment_url)
 }
+
+// ── draf checkout: ID di URL (/orders/new/{id}?step=…); pilihan, alamat, & promo disimpan di server ──
+const checkout = ref(null)
+let draftCart = null // null = belum ada draf → semua item keranjang tercentang
+let pending = {}
+let saveT = null
+function saveDraft(body) {
+  pending = { ...pending, ...body }
+  clearTimeout(saveT)
+  saveT = setTimeout(flushDraft, 400)
+}
+async function flushDraft() {
+  if (!checkout.value || !Object.keys(pending).length) return
+  const body = pending
+  pending = {}
+  try {
+    await checkoutApi.update(checkout.value.id, body)
+  } catch (e) {
+    toast.error(e.message)
+  }
+}
+const pickFromDraft = (items) => (draftCart ? draftCart.filter((id) => items.some((i) => i.id === id)) : items.map((i) => i.id))
+watch(selected, (s) => {
+  draftCart = [...s]
+  saveDraft({ cart: draftCart })
+})
+watch(() => ({ ...ship }), (v) => saveDraft({ shipping: { ...v } }), { deep: true })
+watch(appliedPromo, (v) => saveDraft({ promo: v || null }))
+
+function hydrate(d) {
+  checkout.value = d
+  draftCart = d.cart
+  if (d.shipping) Object.assign(ship, d.shipping)
+  appliedPromo.value = d.promo ?? ''
+  if (cart.value) selected.value = new Set(pickFromDraft(cart.value))
+  flushDraft()
+}
+async function openDraft() {
+  const id = route.params.checkout
+  try {
+    if (id) {
+      const d = (await checkoutApi.get(id)).data
+      if (d.status === 'paid' && d.order) return router.replace({ name: 'order-detail', params: { id: d.order.id } })
+      return hydrate(d)
+    }
+  } catch (e) {
+    // draf tidak ada atau sudah kedaluwarsa → mulai draf baru dari keranjang
+    if (!['checkout_not_found', 'checkout_expired'].includes(e.code)) return toast.error(e.message)
+  }
+  const d = (await checkoutApi.create({})).data
+  hydrate(d)
+  router.replace({ name: 'order-new', params: { checkout: d.id }, query: route.query })
+}
+openDraft()
 </script>
 
 <template>

@@ -11,6 +11,7 @@ use App\Http\Controllers\Workspace\BrandKitController;
 use App\Http\Controllers\Workspace\CardController;
 use App\Http\Controllers\Workspace\CardLoginKeyController;
 use App\Http\Controllers\Workspace\CartController;
+use App\Http\Controllers\Workspace\CheckoutController;
 use App\Http\Controllers\Workspace\CompanyController;
 use App\Http\Controllers\Workspace\ConnectionController;
 use App\Http\Controllers\Workspace\DashboardController;
@@ -166,6 +167,10 @@ Route::middleware('auth')->prefix('api')->name('api.')->group(function () {
     Route::post('/cart', [CartController::class, 'store'])->name('cart.store');
     Route::patch('/cart/{id}', [CartController::class, 'update'])->name('cart.update');
     Route::delete('/cart/{id}', [CartController::class, 'destroy'])->name('cart.destroy');
+    Route::post('/checkouts', [CheckoutController::class, 'store'])->name('checkouts.store');
+    Route::get('/checkouts/{checkout}', [CheckoutController::class, 'show'])->name('checkouts.show');
+    Route::patch('/checkouts/{checkout}', [CheckoutController::class, 'update'])->name('checkouts.update');
+    Route::post('/checkouts/{checkout}/pay', [CheckoutController::class, 'pay'])->middleware('throttle:20,1')->name('checkouts.pay');
     Route::get('/orders', [OrderController::class, 'index'])->name('orders');
     Route::post('/orders', [OrderController::class, 'store'])->middleware('throttle:10,1')->name('orders.store');
     Route::get('/orders/{order}', [OrderController::class, 'show'])->name('orders.show');
