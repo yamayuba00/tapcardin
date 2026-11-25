@@ -140,7 +140,13 @@ class CartController extends WorkspaceController
 
     private function find(string $id): CartItem
     {
-        return CartItem::where('user_id', $this->user()->id)->where('public_id', $id)->with('design')->firstOrFail();
+        // item bisa sudah digabung ke item lain (ganti produk) → pesan jelas, bukan error model mentah
+        $item = CartItem::where('user_id', $this->user()->id)->where('public_id', $id)->with('design')->first();
+        if (! $item) {
+            throw new ApiError('cart_item_gone', 'Isi keranjang sudah berubah. Keranjang dimuat ulang.', 404);
+        }
+
+        return $item;
     }
 
     /** Isi keranjang + harga satuan & minimum (pratinjau; harga final dari server saat checkout). */

@@ -105,4 +105,14 @@ class CartAndPromoTest extends TestCase
         $this->assertStringStartsWith('ID Badge PVC NFC', $o['items'][0]['label']);
         $this->assertSame(600000, $o['items'][0]['total']);
     }
+
+    public function test_stale_cart_item_after_merge_returns_friendly_error(): void
+    {
+        $d = $this->designs();
+        $first = $this->api('POST', '/cart', ['design' => $d['card']])->assertCreated()->json('data');
+        $this->api('POST', '/cart', ['design' => $d['card'], 'product' => 'pvc_ntag424'])->assertCreated();
+        $staleId = $first[0]['id'];
+        $this->api('PATCH', "/cart/$staleId", ['product' => 'pvc_ntag424'])->assertOk();
+        $this->api('PATCH', "/cart/$staleId", ['quantity' => 3])->assertStatus(404)->assertJsonPath('error.code', 'cart_item_gone');
+    }
 }

@@ -45,6 +45,10 @@ async function cartCall(fn, ok) {
     if (ok) toast.ok(ok)
     return res
   } catch (e) {
+    if (e.code === 'cart_item_gone') {
+      await loadCart()
+      return null
+    }
     toast.error(e.message)
     return null
   } finally {
