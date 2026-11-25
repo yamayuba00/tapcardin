@@ -211,10 +211,15 @@ const COLUMNS = [
         </article>
         <!-- paket custom: jumlah kartu & harga disepakati dengan sales -->
         <article class="grid content-start gap-5 rounded-lg border border-line bg-surface p-5 sm:p-6">
+          <h3 class="text-xl">Custom</h3>
           <div class="grid gap-1">
-            <h3 class="text-lg">Custom</h3>
-            <p class="text-sm text-muted">Jumlah kartu dan harga sesuai kebutuhan perusahaan Anda.</p>
+            <span class="font-display text-2xl leading-tight">Sesuai kebutuhan</span>
+            <span class="text-sm text-muted">harga & jumlah kartu disepakati dengan sales</span>
           </div>
+          <ul class="grid gap-3 text-sm">
+            <li class="flex items-start gap-2"><Check class="mt-0.5 size-4 flex-none text-ok" aria-hidden="true" /> Jumlah kartu aktif sesuai kebutuhan</li>
+            <li class="flex items-start gap-2"><Check class="mt-0.5 size-4 flex-none text-ok" aria-hidden="true" /> Harga disepakati langsung dengan tim sales</li>
+          </ul>
           <AppButton v-if="salesUrl" variant="secondary" block :href="salesUrl" target="_blank" rel="noopener">Hubungi sales <ArrowRight class="size-5" /></AppButton>
         </article>
       </div>
