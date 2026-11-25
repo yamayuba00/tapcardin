@@ -77,6 +77,25 @@ return [
             'throw' => true,
         ],
 
+        // dokumen terbit (tagihan PDF): privat. DOCUMENTS_DISK_DRIVER=s3 → bucket S3 (folder documents/, tidak publik);
+        // selain itu storage/app/documents di server.
+        'documents' => env('DOCUMENTS_DISK_DRIVER', 'local') === 's3' ? [
+            'driver' => 's3',
+            'key' => env('AWS_ACCESS_KEY_ID'),
+            'secret' => env('AWS_SECRET_ACCESS_KEY'),
+            'region' => env('AWS_DEFAULT_REGION'),
+            'bucket' => env('AWS_BUCKET'),
+            'endpoint' => env('AWS_ENDPOINT'),
+            'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
+            'root' => 'documents',
+            'retain_visibility' => false,
+            'throw' => true,
+        ] : [
+            'driver' => 'local',
+            'root' => storage_path('app/documents'),
+            'throw' => true,
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

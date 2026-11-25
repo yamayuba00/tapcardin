@@ -22,6 +22,7 @@ use App\Support\Http\Table;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 /** OR-05 â€” Paket & tagihan: paket aktif + pemakaian, perbandingan paket, checkout, invoice, batal/lanjutkan langganan. */
@@ -121,14 +122,16 @@ class BillingController extends WorkspaceController
             fn (Invoice $i) => self::presentInvoice($i), $request);
     }
 
-    /** GET /api/billing/invoices/{invoice}/pdf — tagihan sebagai PDF (unduh). */
+    /** GET /api/billing/invoices/{invoice}/pdf — tagihan sebagai PDF (dibuat sekali per isi tagihan, disimpan di disk documents). */
     public function invoicePdf(Invoice $invoice): Response
     {
         $this->authorizeInvoice($invoice, 'billing.view');
+        $pdf = InvoicePdf::store($invoice, $this->tenant()->name);
 
-        return response(InvoicePdf::render($invoice, $this->tenant()->name), 200, [
+        return response(Storage::disk('documents')->get($pdf['path']), 200, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'attachment; filename="'.InvoicePdf::filename($invoice).'"',
+            'Content-Disposition' => 'attachment; filename="'.$pdf['filename'].'"',
+            'Cache-Control' => 'private, no-store',
         ]);
     }
 

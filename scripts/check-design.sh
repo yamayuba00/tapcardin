@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 # TRD §15 / DBD §3.4 — aturan desain tanpa paket: gagal jika ada gradien, bayangan, atau hex di luar tokens.css.
-# Pengecualian eksplisit: ikon aplikasi & manifest (tidak bisa membaca CSS) dan template email (warna dari token).
+# Pengecualian eksplisit: ikon aplikasi & manifest (tidak bisa membaca CSS), template email, dan dokumen PDF (dompdf: warna cetak, bukan layar).
 set -u
 cd "$(dirname "$0")/.."
 fail=0
@@ -17,7 +17,7 @@ if grep -rnE '(box-shadow|text-shadow)\s*:\s*[^n;]' $exclude $paths 2>/dev/null 
 fi
 
 if grep -rInE '#[0-9A-Fa-f]{6}\b|#[0-9A-Fa-f]{3}\b' $exclude --include=*.css --include=*.vue --include=*.js --include=*.blade.php --include=*.svg $paths 2>/dev/null \
-    | grep -vE 'resources/css/tokens\.css:|/__tests__/|resources/views/mail/|public/favicon|public/manifest|public/offline.html|public/build/|&#[0-9]+;|#hatch|href="#|#main'; then
+    | grep -vE 'resources/css/tokens\.css:|/__tests__/|resources/views/mail/|resources/views/documents/|public/favicon|public/manifest|public/offline.html|public/build/|&#[0-9]+;|#hatch|href="#|#main'; then
   echo "✗ Hex warna di luar tokens.css (DBD §3.4)"; fail=1
 fi
 

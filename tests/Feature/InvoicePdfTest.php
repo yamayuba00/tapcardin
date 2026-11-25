@@ -11,6 +11,7 @@ use App\Models\TenantMember;
 use App\Models\User;
 use App\Tenancy\CurrentTenant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /** Tagihan sebagai PDF di server: unduhan hanya untuk workspace pemilik tagihan dan pengguna yang berhak. */
@@ -31,6 +32,7 @@ class InvoicePdfTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        Storage::fake('documents');
         $this->owner = $this->makeUser('owner@majujaya.id', 'Owner MJ');
         $this->org = Tenant::create([
             'type' => TenantType::Company, 'name' => 'Maju Jaya', 'slug' => 'majujaya', 'owner_user_id' => $this->owner->id,
@@ -57,6 +59,21 @@ class InvoicePdfTest extends TestCase
         $this->assertSame('application/pdf', $res->headers->get('Content-Type'));
         $this->assertStringContainsString('INV-2026-11-000001.pdf', $res->headers->get('Content-Disposition'));
         $this->assertStringStartsWith('%PDF', $res->getContent());
+    }
+
+    public function test_pdf_is_stored_once_per_invoice_state(): void
+    {
+        $this->actingAs($this->owner);
+        $url = $this->host('majujaya', "/api/billing/invoices/{$this->invoice->public_id}/pdf");
+        $this->get($url)->assertOk();
+        $this->get($url)->assertOk();
+
+        $files = Storage::disk('documents')->allFiles('invoices/'.$this->invoice->public_id);
+        $this->assertCount(1, $files, 'unduhan kedua memakai berkas yang sama');
+
+        $this->invoice->update(['status' => 'void']);
+        $this->get($url)->assertOk();
+        $this->assertCount(2, Storage::disk('documents')->allFiles('invoices/'.$this->invoice->public_id), 'isi tagihan berubah → berkas baru');
     }
 
     public function test_member_without_billing_permission_is_refused(): void
