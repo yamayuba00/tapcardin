@@ -11,6 +11,7 @@ use App\Models\LeadReminder;
 use App\Models\LeadStage;
 use App\Models\Profile;
 use App\Models\ProfileField;
+use App\Models\User;
 use App\Support\Bio\BioTheme;
 use Illuminate\Support\Facades\Storage;
 
@@ -65,6 +66,12 @@ final class Present
         return $out;
     }
 
+    /** @return array{id:string,name:string}|null */
+    public static function memberRef(?User $u): ?array
+    {
+        return $u ? ['id' => $u->public_id, 'name' => $u->name] : null;
+    }
+
     public static function reminder(LeadReminder $r, bool $withLead = false): array
     {
         return [
@@ -77,6 +84,7 @@ final class Present
         ] + ($withLead && $r->connection ? ['lead' => [
             'id' => $r->connection->public_id, 'name' => $r->connection->name, 'company' => $r->connection->company,
             'phone' => $r->connection->phone_e164, 'stage' => $r->connection->stage ? self::stage($r->connection->stage) : null,
+            'assignee' => self::memberRef($r->connection->assignee),
         ]] : []);
     }
 

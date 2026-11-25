@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Workspace;
 
+use App\Exceptions\ApiError;
+use App\Http\Resources\Present;
 use App\Models\Card;
 use App\Models\Connection;
 use App\Models\Event;
@@ -9,6 +11,7 @@ use App\Models\EventCard;
 use App\Models\ProductEvent;
 use App\Models\Tap;
 use App\Models\TenantMember;
+use App\Models\User;
 use App\Support\Http\Table;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -67,10 +70,12 @@ class EventController extends WorkspaceController
             ->selectRaw('lead_stages.name as label, count(*) as value')->groupBy('lead_stages.name', 'lead_stages.sort')->orderBy('lead_stages.sort')->get();
         $active = $this->member()?->active_event_until?->isFuture() ? $this->member()->active_event_id : null;
 
-        $assigned = EventCard::where('event_id', $event->id)->with('card')->get()->pluck('card')->filter();
+        $assigned = EventCard::where('event_id', $event->id)->with(['card', 'assignee:id,public_id,name'])->get();
 
         return response()->json(['data' => self::present($event->loadCount(['connections', 'cards']), $active) + [
-            'cards' => $assigned->map(fn (Card $c) => self::card($c))->values(),
+            'cards' => $assigned->filter(fn (EventCard $ec) => $ec->card)
+                ->map(fn (EventCard $ec) => self::card($ec->card) + ['assignee' => Present::memberRef($ec->assignee)])->values(),
+            'members' => $this->teamMembers(),
             // kartu yang boleh di-assign: milik sendiri, atau semua kartu workspace bila punya izin lihat semua
             'available_cards' => $this->assignable()->get()->map(fn (Card $c) => self::card($c)),
             'summary' => [
@@ -108,6 +113,30 @@ class EventController extends WorkspaceController
         $this->syncCards($request, $event);
 
         return $this->show($event);
+    }
+
+    /** PUT /api/events/{id}/cards/{token}/assignee — {user: public_id|null}: penanggung jawab kartu di event ini. */
+    public function assignCard(Request $request, Event $event, string $token): JsonResponse
+    {
+        $this->access()->authorize('events.manage.*');
+        $data = $request->validate(['user' => ['nullable', 'string', 'size:26']]);
+        $ec = EventCard::where('event_id', $event->id)->whereHas('card', fn ($q) => $q->where('card_token', $token))->first()
+            ?? throw new ApiError('event_card_not_found', 'Kartu ini belum dibawa ke event ini.', 404);
+        $userId = null;
+        if (! empty($data['user'])) {
+            $userId = User::where('public_id', $data['user'])->whereIn('id', TenantMember::where('status', 'active')->select('user_id'))->value('id')
+                ?? throw ValidationException::withMessages(['user' => 'Anggota tidak ditemukan di workspace ini.']);
+        }
+        $ec->update(['assignee_user_id' => $userId]);
+
+        return $this->show($event);
+    }
+
+    /** Anggota aktif workspace, untuk pilihan penanggung jawab. */
+    private function teamMembers(): array
+    {
+        return TenantMember::where('status', 'active')->with('user:id,public_id,name')->get()
+            ->map(fn (TenantMember $m) => Present::memberRef($m->user))->filter()->sortBy('name')->values()->all();
     }
 
     private function syncCards(Request $request, Event $event): void

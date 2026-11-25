@@ -125,6 +125,8 @@ export const eventsApi = {
   deactivate: () => http.del('/api/events/active'),
   /** Kartu yang dibawa ke event (ganti seluruh daftar token). */
   cards: (id, cards) => http.put(`/api/events/${id}/cards`, { cards }),
+  /** penanggung jawab kartu di event ini; user = public id anggota atau null */
+  assignCard: (id, token, user) => http.put(`/api/events/${id}/cards/${token}/assignee`, { user }),
 }
 
 /** Check-in peserta event (panitia). */

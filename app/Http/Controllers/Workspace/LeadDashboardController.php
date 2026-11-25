@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Workspace;
 
 use App\Http\Resources\Present;
+use App\Models\Card;
 use App\Models\Connection;
 use App\Models\Event;
 use App\Models\LeadStage;
@@ -29,6 +30,7 @@ class LeadDashboardController extends WorkspaceController
         'new_by_day' => ['Lead baru per hari', 'series', 2],
         'by_stage' => ['Pipeline per tahap', 'bars', 1],
         'by_source' => ['Sumber lead', 'bars', 1],
+        'by_card' => ['Lead per kartu', 'bars', 1],
         'by_event' => ['Lead per event', 'bars', 1],
         'lost_reasons' => ['Alasan kalah', 'bars', 1],
         'top_tags' => ['Tag teratas', 'bars', 1],
@@ -38,7 +40,7 @@ class LeadDashboardController extends WorkspaceController
 
     public const DEFAULT_LAYOUT = [
         ['id' => 'kpi_total', 'size' => 1], ['id' => 'kpi_new', 'size' => 1], ['id' => 'kpi_won_rate', 'size' => 1], ['id' => 'kpi_followup', 'size' => 1],
-        ['id' => 'new_by_day', 'size' => 2], ['id' => 'by_stage', 'size' => 1], ['id' => 'by_source', 'size' => 1],
+        ['id' => 'new_by_day', 'size' => 2], ['id' => 'by_stage', 'size' => 1], ['id' => 'by_source', 'size' => 1], ['id' => 'by_card', 'size' => 1],
         ['id' => 'overdue_list', 'size' => 1], ['id' => 'recent_list', 'size' => 1],
     ];
 
@@ -142,6 +144,19 @@ class LeadDashboardController extends WorkspaceController
             })(),
             'by_source' => ['bars' => collect($bars($period(), 'source'))
                 ->map(fn ($b) => ['label' => self::SOURCE_LABELS[$b['label']] ?? $b['label'], 'value' => $b['value']])->all()],
+            // kartu yang menghasilkan lead (kartu yang di-tap/di-scan saat lead masuk), dengan nama pemegangnya
+            'by_card' => (function () use ($period) {
+                $counts = $period()->whereNotNull('connections.card_id')->selectRaw('connections.card_id as cid, count(*) as n')
+                    ->groupBy('connections.card_id')->orderByDesc('n')->limit(8)->pluck('n', 'cid');
+                $cards = Card::withoutGlobalScopes()->with('holder:id,name')->whereIn('id', $counts->keys())->get()->keyBy('id');
+
+                return ['bars' => $counts->map(function ($n, $id) use ($cards) {
+                    $c = $cards[$id] ?? null;
+                    $name = $c ? ($c->label ?: 'Kartu '.$c->formattedShortCode()) : '—';
+
+                    return ['label' => $c?->holder ? "$name · {$c->holder->name}" : $name, 'value' => (int) $n];
+                })->values()->all()];
+            })(),
             'by_event' => (function () use ($period) {
                 // tanpa join: kolom `team_id` events akan bentrok dengan filter cakupan lead tim
                 $counts = $period()->whereNotNull('event_id')->selectRaw('event_id, count(*) as n')->groupBy('event_id')

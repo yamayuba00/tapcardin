@@ -4,6 +4,7 @@ import { computed } from 'vue'
 import { Check, MessageCircle, Phone } from 'lucide-vue-next'
 import AppButton from '@/components/ui/AppButton/index.vue'
 import AppSegmented from '@/components/ui/AppSegmented/index.vue'
+import AppSelect from '@/components/ui/AppSelect/index.vue'
 import DataTable from '@/components/ui/DataTable/index.vue'
 import PageHeader from '@/components/common/PageHeader/index.vue'
 import StageBadge from '@/components/common/StageBadge/index.vue'
@@ -15,6 +16,10 @@ import { dateTime, relative } from '@/lib/format'
 const list = usePagedList(remindersApi.list, { due: 'overdue' }, { perPage: 25 })
 const { busy, run } = useAction()
 const counts = computed(() => list.meta.value?.counts ?? { overdue: 0, today: 0 })
+// tampilan tim (owner/admin): filter per penanggung jawab lead; 'none' = belum ditugaskan
+const team = computed(() => list.meta.value?.team ?? [])
+const memberOptions = computed(() => [{ value: '', label: 'Semua anggota' }, { value: 'none', label: 'Belum ditugaskan' }, ...team.value.map((m) => ({ value: m.id, label: m.name }))])
+const memberRows = computed(() => list.meta.value?.members ?? [])
 const TABS = computed(() => [
   { value: 'overdue', label: `Terlambat${counts.value.overdue ? ` (${counts.value.overdue})` : ''}` },
   { value: 'today', label: `Hari ini${counts.value.today ? ` (${counts.value.today})` : ''}` },
@@ -23,6 +28,7 @@ const TABS = computed(() => [
 ])
 const COLUMNS = computed(() => [
   { key: 'lead', label: 'Lead' },
+  { key: 'assignee', label: 'Penanggung jawab' },
   { key: 'note', label: 'Catatan' },
   { key: 'due_at', label: list.filters.due === 'done' ? 'Jadwal' : 'Jatuh tempo', sortable: true },
   { key: 'actions', label: '' },
@@ -38,6 +44,22 @@ const wa = (phone) => (phone ? `https://wa.me/${phone.replace(/\D/g, '')}` : nul
   <PageHeader eyebrow="Pengingat" title="Follow-up" />
   <AppSegmented v-model="list.filters.due" label="Tampilkan" :options="TABS" class="flex-wrap" />
 
+  <template v-if="memberRows.length">
+    <div class="grid gap-2 sm:grid-cols-[minmax(0,1fr)_220px] sm:items-end">
+      <div class="flex flex-wrap gap-2" aria-label="Rekap per anggota">
+        <button
+          v-for="m in memberRows" :key="m.id ?? 'none'" type="button" :aria-pressed="(list.filters.member ?? '') === (m.id ?? 'none')"
+          class="grid cursor-pointer gap-0.5 rounded-md border border-line px-3 py-2 text-left text-sm hover:bg-surface-2 aria-pressed:border-accent aria-pressed:bg-surface-2"
+          @click="list.filters.member = m.id ?? 'none'"
+        >
+          <span class="font-medium">{{ m.name }}</span>
+          <span class="font-mono text-xs text-muted">{{ m.overdue }} terlambat · {{ m.today }} hari ini · {{ m.open }} terbuka</span>
+        </button>
+      </div>
+      <AppSelect v-model="list.filters.member" :options="memberOptions" searchable placeholder="Semua anggota" aria-label="Filter penanggung jawab" />
+    </div>
+  </template>
+
   <DataTable
     :columns="COLUMNS" :rows="list.rows.value" :meta="list.meta.value" :sort="list.sort.value" :loading="list.loading.value"
     :empty-text="list.filters.due === 'overdue' ? 'Tidak ada follow-up terlambat. Mantap!' : 'Tidak ada pengingat di sini.'"
@@ -48,6 +70,7 @@ const wa = (phone) => (phone ? `https://wa.me/${phone.replace(/\D/g, '')}` : nul
       <span v-if="r.lead?.company" class="block text-sm text-muted">{{ r.lead.company }}</span>
       <StageBadge v-if="r.lead?.stage" :stage="r.lead.stage" class="mt-1" />
     </template>
+    <template #cell-assignee="{ row: r }"><span :class="r.lead?.assignee ? '' : 'text-muted'">{{ r.lead?.assignee?.name ?? 'Belum ditugaskan' }}</span></template>
     <template #cell-note="{ row: r }"><span :class="r.note ? '' : 'text-muted'">{{ r.note || (r.is_auto ? 'Follow-up otomatis' : '—') }}</span></template>
     <template #cell-due_at="{ row: r }">
       <span :class="r.overdue ? 'font-medium text-danger' : ''">{{ relative(r.due_at) }}</span>

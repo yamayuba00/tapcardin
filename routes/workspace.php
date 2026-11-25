@@ -130,6 +130,7 @@ Route::middleware('auth')->prefix('api')->name('api.')->group(function () {
     Route::delete('/events/{event}', [EventController::class, 'destroy'])->name('events.destroy');
     Route::post('/events/{event}/activate', [EventController::class, 'activate'])->name('events.activate');
     Route::put('/events/{event}/cards', [EventController::class, 'cards'])->name('events.cards');
+    Route::put('/events/{event}/cards/{token}/assignee', [EventController::class, 'assignCard'])->name('events.cards.assignee');
     Route::get('/events/{event}/checkins', [EventCheckinController::class, 'index'])->name('events.checkins');
     Route::get('/events/{event}/checkins.csv', [EventCheckinController::class, 'export'])->name('events.checkins.export');
     Route::post('/events/{event}/checkins', [EventCheckinController::class, 'store'])->middleware('throttle:120,1')->name('events.checkins.store');

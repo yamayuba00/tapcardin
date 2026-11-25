@@ -30,6 +30,11 @@ const auth = useAuthStore()
 const id = route.params.id
 const { data: e } = useAsync(() => eventsApi.get(id))
 const { busy, run } = useAction()
+// penanggung jawab per kartu: anggota aktif workspace (''=belum ditugaskan)
+const assigneeOptions = computed(() => [{ value: '', label: 'Belum ditugaskan' }, ...(e.value?.members ?? []).map((m) => ({ value: m.id, label: m.name }))])
+async function assign(card, userId) {
+  await act(() => eventsApi.assignCard(id, card.token, userId || null), 'Penanggung jawab kartu diperbarui')
+}
 const leads = usePagedList((p) => leadsApi.list({ ...p, event: id }), {}, { url: false, sort: '-created_at', perPage: 10 })
 const removing = ref(false)
 const editing = ref(false)
@@ -110,11 +115,17 @@ async function destroy() {
             <p class="text-sm text-muted">Selama event berlangsung, tap, Tukar Kontak, dan formulir dari kartu ini otomatis tercatat ke event — tanpa perlu menyalakan Mode Event.</p>
             <ul v-if="e.cards.length" class="grid gap-1">
               <li v-for="c in e.cards" :key="c.token">
-                <RouterLink :to="`/cards/${c.token}`" class="flex min-h-10 items-center gap-2 rounded-sm px-1 text-sm no-underline hover:bg-surface-2">
-                  <CreditCard class="size-4 flex-none text-accent-text" aria-hidden="true" />
-                  <span class="min-w-0 flex-1 truncate font-medium text-fg">{{ c.label }}</span>
-                  <span class="font-mono text-xs text-muted">{{ c.form === 'digital' ? 'digital' : c.short_code }}</span>
-                </RouterLink>
+                <div class="grid gap-2 rounded-sm px-1 py-1 text-sm sm:grid-cols-[minmax(0,1fr)_200px] sm:items-center">
+                  <RouterLink :to="`/cards/${c.token}`" class="flex min-h-10 min-w-0 items-center gap-2 no-underline hover:underline">
+                    <CreditCard class="size-4 flex-none text-accent-text" aria-hidden="true" />
+                    <span class="min-w-0 flex-1 truncate font-medium text-fg">{{ c.label }}</span>
+                    <span class="font-mono text-xs text-muted">{{ c.form === 'digital' ? 'digital' : c.short_code }}</span>
+                  </RouterLink>
+                  <AppSelect
+                    :model-value="c.assignee?.id ?? ''" :options="assigneeOptions" searchable placeholder="Belum ditugaskan"
+                    :aria-label="`Penanggung jawab ${c.label}`" :disabled="busy" @update:model-value="(v) => assign(c, v)"
+                  />
+                </div>
               </li>
             </ul>
             <p v-else class="text-sm text-muted">Belum ada kartu yang dibawa ke event ini.</p>

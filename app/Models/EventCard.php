@@ -24,4 +24,9 @@ class EventCard extends Model
     {
         return $this->belongsTo(Card::class)->withoutGlobalScopes();
     }
+
+    public function assignee(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assignee_user_id');
+    }
 }

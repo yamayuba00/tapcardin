@@ -6,6 +6,8 @@ use App\Actions\Leads\Followups;
 use App\Http\Resources\Present;
 use App\Models\Connection;
 use App\Models\LeadReminder;
+use App\Models\TenantMember;
+use App\Models\User;
 use App\Support\Http\Table;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -14,13 +16,28 @@ use Illuminate\Validation\Rule;
 /** LD-05 — pengingat follow-up: daftar "Terlambat / Hari ini / Mendatang", tambah, selesai, ubah jadwal. */
 class ReminderController extends WorkspaceController
 {
+    /**
+     * Pemilik/admin (leads.view.all): semua pengingat workspace, dengan rekap per penanggung jawab lead (anggota) dan
+     * filter `member`. Lainnya: pengingat yang dibuatnya sendiri.
+     */
     public function index(Request $request): JsonResponse
     {
         $this->access()->authorize('leads.view.*');
-        $request->validate(['due' => ['nullable', Rule::in(['overdue', 'today', 'upcoming', 'done'])]]);
+        $request->validate([
+            'due' => ['nullable', Rule::in(['overdue', 'today', 'upcoming', 'done'])],
+            'member' => ['nullable', 'string', 'max:26'], // public id anggota, atau 'none' = belum ditugaskan
+        ]);
         $tz = $this->user()->timezone ?: 'Asia/Jakarta';
-        $q = LeadReminder::with(['connection.stage'])->where('user_id', $this->user()->id)
-            ->whereHas('connection', fn ($c) => $c->whereNull('merged_into_id'));
+        $all = $this->access()->has('leads.view.all');
+        $scope = fn ($q) => $all ? $q : $q->where('user_id', $this->user()->id);
+
+        $q = $scope(LeadReminder::with(['connection.stage', 'connection.assignee:id,public_id,name'])
+            ->whereHas('connection', fn ($c) => $c->whereNull('merged_into_id')));
+        if ($all && $request->filled('member')) {
+            $member = (string) $request->query('member');
+            $uid = $member === 'none' ? null : (User::where('public_id', $member)->value('id') ?? 0);
+            $q->whereHas('connection', fn ($c) => $uid === null ? $c->whereNull('assignee_user_id') : $c->where('assignee_user_id', $uid));
+        }
         match ($request->query('due')) {
             'overdue' => $q->whereNull('done_at')->where('due_at', '<', now()),
             'today' => $q->whereNull('done_at')->whereBetween('due_at', [now(), now($tz)->endOfDay()->utc()]),
@@ -29,16 +46,42 @@ class ReminderController extends WorkspaceController
             default => $q->whereNull('done_at'),
         };
 
-        $counts = LeadReminder::where('user_id', $this->user()->id)->whereNull('done_at')
+        $counts = $scope(LeadReminder::query())->whereNull('done_at')
             ->selectRaw('count(*) filter (where due_at < ?) as overdue, count(*) filter (where due_at >= ? and due_at <= ?) as today', [now(), now(), now($tz)->endOfDay()->utc()])
             ->first();
+
+        $meta = ['counts' => ['overdue' => (int) $counts->overdue, 'today' => (int) $counts->today]];
+        if ($all) {
+            $meta['members'] = $this->byMember($tz);
+            $meta['team'] = TenantMember::where('status', 'active')->with('user:id,public_id,name')->get()
+                ->map(fn (TenantMember $m) => Present::memberRef($m->user))->filter()->sortBy('name')->values();
+        }
 
         return Table::json(
             Table::paginate($q, $request, ['due_at' => 'due_at', 'created_at' => 'created_at'], $request->query('due') === 'done' ? '-due_at' : 'due_at', [], 20),
             fn (LeadReminder $r) => Present::reminder($r, true),
             $request,
-            ['counts' => ['overdue' => (int) $counts->overdue, 'today' => (int) $counts->today]],
+            $meta,
         );
+    }
+
+    /** Rekap pengingat terbuka per penanggung jawab lead; lead tanpa penanggung jawab di baris terakhir (id null). */
+    private function byMember(string $tz): array
+    {
+        $rows = LeadReminder::withoutGlobalScopes()->where('lead_reminders.tenant_id', $this->tenant()->id)->whereNull('lead_reminders.done_at')
+            ->join('connections', 'connections.id', '=', 'lead_reminders.connection_id')->whereNull('connections.merged_into_id')
+            ->selectRaw('connections.assignee_user_id as uid, count(*) as open,
+                count(*) filter (where lead_reminders.due_at < ?) as overdue,
+                count(*) filter (where lead_reminders.due_at >= ? and lead_reminders.due_at <= ?) as today',
+                [now(), now(), now($tz)->endOfDay()->utc()])
+            ->groupBy('connections.assignee_user_id')->get();
+        $users = User::whereIn('id', $rows->pluck('uid')->filter())->get(['id', 'public_id', 'name'])->keyBy('id');
+
+        return $rows->map(fn ($r) => [
+            'id' => $r->uid ? $users[$r->uid]?->public_id : null,
+            'name' => $r->uid ? ($users[$r->uid]?->name ?? '—') : 'Belum ditugaskan',
+            'open' => (int) $r->open, 'overdue' => (int) $r->overdue, 'today' => (int) $r->today,
+        ])->sortByDesc('overdue')->values()->all();
     }
 
     /** POST /api/leads/{id}/reminders */
