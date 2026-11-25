@@ -27,7 +27,8 @@ const { data: catalog } = useAsync(() => webhooksApi.catalog(), { immediate: all
 const { busy, run } = useAction()
 
 const editing = ref(null) // null = tertutup, {} = baru, endpoint = ubah
-const secret = ref(null) // { url, secret } — hanya tampil sekali
+const secret = ref(null) // { url, secret } — hanya tampil sekali (modal)
+const revealed = ref(null) // rahasia terakhir dibuat di sesi ini; dipakai mengisi contoh dokumentasi
 const removing = ref(null)
 const selected = ref(null)
 const log = ref(null)
@@ -37,7 +38,10 @@ const atLimit = computed(() => (endpoints.value?.length ?? 0) >= (meta.value?.ma
 function saved(e) {
   const fresh = !editing.value?.id
   editing.value = null
-  if (fresh && e.secret) secret.value = { url: e.url, secret: e.secret }
+  if (fresh && e.secret) {
+    secret.value = { url: e.url, secret: e.secret }
+    revealed.value = { url: e.url, secret: e.secret }
+  }
   selected.value = e.id
   reload()
 }
@@ -50,7 +54,11 @@ async function test(e) {
 }
 async function rotate(e) {
   const res = await run(() => webhooksApi.rotate(e.id), 'Rahasia baru dibuat. Rahasia lama langsung tidak berlaku.').catch(() => null)
-  if (res) secret.value = { url: e.url, secret: res.data.secret }
+  if (res) {
+    secret.value = { url: e.url, secret: res.data.secret }
+    revealed.value = { url: e.url, secret: res.data.secret }
+    reload()
+  }
 }
 async function setActive(e, on) {
   await run(() => webhooksApi.update(e.id, { is_active: on }), on ? 'Endpoint diaktifkan.' : 'Endpoint dinonaktifkan.').catch(() => null)
@@ -131,7 +139,7 @@ const health = (e) => (e.success_rate_7d == null ? 'Belum ada pengiriman 7 hari 
       </AppPanel>
 
       <AppPanel title="Dokumentasi integrasi">
-        <WebhookDocs :catalog="catalog" :endpoint-url="current?.url" :secret="current && secret?.url === current.url ? secret.secret : ''" @rotate="rotate(current)" />
+        <WebhookDocs :catalog="catalog" :endpoint-url="current?.url" :secret="current && revealed?.url === current.url ? revealed.secret : ''" @rotate="rotate(current)" />
       </AppPanel>
     </template>
   </template>
