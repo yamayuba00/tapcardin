@@ -15,6 +15,7 @@ use App\Models\Connection;
 use App\Models\FormSubmission;
 use App\Models\LeadActivity;
 use App\Models\LeadStage;
+use App\Models\Notification;
 use App\Models\TeamMember;
 use App\Models\TenantMember;
 use App\Models\User;
@@ -164,6 +165,7 @@ class ConnectionController extends WorkspaceController
         $this->visible($connection);
         $this->access()->authorize('leads.delete');
         $connection->delete();
+        Notification::forgetLead($this->tenant()->id, $connection->public_id);
         Audit::tenant($this->tenant()->id, 'lead.deleted', $connection, ['name' => $connection->name]);
 
         return response()->json(null, 204);

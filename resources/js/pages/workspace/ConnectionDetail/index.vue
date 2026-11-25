@@ -1,6 +1,6 @@
 <script setup>
 // U-07 / W-09 — tombol cepat otomatis mencatat aktivitas (LD-04), tahap + alasan kalah wajib (LD-03), tag, timeline.
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowRight, Calendar, Info, Mail, MessageCircle, Nfc, Pencil, Phone, Plus, Trash2, UserCheck, X } from 'lucide-vue-next'
 import AppButton from '@/components/ui/AppButton/index.vue'
@@ -19,12 +19,33 @@ import { leadsApi } from '@/api/workspace'
 import { useAction, useAsync } from '@/composables/useAsync'
 import { ACTIVITY_LABELS, dateTime, rupiah, sourceLabel } from '@/lib/format'
 import { useAuthStore } from '@/stores/auth'
+import { useToastStore } from '@/stores/toast'
 
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
-const id = route.params.id
+const toast = useToastStore()
+let id = route.params.id
 const { data: c, error: loadError, reload } = useAsync(() => leadsApi.get(id))
+// instans halaman dipakai ulang saat hanya :id berubah (mis. pindah ke lead tujuan gabungan)
+watch(() => route.params.id, (v) => {
+  if (!v || v === id) return
+  id = v
+  reload()
+})
+
+// tautan notifikasi ke lead yang sudah dihapus (404): kembali ke daftar, jangan tampilkan halaman galat
+watch(loadError, (e) => {
+  if (!e) return
+  toast.push('Lead ini sudah dihapus atau digabung.', 'info', 'lead-gone')
+  router.replace('/connections')
+})
+// lead yang digabung: lanjut ke lead tujuan bila masih ada
+watch(c, (v) => {
+  if (!v?.merged_into) return
+  toast.push('Lead ini sudah digabung. Menampilkan lead tujuan.', 'info', 'lead-merged')
+  router.replace(`/connections/${v.merged_into}`)
+})
 const { data: stages } = useAsync(() => leadsApi.stages())
 const { busy, run } = useAction()
 // penugasan lead: workspace perusahaan, peran dengan izin alihkan lead (semua / tim)

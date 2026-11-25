@@ -136,6 +136,7 @@ final class Present
                 'external_url' => $c->external_url,
                 'reminders' => $c->reminders()->whereNull('done_at')->get()->map(fn ($r) => self::reminder($r))->all(),
                 'lost_reason' => $c->lost_reason,
+                'merged_into' => $c->merged_into_id ? Connection::whereKey($c->merged_into_id)->value('public_id') : null,
                 'consent_at' => $c->consent_at?->toIso8601String(),
                 'activities' => $c->activities->map(fn (LeadActivity $a) => [
                     'id' => $a->id,

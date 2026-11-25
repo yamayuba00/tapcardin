@@ -36,6 +36,7 @@ class NotificationController extends WorkspaceController
         $tid = $this->tenant()->id;
 
         return Notification::where('user_id', $this->user()->id)
-            ->where(fn ($q) => $q->whereNull('tenant_id')->orWhere('tenant_id', $tid));
+            ->where(fn ($q) => $q->whereNull('tenant_id')->orWhere('tenant_id', $tid))
+            ->liveLead(); // lead yang sudah dihapus tidak punya tautan yang bisa dibuka
     }
 }
