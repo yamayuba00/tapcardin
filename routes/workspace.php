@@ -10,6 +10,7 @@ use App\Http\Controllers\Workspace\BioPageController;
 use App\Http\Controllers\Workspace\BrandKitController;
 use App\Http\Controllers\Workspace\CardController;
 use App\Http\Controllers\Workspace\CardLoginKeyController;
+use App\Http\Controllers\Workspace\CardReportController;
 use App\Http\Controllers\Workspace\CartController;
 use App\Http\Controllers\Workspace\CheckoutController;
 use App\Http\Controllers\Workspace\CompanyController;
@@ -136,6 +137,7 @@ Route::middleware('auth')->prefix('api')->name('api.')->group(function () {
     Route::get('/pipeline/stages', [ConnectionController::class, 'stages'])->name('stages');
 
     Route::get('/analytics/cards', [AnalyticsController::class, 'cards'])->name('analytics.cards');
+    Route::get('/reports/cards', [CardReportController::class, 'index'])->name('reports.cards');
 
     // Design Studio (PRD §10.3)
     Route::get('/studio/templates', [DesignController::class, 'templates'])->name('studio.templates');

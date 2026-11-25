@@ -184,6 +184,11 @@ export const cartApi = {
   remove: (id) => http.del(`/api/cart/${id}`),
 }
 
+/** Laporan kartu owner/admin: masa berlaku semua kartu + rekap tap per anggota (30 hari). */
+export const reportsApi = {
+  cards: () => http.get('/api/reports/cards'),
+}
+
 export const billingApi = {
   get: () => http.get('/api/billing'),
   checkout: (plan, cycle, voucher = null) => http.post('/api/billing/checkout', { plan, cycle, voucher }),

@@ -19,6 +19,7 @@ export default [
       { path: 'dashboard', name: 'dashboard', component: page('Dashboard'), meta: { title: 'Beranda', nav: 'dashboard' } },
       { path: 'notifications', name: 'notifications', component: page('Notifications'), meta: { title: 'Notifikasi', nav: 'dashboard' } },
       { path: 'cards', name: 'cards', component: page('Cards'), meta: { title: 'Kartu', nav: 'cards' } },
+      { path: 'reports/cards', name: 'card-report', component: page('CardReport'), meta: { title: 'Laporan kartu', nav: 'card-report' } },
       { path: 'cards/:token', name: 'card-detail', component: page('CardDetail'), meta: { title: 'Kartu', nav: 'cards' } },
       { path: 'cards/:token/bio', name: 'card-bio', component: page('BioEditor'), meta: { title: 'Bio link', nav: 'cards' } },
       { path: 'share', name: 'share-shortcut', component: page('ShareShortcut'), meta: { title: 'Bagikan kartu', nav: 'cards' } },

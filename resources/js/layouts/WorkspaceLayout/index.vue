@@ -6,7 +6,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import {
-  BellRing, Blocks, Building2, CalendarDays, ChartColumn, ChevronsUpDown, CreditCard, Gem, House, LayoutDashboard, LogOut, Moon, Package, Palette, Settings, User, Users, Webhook,
+  BellRing, Blocks, Building2, CalendarDays, ChartColumn, ChevronsUpDown, ClipboardList, CreditCard, Gem, House, LayoutDashboard, LogOut, Moon, Package, Palette, Settings, User, Users, Webhook,
 } from 'lucide-vue-next'
 import NotificationBell from '@/components/common/NotificationBell/index.vue'
 import BrandLogo from '@/components/common/BrandLogo/index.vue'
@@ -27,9 +27,10 @@ const canWebhook = computed(() => auth.can('integrations.manage') || auth.can('w
 const groups = computed(() => [
   { label: null, items: [{ key: 'dashboard', label: 'Beranda', icon: House, to: '/dashboard' }] },
   // workspace perusahaan: kelola karyawan & rekap lead (owner/admin), kartu karyawan (juga Manager untuk timnya), Webhook
-  ...(auth.workspace && auth.workspace.type !== 'personal' && (auth.can('members.invite') || auth.can('cards.assign.*') || canWebhook.value)
+  ...(auth.workspace && auth.workspace.type !== 'personal' && (auth.can('members.invite') || auth.can('cards.assign.*') || auth.can('cards.view.all') || canWebhook.value)
     ? [{ label: 'Perusahaan', items: [
       (auth.can('members.invite') || auth.can('cards.assign.*')) && { key: 'members', label: auth.can('members.invite') ? 'Karyawan' : 'Kartu tim', icon: Building2, to: '/members' },
+      auth.can('cards.view.all') && { key: 'card-report', label: 'Laporan kartu', icon: ClipboardList, to: '/reports/cards' },
       canWebhook.value && { key: 'webhooks', label: 'Webhook', icon: Webhook, to: '/webhooks' },
     ].filter(Boolean) }] : []),
   { label: 'Kartu', items: [
