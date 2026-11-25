@@ -186,7 +186,7 @@ class CompanyAreaTest extends TestCase
 
         $this->api('DELETE', "/company/cards/{$card->card_token}/assign")->assertOk()->assertJsonPath('data.assigned', null);
         $this->assertNull($card->fresh()->assigned_user_id);
-        $this->api('GET', '/company/summary')->assertOk()->assertJsonPath('data.cards_pool', 1)->assertJsonPath('data.cards_max', 500)
+        $this->api('GET', '/company/summary')->assertOk()->assertJsonPath('data.cards_pool', 1)->assertJsonPath('data.cards_max', 80)
             ->assertJsonPath('data.members', 2);
     }
 

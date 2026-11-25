@@ -75,6 +75,8 @@ return [
     // kartu fisik perusahaan: masa pakai 6 bulan per periode, kuota tap 6.000 per periode (reset tiap periode baru)
     'company_card' => [
         'tap_quota' => (int) env('COMPANY_CARD_TAP_QUOTA', 6000),
+        // potongan per kartu fisik untuk pesanan dari workspace perusahaan (Rp)
+        'order_discount' => (int) env('COMPANY_CARD_ORDER_DISCOUNT', 20000),
     ],
     'digital_card' => [
         'tap_quota' => (int) env('DIGITAL_TAP_QUOTA', 1500),

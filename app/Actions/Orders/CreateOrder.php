@@ -3,6 +3,7 @@
 namespace App\Actions\Orders;
 
 use App\Actions\Cards\CreateDigitalCard;
+use App\Enums\TenantType;
 use App\Exceptions\ApiError;
 use App\Models\CardProduct;
 use App\Models\CartItem;
@@ -84,7 +85,7 @@ final class CreateOrder
         $method = ShippingMethod::where('key', $methodKey)->where('is_active', true)->first()
             ?? throw new ApiError('shipping_unavailable', 'Metode pengiriman tidak tersedia.');
         $vars = $this->printVars($tenant, $user);
-        $lines = array_map(fn (array $i) => $i['kind'] === 'card' ? $this->cardLine($user, $i, $vars) : $this->lanyardLine($user, $i, $vars), $items);
+        $lines = array_map(fn (array $i) => $i['kind'] === 'card' ? $this->cardLine($user, $i, $vars, $tenant) : $this->lanyardLine($user, $i, $vars), $items);
         $subtotal = array_sum(array_column($lines, 'total'));
         $voucher = filled($promo) ? self::promo((string) $promo, $tenant) : null;
         $discount = $voucher?->discountFor($subtotal) ?? 0;
@@ -229,7 +230,7 @@ final class CreateOrder
         return $d;
     }
 
-    private function cardLine(User $user, array $i, array $vars): array
+    private function cardLine(User $user, array $i, array $vars, Tenant $tenant): array
     {
         $d = $this->design($user, $i['design'], 'card');
         $p = CardProduct::where('key', $i['product'] ?? '')->where('is_active', true)->first()
@@ -242,9 +243,11 @@ final class CreateOrder
             throw new ApiError('quantity_too_low', "Minimal pesan {$p->min_qty} untuk {$p->name}.");
         }
         $kit = $d->brandKit?->toKit();
+        // pesanan dari workspace perusahaan: potongan per kartu fisik
+        $unit = $tenant->type === TenantType::Company ? max(0, $p->price - (int) config('tapcard.company_card.order_discount')) : $p->price;
 
         return [
-            'kind' => 'card', 'design_id' => $d->id, 'card_product_id' => $p->id, 'quantity' => $qty, 'unit_price' => $p->price, 'total' => $p->price * $qty,
+            'kind' => 'card', 'design_id' => $d->id, 'card_product_id' => $p->id, 'quantity' => $qty, 'unit_price' => $unit, 'total' => $unit * $qty,
             'label' => "{$p->name} — {$d->name}",
             'design_snapshot' => ['name' => $d->name, 'orientation' => $d->orientation, 'lanyard' => (bool) $d->lanyard,
                 'front' => $d->front_json, 'back' => $d->back_json, 'kit' => $kit, 'vars' => Variables::forKit($kit) + $vars],

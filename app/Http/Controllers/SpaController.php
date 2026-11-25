@@ -74,6 +74,8 @@ class SpaController extends Controller
             'apiKey' => str_starts_with($host, 'tap.') ? null : config('services.tap_api.key'),
             // situs marketing: tombol "Hubungi Sales" (WhatsApp); null → disembunyikan
             'salesWhatsapp' => $host === $base ? (config('tapcard.sales_whatsapp') ?: null) : null,
+            // workspace perusahaan: tautan 'Hubungi sales' untuk paket Custom di billing
+            'salesWhatsappWorkspace' => $host === $base ? null : (config('tapcard.sales_whatsapp') ?: null),
             // subdomain / domain kustom perusahaan: nama & logo untuk halaman login bermerek
             'tenant' => ! $panel && ($t = HostTenant::resolve($host)) ? HostTenant::brand($t) : null,
             // Realtime (Reverb): alamat publik WebSocket untuk Echo; null → SSE/polling seperti sebelumnya

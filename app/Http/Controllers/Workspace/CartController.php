@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Workspace;
 
+use App\Enums\TenantType;
 use App\Exceptions\ApiError;
 use App\Models\CardProduct;
 use App\Models\CartItem;
@@ -160,7 +161,8 @@ class CartController extends WorkspaceController
         return $items->map(function (CartItem $i) use ($widths, $hardware) {
             $d = $i->design;
             if ($i->kind === 'card') {
-                $unit = (int) $i->product?->price;
+                // harga kartu sama dengan CreateOrder: potongan per kartu untuk workspace perusahaan
+                $unit = max(0, (int) $i->product?->price - ($this->tenant()->type === TenantType::Company ? (int) config('tapcard.company_card.order_discount') : 0));
                 $min = (int) ($i->product?->min_qty ?? 1);
             } else {
                 $w = $widths->get($d->lanyard_width_id);

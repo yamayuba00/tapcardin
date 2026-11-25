@@ -53,7 +53,7 @@ class CompanyPlanTest extends TestCase
         $plans = Plan::where('tenant_type', 'company')->orderBy('sort')->get()->keyBy('key');
         $this->assertSame(['starter', 'growth', 'business', 'enterprise'], $plans->keys()->all());
         $this->assertFalse(Plan::where('key', 'team')->exists());
-        foreach (['starter' => [25, 300000], 'growth' => [100, 900000], 'business' => [500, 2500000]] as $key => [$cards, $price]) {
+        foreach (['starter' => [10, 1000000], 'growth' => [40, 4000000], 'business' => [80, 10000000]] as $key => [$cards, $price]) {
             $p = $plans[$key];
             $this->assertSame([$cards, null, $price, ['semiannual'], false], [$p->limits['cards_active'], $p->limits['members'], (int) $p->price_semiannual, $p->cycles(), $p->per_seat]);
             $this->assertArrayNotHasKey('cards_per_member', $p->limits);
@@ -73,7 +73,7 @@ class CompanyPlanTest extends TestCase
 
         $rows = $this->panel('GET', '/tenants?type=company')->assertOk()->json('data');
         $this->assertCount(1, $rows);
-        $this->assertSame(['majujaya', 0, 25, 'trialing'], [$rows[0]['slug'], $rows[0]['cards_active'], $rows[0]['cards_max'], $rows[0]['subscription_status']]);
+        $this->assertSame(['majujaya', 0, 10, 'trialing'], [$rows[0]['slug'], $rows[0]['cards_active'], $rows[0]['cards_max'], $rows[0]['subscription_status']]);
         $this->assertSame($sub->trial_ends_at->toIso8601String(), $rows[0]['active_until']);
 
         $personal = collect($this->panel('GET', '/tenants?type=personal')->assertOk()->json('data'));
@@ -96,10 +96,10 @@ class CompanyPlanTest extends TestCase
         $third = $this->companyCard($org, $owner);
         $this->postJson($this->host('app', '/api/cards/activate'), ['token' => $third->card_token])->assertStatus(402)->assertJsonPath('error.code', 'plan_limit_reached');
 
-        // tanpa override: batas paket Starter (25)
+        // tanpa override: batas paket Starter (10)
         $org->update(['limit_overrides' => []]);
         PlanFeatures::forget($org);
-        $this->assertSame(25, PlanFeatures::limit($org->fresh(), 'cards_active'));
+        $this->assertSame(10, PlanFeatures::limit($org->fresh(), 'cards_active'));
     }
 
     public function test_semiannual_checkout_extends_trial_by_six_months(): void
@@ -112,12 +112,12 @@ class CompanyPlanTest extends TestCase
         $billing = $this->getJson($this->host('majujaya', '/api/billing'))->assertOk()->json('data');
         $this->assertTrue($billing['company']);
         $this->assertSame(['starter', 'growth', 'business'], array_column($billing['plans'], 'key'));
-        $this->assertSame(['semiannual' => 300000], $billing['plans'][0]['prices']);
-        $this->assertSame(25, $billing['plans'][0]['cards_max']);
+        $this->assertSame(['semiannual' => 1000000], $billing['plans'][0]['prices']);
+        $this->assertSame(10, $billing['plans'][0]['cards_max']);
 
         $this->postJson($this->host('majujaya', '/api/billing/checkout'), ['plan' => 'starter', 'cycle' => 'monthly'])->assertJsonPath('error.code', 'cycle_unavailable');
         $c = $this->postJson($this->host('majujaya', '/api/billing/checkout'), ['plan' => 'starter', 'cycle' => 'semiannual'])->assertCreated()->json('data');
-        $this->assertSame(300000, $c['invoice']['total']);
+        $this->assertSame(1000000, $c['invoice']['total']);
         $this->assertSame('Paket Starter — 6 bulan', $c['invoice']['lines'][0]['label']);
         $this->postJson($this->host('majujaya', "/api/billing/invoices/{$c['invoice']['id']}/simulate"), ['result' => 'paid', 'method' => 'QRIS'])->assertOk();
 
@@ -161,7 +161,7 @@ class CompanyPlanTest extends TestCase
 
         $this->artisan('tapcard:subscriptions')->assertSuccessful();
         $inv = Invoice::acrossTenants()->where('tenant_id', $org->id)->where('status', 'issued')->firstOrFail();
-        $this->assertSame(900000, (int) $inv->total);
+        $this->assertSame(4000000, (int) $inv->total);
         $this->assertSame('Perpanjangan Growth — 6 bulan', $inv->lines[0]['label']);
 
         $this->travel(6)->days();

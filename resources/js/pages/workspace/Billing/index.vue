@@ -15,6 +15,7 @@ import AppSkeleton from '@/components/ui/AppSkeleton/index.vue'
 import DataTable from '@/components/ui/DataTable/index.vue'
 import PageHeader from '@/components/common/PageHeader/index.vue'
 import { billingApi, receiptsApi } from '@/api/workspace'
+import { config } from '@/config'
 import { useAction, useAsync } from '@/composables/useAsync'
 import { usePagedList } from '@/composables/usePagedList'
 import { date, dateTime } from '@/lib/format'
@@ -33,6 +34,7 @@ const { busy, run } = useAction()
 const CYCLE = { monthly: ['Bulanan', 'bulan', '1 bulan'], yearly: ['Tahunan · hemat 2 bulan', 'tahun', '12 bulan'], semiannual: ['Per 6 bulan', '6 bulan', '6 bulan'] }
 const cycle = ref(CYCLE[route.query.cycle] ? route.query.cycle : 'monthly')
 // perusahaan hanya per 6 bulan; personal bulanan/tahunan
+const salesUrl = config.salesWhatsappWorkspace ? `https://wa.me/${config.salesWhatsappWorkspace}` : null
 const cycles = computed(() => [...new Set((b.value?.plans ?? []).flatMap((p) => p.cycles))])
 watch(cycles, (c) => { if (c.length && !c.includes(cycle.value)) cycle.value = c[0] }, { immediate: true })
 const cycleLabel = (c) => CYCLE[c]?.[2] ?? c
@@ -206,6 +208,14 @@ const COLUMNS = [
             </li>
           </ul>
           <AppButton v-if="cta(p) && canManage" :variant="p.key === current?.key ? 'secondary' : 'primary'" block @click="choosing = p">{{ cta(p) }} <ArrowRight class="size-5" /></AppButton>
+        </article>
+        <!-- paket custom: jumlah kartu & harga disepakati dengan sales -->
+        <article class="grid content-start gap-5 rounded-lg border border-line bg-surface p-5 sm:p-6">
+          <div class="grid gap-1">
+            <h3 class="text-lg">Custom</h3>
+            <p class="text-sm text-muted">Jumlah kartu dan harga sesuai kebutuhan perusahaan Anda.</p>
+          </div>
+          <AppButton v-if="salesUrl" variant="secondary" block :href="salesUrl" target="_blank" rel="noopener">Hubungi sales <ArrowRight class="size-5" /></AppButton>
         </article>
       </div>
       <p class="flex items-center gap-2 text-sm text-muted"><Lock class="size-4" /> <template v-if="gateway">Pembayaran aman lewat {{ gateway.simulator ? 'gateway simulasi (mode pengembangan)' : gateway.name }}.</template><template v-else>Pembayaran online sedang disiapkan.</template></p>
