@@ -131,7 +131,7 @@ const health = (e) => (e.success_rate_7d == null ? 'Belum ada pengiriman 7 hari 
       </AppPanel>
 
       <AppPanel title="Dokumentasi integrasi">
-        <WebhookDocs :catalog="catalog" />
+        <WebhookDocs :catalog="catalog" :endpoint-url="current?.url" />
       </AppPanel>
     </template>
   </template>

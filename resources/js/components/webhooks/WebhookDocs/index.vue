@@ -5,7 +5,7 @@ import { Copy } from 'lucide-vue-next'
 import AppSegmented from '@/components/ui/AppSegmented/index.vue'
 import { useToastStore } from '@/stores/toast'
 
-const props = defineProps({ catalog: { type: Object, required: true } })
+const props = defineProps({ catalog: { type: Object, required: true }, endpointUrl: { type: String, default: '' } })
 const toast = useToastStore()
 const tab = ref('events')
 const picked = ref(props.catalog.events[0]?.key)
@@ -22,9 +22,10 @@ const RETRY_LABEL = (s) => (s < 3600 ? `${s / 60} menit` : `${s / 3600} jam`)
 const curlSnippet = computed(() => {
   const ev = event.value ?? props.catalog.events[0]
   const body = JSON.stringify(ev?.sample ?? {})
+  const url = props.endpointUrl || 'https://server-anda.example/webhooks/tapcard' // isi placeholder bila belum ada endpoint
   return `# 1) Uji endpoint Anda: kirim event contoh yang sudah ditandatangani
 SECRET='rahasia-webhook-anda'
-URL='https://server-anda.example/webhooks/tapcard'
+URL='${url}'
 TS=$(date +%s)
 BODY='${body}'
 SIG=$(printf '%s.%s' "$TS" "$BODY" | openssl dgst -sha256 -hmac "$SECRET" | sed 's/^.* //')
@@ -74,7 +75,7 @@ async function copy(text) {
         </div>
         <div class="relative min-w-0">
           <button type="button" class="absolute top-2 right-2 grid size-9 cursor-pointer place-items-center rounded-md bg-surface text-muted hover:text-fg" aria-label="Salin contoh JSON" @click="copy(json(event.sample))"><Copy class="size-4" /></button>
-          <pre class="max-h-[480px] max-w-full overflow-auto rounded-md bg-surface-2 p-4 font-mono text-xs">{{ json(event.sample) }}</pre>
+          <pre class="max-h-[480px] max-w-full overflow-auto whitespace-pre-wrap break-words rounded-md bg-surface-2 p-4 font-mono text-xs">{{ json(event.sample) }}</pre>
         </div>
       </article>
     </div>
@@ -90,11 +91,11 @@ async function copy(text) {
       <p class="text-muted">Hitung ulang tanda tangan dari body <b>mentah</b>, bandingkan dengan perbandingan waktu-konstan, dan tolak timestamp yang lebih tua dari 5 menit.</p>
       <div class="relative min-w-0">
         <button type="button" class="absolute top-2 right-2 grid size-9 cursor-pointer place-items-center rounded-md bg-surface text-muted hover:text-fg" aria-label="Salin contoh cURL" @click="copy(curlSnippet)"><Copy class="size-4" /></button>
-        <pre class="max-h-[480px] max-w-full overflow-auto rounded-md bg-surface-2 p-4 font-mono text-xs">{{ curlSnippet }}</pre>
+        <pre class="max-h-[480px] max-w-full overflow-auto whitespace-pre-wrap break-words rounded-md bg-surface-2 p-4 font-mono text-xs">{{ curlSnippet }}</pre>
       </div>
       <div class="relative min-w-0">
         <button type="button" class="absolute top-2 right-2 grid size-9 cursor-pointer place-items-center rounded-md bg-surface text-muted hover:text-fg" aria-label="Salin kode verifikasi" @click="copy(verifySnippet)"><Copy class="size-4" /></button>
-        <pre class="max-h-[480px] max-w-full overflow-auto rounded-md bg-surface-2 p-4 font-mono text-xs">{{ verifySnippet }}</pre>
+        <pre class="max-h-[480px] max-w-full overflow-auto whitespace-pre-wrap break-words rounded-md bg-surface-2 p-4 font-mono text-xs">{{ verifySnippet }}</pre>
       </div>
     </div>
 
