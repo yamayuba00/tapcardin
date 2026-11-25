@@ -24,7 +24,7 @@ const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 const id = route.params.id
-const { data: c, reload } = useAsync(() => leadsApi.get(id))
+const { data: c, error: loadError, reload } = useAsync(() => leadsApi.get(id))
 const { data: stages } = useAsync(() => leadsApi.stages())
 const { busy, run } = useAction()
 // penugasan lead: workspace perusahaan, peran dengan izin alihkan lead (semua / tim)
@@ -87,7 +87,13 @@ const activityText = (a) => (a.type === 'assigned'
 </script>
 
 <template>
-  <div v-if="!c" class="grid gap-4" aria-busy="true"><AppSkeleton class="!h-8 w-2/5" /><AppSkeleton class="!h-72" /></div>
+  <!-- lead tidak ada / sudah dihapus / di luar cakupan izin (API 404): jangan biarkan kerangka muat selamanya -->
+  <div v-if="loadError" class="grid place-items-center gap-3 py-16 text-center">
+    <p class="font-semibold">Lead tidak ditemukan</p>
+    <p class="text-sm text-muted">Lead ini sudah dihapus, digabung, atau tidak dapat Anda lihat.</p>
+    <AppButton variant="secondary" @click="router.push('/connections')">Kembali ke koneksi</AppButton>
+  </div>
+  <div v-else-if="!c" class="grid gap-4" aria-busy="true"><AppSkeleton class="!h-8 w-2/5" /><AppSkeleton class="!h-72" /></div>
   <template v-else>
     <PageHeader :title="c.name" back="/connections" :back-label="auth.contactLabel">
       <template #meta><p class="text-muted">{{ [c.job_title, c.company].filter(Boolean).join(' · ') }}</p></template>
