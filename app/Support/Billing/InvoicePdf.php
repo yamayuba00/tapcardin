@@ -22,7 +22,9 @@ final class InvoicePdf
     public static function store(Invoice $invoice, string $tenantName): array
     {
         $data = self::data($invoice, $tenantName);
-        $path = 'invoices/'.$invoice->public_id.'/'.substr(sha1(json_encode($data)), 0, 16).'.pdf';
+        // hash menyertakan templat & logo: mengubah tampilan juga membuat berkas baru
+        $version = sha1(json_encode($data).md5_file(resource_path('views/documents/invoice.blade.php')).md5_file(resource_path('images/brand/tapcard-mark.svg')));
+        $path = 'invoices/'.$invoice->public_id.'/'.substr($version, 0, 16).'.pdf';
         $disk = Storage::disk('documents');
 
         if (! $disk->exists($path)) {
@@ -42,11 +44,18 @@ final class InvoicePdf
         $snap = $invoice->billing_snapshot ?? [];
         [$statusLabel, $tone] = self::STATUS[$invoice->status] ?? [$invoice->status, 'muted'];
         $paid = $invoice->status === 'paid';
-        $date = fn ($d) => $d ? $d->timezone('Asia/Jakarta')->format('j M Y, H.i') : '—';
+        // format sama dengan halaman tagihan (dateTime): "25 Nov, 21.22"
+        $date = fn ($d) => $d ? $d->timezone('Asia/Jakarta')->format('j M, H.i') : '—';
+        $banner = $paid
+            ? 'Lunas '.$date($invoice->paid_at).($invoice->payment_method ? ' via '.$invoice->payment_method : '').'.'.($invoice->plan ? ' Paket '.$invoice->plan->name.' aktif.' : '')
+            : null;
 
         return [
             'number' => $invoice->number,
+            'banner' => $banner,
+            'logo' => 'data:image/svg+xml;base64,'.base64_encode((string) file_get_contents(resource_path('images/brand/tapcard-mark.svg'))),
             'title' => $paid ? 'Kuitansi' : 'Invoice',
+            'paid' => $paid,
             'status' => $statusLabel,
             'tone' => $tone,
             'bill' => ['name' => $snap['name'] ?? '', 'email' => $snap['email'] ?? ''],
