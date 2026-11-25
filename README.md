@@ -154,6 +154,8 @@ vendor/bin/pint --test         # format kode PHP
 sh scripts/check-design.sh     # aturan desain & tombol
 ```
 
+Tes PHP dijalankan lewat `bash scripts/test.sh` (atau `composer test`), yang memakai kunci `.git/tapcard-test.lock` agar dua proses tidak berebut database `tapcard_test`. Jika kunci masih dipegang, skrip menunggu hingga 15 menit lalu menampilkan pemegangnya. Tambahkan `--clock` untuk menjalankan seluruh tes pada jam rawan WIB (`TEST_CLOCK`), atau `--clock=<waktu ISO>` untuk jam lain; argumen lain diteruskan ke PHPUnit, misalnya `bash scripts/test.sh tests/Feature/ApiKeyGateTest.php`.
+
 ## Struktur proyek
 
 ```
