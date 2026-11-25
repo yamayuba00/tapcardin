@@ -40,7 +40,7 @@ const groups = computed(() => [
   ] },
   { label: auth.contactLabel, items: [
     { key: 'connections', label: `Daftar ${auth.contactLabel.toLowerCase()}`, icon: Users, to: '/connections' },
-    { key: 'lead-dashboard', label: 'Dashboard', icon: LayoutDashboard, to: '/connections/dashboard' },
+    { key: 'lead-dashboard', label: 'Ringkasan lead', icon: LayoutDashboard, to: '/connections/dashboard' },
     { key: 'follow-up', label: 'Follow-up', icon: BellRing, to: '/follow-up' },
     { key: 'events', label: 'Event', icon: CalendarDays, to: '/events' },
   ] },

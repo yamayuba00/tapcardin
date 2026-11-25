@@ -88,7 +88,7 @@ function setDays(d) {
 </script>
 
 <template>
-  <PageHeader :eyebrow="auth.contactLabel" title="Dashboard lead" back="/connections" :back-label="auth.contactLabel">
+  <PageHeader :eyebrow="auth.contactLabel" title="Ringkasan lead" back="/connections" :back-label="auth.contactLabel">
     <template v-if="!editing">
       <AppButton variant="secondary" :disabled="!data" @click="startEdit"><LayoutGrid class="size-5" /> Atur dashboard</AppButton>
     </template>

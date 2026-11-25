@@ -14,7 +14,7 @@ const total = computed(() => props.stages.reduce((a, s) => a + s.count, 0))
   <section class="grid gap-3" aria-label="Funnel lead">
     <div class="flex items-center justify-between gap-3">
       <span class="text-sm text-muted">{{ num(total) }} lead terbuka</span>
-      <AppButton variant="ghost" to="/connections/dashboard">Dashboard lead <ArrowRight class="size-4" /></AppButton>
+      <AppButton variant="ghost" to="/connections/dashboard">Ringkasan lead <ArrowRight class="size-4" /></AppButton>
     </div>
     <ol class="grid gap-2">
       <li v-for="s in stages" :key="s.id" class="grid grid-cols-[minmax(0,7rem)_1fr_auto] items-center gap-3 text-sm">

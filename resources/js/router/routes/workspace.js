@@ -30,7 +30,7 @@ export default [
       // bio link kini per kartu (/cards/:token/bio); alamat lama diarahkan ke daftar kartu
       { path: 'profiles/:rest(.*)*', redirect: { name: 'cards' } },
       { path: 'connections', name: 'connections', component: page('Connections'), meta: { title: 'Koneksi', nav: 'connections' } },
-      { path: 'connections/dashboard', name: 'lead-dashboard', component: page('LeadDashboard'), meta: { title: 'Dashboard lead', nav: 'lead-dashboard' } },
+      { path: 'connections/dashboard', name: 'lead-dashboard', component: page('LeadDashboard'), meta: { title: 'Ringkasan lead', nav: 'lead-dashboard' } },
       { path: 'connections/import', name: 'lead-import', component: page('LeadImport'), meta: { title: 'Impor CSV', nav: 'connections' } },
       { path: 'follow-up', name: 'follow-ups', component: page('FollowUps'), meta: { title: 'Follow-up', nav: 'follow-up' } },
       { path: 'scan', name: 'scan', component: page('Scan'), meta: { title: 'Scan kartu', nav: 'connections' } },
