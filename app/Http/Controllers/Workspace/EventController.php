@@ -71,10 +71,18 @@ class EventController extends WorkspaceController
         $active = $this->member()?->active_event_until?->isFuture() ? $this->member()->active_event_id : null;
 
         $assigned = EventCard::where('event_id', $event->id)->with(['card', 'assignee:id,public_id,name'])->get();
+        // tap & lead per kartu di event ini: kartu yang di-assign yang menghasilkan angka
+        $cardIds = $assigned->pluck('card_id')->filter()->all();
+        $tapsByCard = Tap::where('event_id', $event->id)->whereIn('card_id', $cardIds)->selectRaw('card_id, count(*) as n')->groupBy('card_id')->pluck('n', 'card_id');
+        $leadsByCard = (clone $leads)->whereIn('card_id', $cardIds)->selectRaw('card_id, count(*) as n')->groupBy('card_id')->pluck('n', 'card_id');
 
         return response()->json(['data' => self::present($event->loadCount(['connections', 'cards']), $active) + [
             'cards' => $assigned->filter(fn (EventCard $ec) => $ec->card)
-                ->map(fn (EventCard $ec) => self::card($ec->card) + ['assignee' => Present::memberRef($ec->assignee)])->values(),
+                ->map(fn (EventCard $ec) => self::card($ec->card) + [
+                    'assignee' => Present::memberRef($ec->assignee),
+                    'taps' => (int) ($tapsByCard[$ec->card_id] ?? 0),
+                    'leads' => (int) ($leadsByCard[$ec->card_id] ?? 0),
+                ])->values(),
             'members' => $this->teamMembers(),
             // kartu yang boleh di-assign: milik sendiri, atau semua kartu workspace bila punya izin lihat semua
             'available_cards' => $this->assignable()->get()->map(fn (Card $c) => self::card($c)),

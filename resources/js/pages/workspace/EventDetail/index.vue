@@ -121,6 +121,7 @@ async function destroy() {
                     <span class="min-w-0 flex-1 truncate font-medium text-fg">{{ c.label }}</span>
                     <span class="font-mono text-xs text-muted">{{ c.form === 'digital' ? 'digital' : c.short_code }}</span>
                   </RouterLink>
+                  <span class="font-mono text-xs text-muted sm:col-span-2">{{ c.taps }} tap · {{ c.leads }} lead</span>
                   <AppSelect
                     :model-value="c.assignee?.id ?? ''" :options="assigneeOptions" searchable placeholder="Belum ditugaskan"
                     :aria-label="`Penanggung jawab ${c.label}`" :disabled="busy" @update:model-value="(v) => assign(c, v)"

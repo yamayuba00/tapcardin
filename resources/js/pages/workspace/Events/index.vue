@@ -79,7 +79,7 @@ async function stop() {
     <template #cell-connections="{ row: e }"><span class="num">{{ e.connections_count }}</span></template>
   </DataTable>
 
-  <AppModal v-if="creating" title="Event baru" description="Kumpulkan semua koneksi dari satu acara agar mudah ditindaklanjuti dan diekspor." @close="creating = false">
+  <AppModal v-if="creating" size="lg" title="Event baru" description="Kumpulkan semua koneksi dari satu acara agar mudah ditindaklanjuti dan diekspor." @close="creating = false">
     <EventForm id="event-create" with-activate :errors="errors" @submit="create" />
     <template #footer>
       <AppButton variant="secondary" @click="creating = false">Batal</AppButton>
