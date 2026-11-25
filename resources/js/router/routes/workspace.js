@@ -47,6 +47,7 @@ export default [
       { path: 'orders/new', name: 'order-new', component: page('OrderNew'), meta: { title: 'Keranjang & checkout', nav: 'orders' } },
       { path: 'orders/:id', name: 'order-detail', component: page('OrderDetail'), meta: { title: 'Pesanan', nav: 'orders' } },
       { path: 'billing', name: 'billing', component: page('Billing'), meta: { title: 'Paket & tagihan', nav: 'billing' } },
+      { path: 'receipts/:id', name: 'receipt', component: page('Receipt'), meta: { title: 'Kuitansi', nav: 'billing' } },
       { path: 'billing/invoices/:id', name: 'billing-invoice', component: page('BillingInvoice'), meta: { title: 'Invoice', nav: 'billing' } },
       { path: 'billing/pay/:id', name: 'billing-pay', component: page('BillingPay'), meta: { title: 'Pembayaran', nav: 'billing', fullscreen: true } },
       { path: 'addons', name: 'addons', component: page('Addons'), meta: { title: 'Add-on', nav: 'addons' } },

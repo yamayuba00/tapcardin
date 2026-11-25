@@ -78,7 +78,8 @@ class FieldActivationController extends PlatformController
 
         return $this->ok([
             'customer' => ['id' => $r['user']->public_id, 'name' => $r['user']->name, 'email' => $r['user']->email, 'new_account' => $r['created']],
-            'card' => ['token' => $r['card']->card_token, 'short_code' => $r['card']->formattedShortCode(), 'url' => $r['card']->resolverUrl()],
+            'card' => ['token' => $r['card']->card_token, 'short_code' => $r['card']->formattedShortCode(), 'url' => $r['card']->resolverUrl(),
+                'valid_until' => $r['card']->valid_until?->toIso8601String()],
             'account_code' => $r['code'], // hanya sekali; yang disimpan hanya hash
             'sale' => $r['sale']->load(['buyer', 'seller'])->present(),
         ], 201);

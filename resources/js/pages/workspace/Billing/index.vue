@@ -14,7 +14,7 @@ import AppSegmented from '@/components/ui/AppSegmented/index.vue'
 import AppSkeleton from '@/components/ui/AppSkeleton/index.vue'
 import DataTable from '@/components/ui/DataTable/index.vue'
 import PageHeader from '@/components/common/PageHeader/index.vue'
-import { billingApi } from '@/api/workspace'
+import { billingApi, receiptsApi } from '@/api/workspace'
 import { useAction, useAsync } from '@/composables/useAsync'
 import { usePagedList } from '@/composables/usePagedList'
 import { date, dateTime } from '@/lib/format'
@@ -27,6 +27,7 @@ if (route.hash === '#addons') router.replace('/addons') // tautan lama: Add-on k
 const auth = useAuthStore()
 const toast = useToastStore()
 const { data: b, reload } = useAsync(() => billingApi.get())
+const { data: receipts } = useAsync(() => receiptsApi.list().then((r) => r.data ?? []))
 const invoices = usePagedList(billingApi.invoices, {}, { url: false, sort: '-created_at', perPage: 10 })
 const { busy, run } = useAction()
 const CYCLE = { monthly: ['Bulanan', 'bulan', '1 bulan'], yearly: ['Tahunan · hemat 2 bulan', 'tahun', '12 bulan'], semiannual: ['Per 6 bulan', '6 bulan', '6 bulan'] }
@@ -211,6 +212,19 @@ const COLUMNS = [
     </section>
 
     <!-- riwayat invoice -->
+    <section class="grid gap-3">
+      <h2 class="text-xl">Riwayat pembelian kartu</h2>
+      <ul v-if="receipts?.length" class="grid gap-2">
+        <li v-for="x in receipts" :key="x.id" class="flex flex-wrap items-center gap-3 rounded-md border border-line bg-surface px-4 py-3 text-sm">
+          <RouterLink :to="`/receipts/${x.id}`" class="font-mono">{{ x.number }}</RouterLink>
+          <span class="min-w-0 flex-1 truncate">{{ x.item }} · {{ x.card }}</span>
+          <span class="font-mono">{{ rupiah(x.amount) }}</span>
+          <span class="font-mono text-muted">{{ dateTime(x.paid_at) }}</span>
+        </li>
+      </ul>
+      <p v-else class="text-sm text-muted">Belum ada pembelian kartu.</p>
+    </section>
+
     <section class="grid gap-3">
       <h2 class="text-xl">Riwayat tagihan</h2>
       <DataTable

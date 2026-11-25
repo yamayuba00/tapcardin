@@ -107,7 +107,8 @@ async function reissue() {
         <dl class="grid grid-cols-[max-content_1fr] content-start gap-x-6 gap-y-2 text-sm">
           <dt class="text-muted">Pembeli</dt><dd><RouterLink v-if="card.sale.buyer" :to="`/users/${card.sale.buyer.id}`">{{ card.sale.buyer.name }}</RouterLink> <span class="text-muted">{{ card.sale.buyer?.email }}</span></dd>
           <dt class="text-muted">Diaktifkan oleh</dt><dd>{{ card.sale.seller ?? '—' }} · {{ dateTime(card.sale.created_at) }}</dd>
-          <dt class="text-muted">Nominal</dt><dd class="font-mono">{{ rupiah(card.sale.amount) }}</dd>
+          <dt class="text-muted">Nominal</dt><dd class="font-mono">{{ rupiah(card.sale.amount) }} · <RouterLink :to="`/receipts/${card.sale.id}`">Kuitansi</RouterLink></dd>
+          <dt class="text-muted">Masa pakai</dt><dd>{{ card.period ? `${dateTime(card.period.valid_until)} (${card.period.state === 'expired' ? 'nonaktif' : card.period.state === 'grace' ? 'tenggang' : 'aktif'})` : 'Tanpa batas' }}</dd>
           <dt class="text-muted">Pembayaran</dt>
           <dd>
             <AppBadge :tone="card.sale.status === 'paid' ? 'ok' : 'warn'">{{ card.sale.status === 'paid' ? 'Lunas' : 'Belum dibayar' }}</AppBadge>

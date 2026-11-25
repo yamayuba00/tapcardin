@@ -30,6 +30,8 @@ class Card extends Model
             'status' => CardStatus::class,
             'chip_type' => ChipType::class,
             'activation_locked_until' => 'datetime',
+            'valid_until' => 'datetime',
+            'period_reminders' => 'array',
             'encoded_at' => 'datetime',
             'qc_passed_at' => 'datetime',
             'shipped_at' => 'datetime',

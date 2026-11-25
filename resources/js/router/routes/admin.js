@@ -14,6 +14,7 @@ export default [
     children: [
       { path: '', name: 'dashboard', component: page('Dashboard'), meta: { title: 'Dashboard', nav: 'dashboard', perm: 'dashboard.ops' } },
       { path: 'tenants', name: 'tenants', component: page('Tenants'), meta: { title: 'Workspace', nav: 'tenants', perm: 'tenants.view' } },
+      { path: 'receipts/:id', name: 'receipt', component: () => import('@/pages/workspace/Receipt/index.vue'), meta: { title: 'Kuitansi', perm: 'cards.manage' } },
       { path: 'tenants/:id', name: 'tenant-detail', component: page('TenantDetail'), meta: { title: 'Workspace', nav: 'tenants', perm: 'tenants.view' } },
       { path: 'users', name: 'users', component: page('Users'), meta: { title: 'Pengguna', nav: 'users', perm: 'users.view' } },
       { path: 'users/:id', name: 'user-detail', component: page('UserDetail'), meta: { title: 'Pengguna', nav: 'users', perm: 'users.view' } },

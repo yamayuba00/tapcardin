@@ -15,4 +15,5 @@ Schedule::command('tapcard:uptime')->everyTenSeconds()->withoutOverlapping(2);
 Schedule::command('tapcard:alert')->everyFiveMinutes()->withoutOverlapping();
 Schedule::command('tapcard:backup')->dailyAt('02:15')->timezone('Asia/Jakarta')->withoutOverlapping()->when(fn () => (bool) config('tapcard.backup.disk'));
 Schedule::command('tapcard:prune')->dailyAt('03:30')->timezone('Asia/Jakarta');
+Schedule::command('tapcard:card-periods')->dailyAt('01:20')->timezone('Asia/Jakarta')->withoutOverlapping();
 Schedule::command('tapcard:domains-recheck')->dailyAt('04:10')->timezone('Asia/Jakarta')->withoutOverlapping();

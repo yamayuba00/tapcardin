@@ -3,6 +3,7 @@
 namespace App\Actions\Billing;
 
 use App\Authz\PlanFeatures;
+use App\Models\Card;
 use App\Models\Invoice;
 use App\Models\Order;
 use App\Models\PaymentEvent;
@@ -15,9 +16,11 @@ use App\Models\VoucherRedemption;
 use App\Services\Payment\PaymentNotification;
 use App\Services\Payment\PaymentService;
 use App\Support\Audit;
+use App\Support\CardPeriod;
 use App\Support\Notify;
 use App\Support\OrderRisk;
 use App\Support\TapQuota;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -123,6 +126,11 @@ final class ApplyPayment
 
                 return 'paid';
             }
+            if ($invoice->type === 'card_renewal') {
+                $this->cardRenewalPaid($invoice);
+
+                return 'paid';
+            }
 
             $sub = $this->activate($invoice);
             $invoice->update(['subscription_id' => $sub->id]);
@@ -161,6 +169,25 @@ final class ApplyPayment
     }
 
     /** Tambahan tap kartu digital lunas → kuota kartu naik; profil yang tadinya terkunci langsung bisa dibuka lagi. */
+    /** Perpanjangan masa pakai: dari akhir masa bila masih dalam tenggang, selain itu dari sekarang. */
+    private function cardRenewalPaid(Invoice $invoice): void
+    {
+        $s = $invoice->billing_snapshot;
+        $card = Card::withoutGlobalScopes()->whereKey((int) $s['card_id'])->lockForUpdate()->first();
+        if ($card === null) {
+            return;
+        }
+        $from = CardPeriod::renewalBase($card->valid_until, now());
+        $until = $from->addMonths((int) $s['months']);
+        $card->forceFill(['valid_until' => $until])->save();
+        Cache::forget("card:{$card->card_token}");
+        $invoice->update(['billing_snapshot' => $s + ['period_from' => $from->toIso8601String(), 'period_until' => $until->toIso8601String()]]);
+        Audit::tenant($invoice->tenant_id, 'card.renewed', $invoice, null, ['number' => $invoice->number, 'total' => $invoice->total, 'until' => $until->toDateString()]);
+        if ($invoice->user_id) {
+            Notify::user($invoice->user_id, $invoice->tenant_id, 'card_renewed', ['card' => $card->card_token, 'label' => $s['label'] ?? null, 'until' => $until->toIso8601String()]);
+        }
+    }
+
     private function topupPaid(Invoice $invoice): void
     {
         $s = $invoice->billing_snapshot;

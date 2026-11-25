@@ -20,6 +20,11 @@ export const dashboardApi = {
   summary: () => http.get('/api/dashboard'),
 }
 
+export const receiptsApi = {
+  list: () => http.get('/api/receipts'),
+  get: (id) => http.get(`/api/receipts/${id}`),
+}
+
 export const cardsApi = {
   list: () => http.get('/api/cards'),
   createDigital: () => http.post('/api/cards/digital'),
@@ -30,6 +35,7 @@ export const cardsApi = {
   shared: (token, channel) => http.post(`/api/cards/${token}/shared`, { channel }).catch(() => null),
   update: (token, body) => http.patch(`/api/cards/${token}`, body),
   activation: (token) => http.get(`/api/cards/${token}/activation`),
+  renew: (token) => http.post(`/api/cards/${token}/renew`),
   activate: (token, code) => http.post('/api/cards/activate', { token, code }),
   claim: (shortCode, code) => http.post('/api/cards/claim', { short_code: shortCode, code }),
   requestReplacement: (token, note) => http.post(`/api/cards/${token}/replacement`, { note }),

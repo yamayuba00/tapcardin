@@ -23,6 +23,7 @@ use App\Http\Controllers\Workspace\MeController;
 use App\Http\Controllers\Workspace\NotificationController;
 use App\Http\Controllers\Workspace\OrderController;
 use App\Http\Controllers\Workspace\ProfileController;
+use App\Http\Controllers\Workspace\ReceiptController;
 use App\Http\Controllers\Workspace\ReminderController;
 use App\Http\Controllers\Workspace\ScanController;
 use App\Http\Controllers\Workspace\StreamController;
@@ -61,6 +62,9 @@ Route::middleware('auth')->prefix('api')->name('api.')->group(function () {
     Route::post('/cards/activate', [ActivationController::class, 'activate'])->middleware('throttle:activate')->name('cards.activate');
     Route::post('/cards/claim', [ActivationController::class, 'claim'])->middleware('throttle:activate')->name('cards.claim');
     Route::post('/cards/{token}/replacement', [CardController::class, 'requestReplacement'])->name('cards.replacement');
+    Route::post('/cards/{token}/renew', [CardController::class, 'renew'])->middleware('throttle:20,1')->name('cards.renew');
+    Route::get('/receipts', [ReceiptController::class, 'index'])->name('receipts.index');
+    Route::get('/receipts/{id}', [ReceiptController::class, 'show'])->where('id', '[0-9A-Z]{26}')->name('receipts.show');
     Route::post('/cards/{token}/dynamic-qr', [CardController::class, 'dynamicQr'])->middleware('throttle:30,1')->name('cards.dynamic-qr');
     Route::get('/cards/{token}/activation', [ActivationController::class, 'info'])->name('cards.activation');
     Route::get('/cards', [CardController::class, 'list'])->name('cards.list');

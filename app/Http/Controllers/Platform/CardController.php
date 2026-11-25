@@ -15,6 +15,7 @@ use App\Models\Tap;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Support\Audit;
+use App\Support\CardPeriod;
 use App\Support\Crockford;
 use App\Support\Http\Table;
 use Illuminate\Http\JsonResponse;
@@ -56,6 +57,10 @@ class CardController extends PlatformController
                 && (! $card->tenant_id || Tenant::find($card->tenant_id)?->type === TenantType::Personal),
             'uid_bound' => $card->chip_uid_hash !== null,
             'sale' => CardSale::with(['buyer', 'seller'])->where('card_id', $card->id)->first()?->present(),
+            'period' => $card->valid_until ? [
+                'valid_until' => $card->valid_until->toIso8601String(),
+                'state' => CardPeriod::expired($card->valid_until) ? 'expired' : ($card->valid_until->isPast() ? 'grace' : 'active'),
+            ] : null,
             'sale_methods' => CardSale::METHODS,
             'encoded_at' => self::dt($card->encoded_at),
             'qc_passed_at' => self::dt($card->qc_passed_at),

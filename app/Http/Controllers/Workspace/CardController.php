@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Workspace;
 
+use App\Actions\Billing\CreateCardRenewal;
 use App\Actions\Cards\ChangeCardStatus;
 use App\Actions\Cards\CreateDigitalCard;
 use App\Actions\Cards\DynamicQr;
@@ -17,6 +18,7 @@ use App\Models\EventCard;
 use App\Models\ProductEvent;
 use App\Models\Tap;
 use App\Support\Audit;
+use App\Support\CardPeriod;
 use App\Support\Design\CardGeometry;
 use App\Support\Design\CardVisual;
 use App\Support\Design\TemplateLibrary;
@@ -77,6 +79,13 @@ class CardController extends WorkspaceController
             'login_key' => CardLoginKeyController::present($card, $this->user()->id),
             'qr_svg_url' => config('tapcard.resolver_url').'/c/'.$card->card_token.'/qr.svg',
             // kartu digital paket Free: QR berganti otomatis, QR lama berhenti berlaku
+            'period' => $card->valid_until ? [
+                'valid_until' => $card->valid_until->toIso8601String(),
+                'grace_until' => $card->valid_until->copy()->addDays(CardPeriod::graceDays())->toIso8601String(),
+                'state' => CardPeriod::expired($card->valid_until) ? 'expired' : ($card->valid_until->isPast() ? 'grace' : 'active'),
+                'renew_price' => CardPeriod::renewalPrice(),
+                'months' => CardPeriod::months(),
+            ] : null,
             'qr_rotation' => ($share = ShareQr::current($card)) ? [
                 'days' => ShareQr::rotationDays($card), 'expires_at' => $share->expires_at->toIso8601String(),
             ] : null,
@@ -198,6 +207,15 @@ class CardController extends WorkspaceController
         return $this->access()->has('cards.view.all')
             ? Card::query()->whereIn('status', ['active', 'paused', 'lost', 'unclaimed'])
             : Card::query()->where('holder_user_id', $this->user()->id);
+    }
+
+    /** POST /api/cards/{token}/renew — perpanjang masa pakai kartu penjualan langsung (pemegang kartu saja). */
+    public function renew(string $token, CreateCardRenewal $renew): JsonResponse
+    {
+        $card = $this->find($token);
+        $r = $renew->handle($card, $this->user(), request()->getSchemeAndHttpHost());
+
+        return response()->json(['data' => ['invoice' => BillingController::presentInvoice($r['invoice']), 'payment_url' => $r['payment_url']]], 201);
     }
 
     private function find(string $token): Card

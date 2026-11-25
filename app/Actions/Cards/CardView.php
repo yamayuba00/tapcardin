@@ -11,7 +11,9 @@ use App\Models\Profile;
 use App\Models\ProfileField;
 use App\Models\Tenant;
 use App\Support\Bio\BioTheme;
+use App\Support\CardPeriod;
 use App\Tenancy\TenantScope;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -40,7 +42,14 @@ final class CardView
         public readonly ?array $blocks = null,
         /** Kartu digital: tap memakai kuota paket (TapQuota). */
         public readonly bool $digital = false,
+        /** Akhir masa pakai (ISO 8601); null = tanpa batas. */
+        public readonly ?string $validUntil = null,
     ) {}
+
+    public function expired(): bool
+    {
+        return CardPeriod::expired($this->validUntil ? CarbonImmutable::parse($this->validUntil) : null);
+    }
 
     public static function cached(string $token): ?self
     {
@@ -124,6 +133,7 @@ final class CardView
             fields: $fields,
             blocks: $blocks,
             digital: $card->isDigital(),
+            validUntil: $card->valid_until?->toIso8601String(),
         );
     }
 

@@ -17,6 +17,7 @@ use App\Models\ProfileField;
 use App\Models\Tap;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Support\CardPeriod;
 use App\Support\Contacts\ContactTypes;
 use App\Support\Contacts\ContactValue;
 use App\Support\Crockford;
@@ -154,7 +155,7 @@ class PublicCardController extends Controller
     {
         $card = Card::acrossTenants()->where('card_token', $token)->firstOrFail();
         // kartu hilang, dijeda, atau dicabut: QR tidak ditampilkan sama sekali (kartu belum diaktifkan tetap bisa dipindai untuk aktivasi)
-        abort_if(in_array($card->status, [CardStatus::Lost, CardStatus::Paused, CardStatus::Revoked], true), 404);
+        abort_if(in_array($card->status, [CardStatus::Lost, CardStatus::Paused, CardStatus::Revoked], true) || CardPeriod::expired($card->valid_until), 404);
         $rotating = ShareQr::rotationDays($card) !== null;
 
         return response(SvgRenderer::forUrl(ShareQr::url($card)), 200, [
@@ -207,7 +208,7 @@ class PublicCardController extends Controller
     public static function activeView(string $token): CardView
     {
         $view = CardView::cached($token);
-        abort_if($view === null || $view->status !== 'active' || $view->profile === null || $view->tenantSuspended, 404);
+        abort_if($view === null || $view->status !== 'active' || $view->profile === null || $view->tenantSuspended || $view->expired(), 404);
 
         return $view;
     }

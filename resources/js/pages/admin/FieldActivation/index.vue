@@ -20,7 +20,7 @@ import { adminApi } from '@/api/admin'
 import { config } from '@/config'
 import { beep } from '@/lib/feedback'
 import { cardTokenFromUrl, encodeUrl, nfcErrorMessage, nfcSupported, readOnce } from '@/lib/nfc'
-import { rupiah } from '@/lib/format'
+import { date, rupiah } from '@/lib/format'
 
 const route = useRoute()
 const router = useRouter()
@@ -197,6 +197,7 @@ const waUrl = computed(() => {
         <dt class="text-muted">Kartu</dt><dd class="font-mono">{{ result.card.short_code }}</dd>
         <dt class="text-muted">Akun</dt><dd class="truncate">{{ result.customer.email }} <AppBadge :tone="result.customer.new_account ? 'ok' : 'info'">{{ result.customer.new_account ? 'Baru' : 'Lama' }}</AppBadge></dd>
         <dt class="text-muted">Bayar</dt><dd>{{ rupiah(result.sale.amount) }} · {{ result.sale.status === 'paid' ? `Lunas (${result.sale.payment_label})` : 'Belum dibayar' }}</dd>
+        <dt class="text-muted">Masa pakai</dt><dd>{{ result.card.valid_until ? `sampai ${date(result.card.valid_until)}` : 'tanpa batas' }}</dd>
       </dl>
       <div class="grid gap-2 sm:flex sm:flex-wrap">
         <AppButton v-if="waUrl" size="lg" :href="waUrl" target="_blank" rel="noopener"><MessageCircle class="size-5" /> Kirim ke WhatsApp</AppButton>

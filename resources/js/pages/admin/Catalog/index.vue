@@ -6,6 +6,7 @@ import { computed, reactive, ref, watch } from 'vue'
 import { Plus, Save } from 'lucide-vue-next'
 import AppBadge from '@/components/ui/AppBadge/index.vue'
 import AppButton from '@/components/ui/AppButton/index.vue'
+import AppField from '@/components/ui/AppField/index.vue'
 import AppInput from '@/components/ui/AppInput/index.vue'
 import AppPanel from '@/components/ui/AppPanel/index.vue'
 import AppSelect from '@/components/ui/AppSelect/index.vue'
@@ -59,6 +60,10 @@ async function saveProduct(p) {
   const res = await run(() => adminApi.saveCardProduct(p.public_id, { name: p.name, description: p.description || null, is_active: p.is_active, ...ints(p, ['price', 'min_qty', 'sort']) }), `${p.name} disimpan.`).catch(() => null)
   if (res) c.value = res.data
 }
+async function saveRenewal(price) {
+  const res = await run(() => adminApi.saveCardRenewal({ price: Number(price) }), 'Harga perpanjangan disimpan.')
+  if (res) c.value = res.data
+}
 async function saveRate(r) {
   await run(() => adminApi.saveShippingRate(r.id, { base_cost: Number(r.base_cost), per_kg_cost: Number(r.per_kg_cost), etd_min_days: Number(r.etd_min_days), etd_max_days: Number(r.etd_max_days) }), `Tarif ${r.zone} · ${r.courier} ${r.service} disimpan.`).catch(() => null)
 }
@@ -84,6 +89,14 @@ async function saveType(t, patch) {
   <PageHeader eyebrow="Bisnis" title="Katalog" />
   <AppSkeleton v-if="!c" class="!h-60" />
   <template v-else>
+    <AppPanel title="Perpanjangan masa pakai kartu">
+      <div class="grid gap-3 sm:flex sm:items-end">
+        <AppField label="Harga per 6 bulan (Rp)"><AppInput v-model.number="c.card_renewal.price" type="number" min="0" /></AppField>
+        <AppButton :loading="busy" @click="saveRenewal(c.card_renewal.price)">Simpan</AppButton>
+      </div>
+      <p class="text-sm text-muted">Placeholder sampai harga final ditetapkan. Berlaku untuk perpanjangan kartu hasil penjualan langsung.</p>
+    </AppPanel>
+
     <AppPanel title="Kartu fisik · produk" flush>
       <div class="overflow-x-auto">
         <table class="w-full min-w-[760px] text-sm table-stack">

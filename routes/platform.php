@@ -16,6 +16,7 @@ use App\Http\Controllers\Platform\MeController;
 use App\Http\Controllers\Platform\OrderController;
 use App\Http\Controllers\Platform\PaymentReviewController;
 use App\Http\Controllers\Platform\PlanController;
+use App\Http\Controllers\Platform\ReceiptController;
 use App\Http\Controllers\Platform\RefundController;
 use App\Http\Controllers\Platform\StaffController;
 use App\Http\Controllers\Platform\StationController;
@@ -73,6 +74,7 @@ Route::middleware(['auth:staff', 'platform'])->prefix('api')->name('api.')->grou
     Route::post('/field/blank', [FieldActivationController::class, 'blank'])->middleware('throttle:30,1')->name('field.blank');
     Route::post('/field/cards/{token}/encoded', [FieldActivationController::class, 'encoded'])->middleware('throttle:30,1')->name('field.encoded');
     Route::get('/field/summary', [FieldActivationController::class, 'summary'])->name('field.summary');
+    Route::get('/receipts/{id}', [ReceiptController::class, 'show'])->where('id', '[0-9A-Z]{26}')->name('receipts.show');
 
     Route::get('/batches', [BatchController::class, 'index'])->name('batches');
     Route::get('/batches/designs', [BatchController::class, 'designs'])->name('batches.designs');
@@ -147,6 +149,7 @@ Route::middleware(['auth:staff', 'platform'])->prefix('api')->name('api.')->grou
     Route::patch('/catalog/lanyard-widths/{id}', [CatalogController::class, 'saveWidth'])->name('catalog.widths.update');
     Route::post('/catalog/lanyard-hardware', [CatalogController::class, 'saveHardware'])->name('catalog.hardware.store');
     Route::patch('/catalog/lanyard-hardware/{id}', [CatalogController::class, 'saveHardware'])->name('catalog.hardware.update');
+    Route::patch('/catalog/card-renewal', [CatalogController::class, 'saveCardRenewal'])->name('catalog.card-renewal.update');
     Route::post('/catalog/card-products', [CatalogController::class, 'saveCardProduct'])->name('catalog.card-products.store');
     Route::patch('/catalog/card-products/{id}', [CatalogController::class, 'saveCardProduct'])->name('catalog.card-products.update');
     Route::post('/catalog/shipping', [CatalogController::class, 'saveShipping'])->name('catalog.shipping.store');

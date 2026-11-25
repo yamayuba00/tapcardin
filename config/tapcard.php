@@ -66,6 +66,12 @@ return [
     // Paket kartu digital — terpisah dari paket workspace (kartu fisik). Kuota tap berlaku kumulatif (tidak di-reset
     // tiap bulan): habis → profil tidak bisa dibuka sampai pemilik membeli tambahan. Tap yang dihitung = tap unik
     // (lihat tap_dedupe_minutes), bot tidak dihitung. Kartu fisik tanpa kuota tap.
+    // Masa pakai kartu hasil penjualan langsung: dihitung dari aktivasi, lalu tenggang sebelum nonaktif.
+    'card_period' => [
+        'months' => 6,
+        'grace_days' => 7,
+        'renewal_price' => (int) env('CARD_RENEWAL_PRICE', 150000), // PLACEHOLDER: bisa diubah di panel → Katalog
+    ],
     'digital_card' => [
         'tap_quota' => (int) env('DIGITAL_TAP_QUOTA', 1500),
         'topup_taps' => (int) env('DIGITAL_TOPUP_TAPS', 2000),

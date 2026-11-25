@@ -16,13 +16,29 @@ import AppSkeleton from '@/components/ui/AppSkeleton/index.vue'
 import CardVisual from '@/components/cards/CardVisual/index.vue'
 import PageHeader from '@/components/common/PageHeader/index.vue'
 import { cardsApi } from '@/api/workspace'
+import { useRouter } from 'vue-router'
 import { useAction, useAsync } from '@/composables/useAsync'
-import { dateTime, num, relative } from '@/lib/format'
+import { date, dateTime, num, relative, rupiah } from '@/lib/format'
 import { useToastStore } from '@/stores/toast'
 
 const route = useRoute()
 const toast = useToastStore()
 const { data: card } = useAsync(() => cardsApi.get(route.params.token))
+const router = useRouter()
+const renewing = ref(false)
+async function renew() {
+  renewing.value = true
+  try {
+    const res = await cardsApi.renew(route.params.token)
+    const u = new URL(res.data.payment_url, window.location.href)
+    if (u.origin === window.location.origin) router.push(u.pathname + u.search)
+    else window.location.assign(res.data.payment_url)
+  } catch (e) {
+    toast.error(e.message)
+  } finally {
+    renewing.value = false
+  }
+}
 const { busy, run } = useAction()
 const label = ref('')
 const confirm = ref(null) // 'lost' | 'paused' | 'replace'
@@ -109,6 +125,17 @@ async function copy() {
     </AppPanel>
 
     <div class="grid gap-4 md:grid-cols-2">
+      <AppPanel v-if="card.period" title="Masa pakai kartu">
+        <div class="grid gap-3 text-sm">
+          <p>
+            Berlaku sampai <span class="font-mono">{{ date(card.period.valid_until) }}</span>
+            <span v-if="card.period.state === 'grace'" class="text-warn"> · tenggang sampai {{ date(card.period.grace_until) }}</span>
+            <span v-if="card.period.state === 'expired'" class="text-danger"> · nonaktif, profil tidak tampil</span>
+          </p>
+          <div><AppButton :loading="renewing" @click="renew">Perpanjang {{ card.period.months }} bulan — {{ rupiah(card.period.renew_price) }}</AppButton></div>
+        </div>
+      </AppPanel>
+
       <AppPanel title="Pengaturan kartu">
         <div class="grid gap-4">
           <AppField label="Nama kartu">

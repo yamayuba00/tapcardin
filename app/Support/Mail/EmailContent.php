@@ -17,7 +17,7 @@ final class EmailContent
     public const DEFAULT_ON = [
         'invoice_due' => true, 'invoice_paid' => true, 'plan_changed' => true, 'workspace_expired' => true, 'subscription_past_due' => true,
         'grace_ending' => true, 'subscription_reminder' => true, 'trial_ending' => true, 'order_status' => true, 'order_unpaid' => true, 'tap_quota' => true, 'lost_card_tapped' => true,
-        'webhook_disabled' => true, 'domain_unverified' => true,
+        'webhook_disabled' => true, 'domain_unverified' => true, 'card_period' => true, 'card_renewed' => true,
     ];
 
     /** Selalu dikirim, tidak bisa dimatikan (tidak tampil di daftar preferensi). */
@@ -170,6 +170,32 @@ final class EmailContent
                 ],
                 'action' => ['label' => 'Bayar pesanan', 'path' => '/orders/'.($d['id'] ?? '')],
                 'tone' => 'warn',
+            ],
+            'card_period' => [
+                'subject' => match ($d['stage'] ?? '') {
+                    'grace_end' => 'Masa pakai kartu sudah habis',
+                    'h1' => 'Besok masa pakai kartu berakhir',
+                    default => "Masa pakai kartu berakhir {$d['days']} hari lagi",
+                },
+                'title' => match ($d['stage'] ?? '') {
+                    'grace_end' => 'Kartu nonaktif — perpanjang untuk mengaktifkan lagi',
+                    default => 'Perpanjang masa pakai kartu Anda',
+                },
+                'lines' => [
+                    "Kartu **{$d['label']}** berlaku sampai **{$date($d['until'])}**.",
+                    ($d['stage'] ?? '') === 'grace_end'
+                        ? 'Kartu tidak lagi menampilkan profil. Perpanjang dalam 7 hari untuk tetap aktif tanpa kehilangan data.'
+                        : "Perpanjang {$rp($d['renew_price'] ?? 0)} untuk 6 bulan ke depan dari halaman kartu Anda.",
+                ],
+                'action' => ['label' => 'Perpanjang kartu', 'path' => "/cards/{$d['card']}"],
+                'tone' => ($d['stage'] ?? '') === 'grace_end' ? 'danger' : 'warn',
+            ],
+            'card_renewed' => [
+                'subject' => 'Masa pakai kartu diperpanjang',
+                'title' => 'Masa pakai kartu Anda sudah diperpanjang',
+                'lines' => ["Kartu {$d['label']} berlaku sampai **{$date($d['until'])}**.", 'Kuitansi tersedia di menu Paket & tagihan.'],
+                'action' => ['label' => 'Lihat kartu', 'path' => "/cards/{$d['card']}"],
+                'tone' => 'ok',
             ],
             'tap_quota' => ($d['level'] ?? 0) >= 100 ? [
                 'subject' => 'Kuota tap kartu digital habis',

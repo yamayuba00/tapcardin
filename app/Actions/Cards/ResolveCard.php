@@ -30,7 +30,7 @@ final class ResolveCard
 
         // NTAG 424 DNA (SUN) masuk v1.5; tap dari chip biasa tidak membawa e & m.
         $quotaEmpty = false;
-        if ($view->tenantId && in_array($view->status, ['active', 'lost', 'paused'], true)) {
+        if ($view->tenantId && in_array($view->status, ['active', 'lost', 'paused'], true) && ! $view->expired()) {
             $count = self::countable($request, $view->cardId);
             // kartu digital: tap unik memakai kuota paket; kuota habis â†’ profil tidak dibuka & tap tidak dicatat
             if ($view->digital && $view->status === 'active') {
@@ -45,6 +45,7 @@ final class ResolveCard
 
         $data = match (true) {
             $view->tenantSuspended => $inactive('suspended'),
+            $view->expired() => $inactive('expired'),
             $quotaEmpty => $inactive('quota'),
             $view->status === 'manufactured' => $inactive('manufactured'),
             $view->status === 'unclaimed' && $view->isCompanyPool => $inactive('company_idle'),

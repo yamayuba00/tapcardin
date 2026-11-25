@@ -15,8 +15,10 @@ use App\Models\StaffAccount;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Support\Audit;
+use App\Support\CardPeriod;
 use App\Support\Phone;
 use App\Tenancy\CurrentTenant;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -88,6 +90,9 @@ final class FieldActivate
             // pelanggan = pembeli: aktivasi tanpa kode lagi (kode sudah dicek di atas)
             $card->forceFill(['assigned_user_id' => $user->id])->save();
             $card = $this->activate->handle($card->card_token, $user);
+            // masa pakai dimulai saat aktivasi (bukan saat bayar); kartu online tidak lewat jalur ini
+            $card->forceFill(['valid_until' => now()->addMonths(CardPeriod::months())])->save();
+            Cache::forget("card:{$card->card_token}");
 
             $code = CardLogin::randomCode();
             CardLogin::setCode($card, $user, $code);

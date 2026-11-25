@@ -7,9 +7,11 @@ use App\Models\CardProduct;
 use App\Models\ContactType;
 use App\Models\LanyardHardware;
 use App\Models\LanyardWidth;
+use App\Models\PlatformSetting;
 use App\Models\ShippingMethod;
 use App\Models\ShippingZoneRate;
 use App\Support\Audit;
+use App\Support\CardPeriod;
 use App\Support\Contacts\ContactTypes;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -24,6 +26,7 @@ class CatalogController extends PlatformController
         $this->can('catalog.manage');
 
         return $this->ok([
+            'card_renewal' => ['price' => CardPeriod::renewalPrice(), 'months' => CardPeriod::months(), 'grace_days' => CardPeriod::graceDays()],
             'card_products' => CardProduct::orderBy('sort')->get()->map(fn (CardProduct $p) => $p->only(['public_id', 'key', 'name', 'description', 'price', 'min_qty', 'sort', 'is_active']) + ['chip_type' => $p->chip_type->value]),
             'shipping_methods' => ShippingMethod::orderBy('sort')->get()->map(fn ($m) => $m->only(['public_id', 'key', 'name', 'eta', 'price', 'needs_address', 'sort', 'is_active'])),
             'shipping_rates' => ShippingZoneRate::orderBy('zone_code')->orderBy('courier')->orderBy('service')->get()->map(fn ($r) => ['id' => $r->id, 'zone' => $r->zone_code, 'courier' => $r->courier, 'service' => $r->service, 'base_cost' => $r->base_cost, 'per_kg_cost' => $r->per_kg_cost, 'etd_min_days' => $r->etd_min_days, 'etd_max_days' => $r->etd_max_days, 'is_placeholder' => $r->is_placeholder]),
@@ -55,6 +58,17 @@ class CatalogController extends PlatformController
         $before = $w->exists ? $w->toArray() : null;
         $w->fill($data)->save();
         Audit::platform($id ? 'catalog.lanyard_width.updated' : 'catalog.lanyard_width.created', $w, $before, $w->toArray());
+
+        return $this->show();
+    }
+
+    /** PATCH /api/catalog/card-renewal {price} — harga perpanjangan masa pakai kartu (per periode `months`). */
+    public function saveCardRenewal(Request $request): JsonResponse
+    {
+        $this->can('catalog.manage');
+        $data = $request->validate(['price' => ['required', 'integer', 'min:0', 'max:100000000']]);
+        PlatformSetting::put('card_renewal.price', (int) $data['price'], auth()->id());
+        Audit::platform('catalog.card_renewal_price', PlatformSetting::find('card_renewal.price'), null, ['price' => (int) $data['price']]);
 
         return $this->show();
     }
