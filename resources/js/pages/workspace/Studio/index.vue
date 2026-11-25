@@ -194,7 +194,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
     </template>
 
     <template #tools>
-      <ToolRail :has-kit-logo="!!kit?.logo" @add="ed.add" @image="ed.addImage" @glyph="(n) => ed.add('glyph', { name: n })" @kit-logo="ed.addKitLogo" />
+      <ToolRail :has-kit-logo="!!kit?.logo" @add="ed.add" @motif="ed.addMotif" @image="ed.addImage" @glyph="(n) => ed.add('glyph', { name: n })" @kit-logo="ed.addKitLogo" />
     </template>
 
     <template #canvas>

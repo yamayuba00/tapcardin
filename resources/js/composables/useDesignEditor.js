@@ -6,8 +6,9 @@ import { useRouter } from 'vue-router'
 import { useLeaveGuard } from '@/composables/useLeaveGuard'
 import { studioApi } from '@/api/studio'
 import {
-  createLayer, distributeLayers, expandGroups, isFixed, isSystem, kitVars, moveLayer, newId, transplantLayers,
+  createLayer, distributeLayers, expandGroups, isFixed, isSystem, kitVars, moveLayer, newId, round, transplantLayers,
 } from '@/lib/design'
+import { motifLayers } from '@/lib/motifs'
 import { NUDGE, alignRef, alignTo, distributeIn, stepRepeat } from '@/lib/layout'
 import { createHistory } from '@/lib/history'
 import { useToastStore } from '@/stores/toast'
@@ -137,6 +138,12 @@ export function useDesignEditor(id) {
   }
   function add(type, extra = {}) {
     insert([{ id: newId(side.value.layers), ...createLayer(type, side.value.size, ink(), extra) }])
+  }
+  /** Motif bawaan: dipusatkan, memakai 60% lebar & 80% tinggi sisi aktif, dengan rasio tetap. */
+  function addMotif(key) {
+    const { w, h } = side.value.size
+    const box = { x: round(w * 0.2), y: round(h * 0.1), w: round(w * 0.6), h: round(h * 0.8) }
+    insert(motifLayers(key, box, catalog.value.palette, side.value.layers))
   }
   async function addImage(file) {
     try {
@@ -350,7 +357,7 @@ export function useDesignEditor(id) {
   return {
     leaveGuard, catalog, design, sides, side, active, selection, selected, editable, issues, errors, saving, dirty, grid, snap, kit, vars, safe,
     alignTarget, repeating, help, repeat, setGuides,
-    canUndo, canRedo, undo, redo, commit, save, load, select, selectAll, switchSide, change, patch, insert, add, addImage, addKitLogo,
+    canUndo, canRedo, undo, redo, commit, save, load, select, selectAll, switchSide, change, patch, insert, add, addMotif, addImage, addKitLogo,
     remove, duplicate, copy, cut, paste, copyToOtherSide, align, distribute, group, ungroup, toggleLock, toggleHide, zOrder, reorderTo,
     nudge, setBackground, useKit, kitChanged, expandGroups,
   }

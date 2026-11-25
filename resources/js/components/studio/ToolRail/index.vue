@@ -2,12 +2,14 @@
 // Bilah alat sisipkan: teks, bentuk (kotak, elips, poligon, bintang, garis, lingkaran, cincin), ikon (pustaka lucide),
 // gambar/logo unggahan, dan logo brand kit. Setiap elemen baru diletakkan di tengah kanvas.
 import { computed, ref } from 'vue'
-import { BadgeCheck, Circle, Hexagon, ImagePlus, Minus, Radio, Search, Shapes, Square, Star, Type } from 'lucide-vue-next'
+import { BadgeCheck, Circle, Grid2x2Plus, Hexagon, ImagePlus, Minus, Radio, Search, Shapes, Square, Star, Type } from 'lucide-vue-next'
 import AppModal from '@/components/ui/AppModal/index.vue'
 import { GLYPHS } from '@/lib/glyphs'
+import { MOTIFS } from '@/lib/motifs'
 
 const props = defineProps({ hasKitLogo: Boolean, rings: { type: Boolean, default: true } })
-const emit = defineEmits(['add', 'image', 'glyph', 'kit-logo'])
+const emit = defineEmits(['add', 'image', 'glyph', 'kit-logo', 'motif'])
+const pickingMotif = ref(false)
 const fileInput = ref(null)
 const picking = ref(false)
 const q = ref('')
@@ -41,11 +43,18 @@ function onFile(e) {
       <component :is="t.icon" class="size-5" /><span :class="cap">{{ t.short }}</span>
     </button>
     <button type="button" :class="btn" aria-label="Tambah ikon" title="Ikon" @click="picking = true"><Shapes class="size-5" /><span :class="cap">Ikon</span></button>
+    <button type="button" :class="btn" aria-label="Tambah motif" title="Motif bawaan (pola)" @click="pickingMotif = true"><Grid2x2Plus class="size-5" /><span :class="cap">Motif</span></button>
     <span class="mx-1 w-px self-stretch bg-line lg:mx-0 lg:my-1 lg:h-px lg:w-auto" aria-hidden="true"></span>
     <button type="button" :class="btn" aria-label="Unggah gambar atau logo" title="Gambar / logo (PNG, JPG, WebP)" @click="fileInput.click()"><ImagePlus class="size-5" /><span :class="cap">Gambar</span></button>
     <button type="button" :class="[btn, hasKitLogo ? '' : 'opacity-50']" aria-label="Tambah logo brand kit" :title="hasKitLogo ? 'Logo dari brand kit' : 'Brand kit belum punya logo — tambahkan di tab Brand kit'" @click="emit('kit-logo')"><BadgeCheck class="size-5" /><span :class="cap">Logo kit</span></button>
     <input ref="fileInput" type="file" accept="image/png,image/jpeg,image/webp" class="sr-only" @change="onFile" />
   </nav>
+
+  <AppModal v-if="pickingMotif" title="Pilih motif" description="Pola bawaan dari palet TapCard. Motif masuk sebagai kumpulan elemen; bisa dipindah, diubah, atau dihapus." size="md" @close="pickingMotif = false">
+    <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
+      <button v-for="m in MOTIFS" :key="m.key" type="button" class="cursor-pointer rounded-md border border-line p-3 text-left text-sm hover:border-accent" @click="emit('motif', m.key); pickingMotif = false">{{ m.name }}</button>
+    </div>
+  </AppModal>
 
   <AppModal v-if="picking" title="Pilih ikon" description="Ikon garis yang tajam saat dicetak; warna & ukuran bisa diubah." size="lg" @close="picking = false">
     <div class="relative">
