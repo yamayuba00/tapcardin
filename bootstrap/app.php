@@ -12,6 +12,8 @@ use App\Http\Middleware\UseAdminSession;
 use App\Support\ErrorRate;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -19,6 +21,7 @@ use Illuminate\Http\Request;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -63,6 +66,10 @@ return Application::configure(basePath: dirname(__DIR__))
                 return null;
             }
             [$status, $code, $message, $fields] = match (true) {
+                // model tak ditemukan: jangan bocorkan nama model/SQL ke klien (pesan asli hanya di log)
+                $e instanceof ModelNotFoundException, $e instanceof NotFoundHttpException && $e->getPrevious() instanceof ModelNotFoundException => [404, 'not_found', 'Data tidak ditemukan.', null],
+                // galat database: tanpa detail SQL; saat debug biarkan halaman galat Laravel
+                $e instanceof QueryException && ! config('app.debug') => [500, 'server_error', 'Terjadi kesalahan di server. Coba lagi sebentar.', null],
                 $e instanceof ValidationException => [$e->status, 'validation_failed', $e->validator->errors()->first(), $e->errors()],
                 $e instanceof AuthenticationException => [401, 'unauthenticated', 'Silakan masuk terlebih dahulu.', null],
                 $e instanceof AuthorizationException => [403, 'forbidden', $e->getMessage() ?: 'Anda tidak punya izin untuk aksi ini.', null],
