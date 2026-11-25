@@ -2,10 +2,13 @@
 // Dokumentasi integrasi di halaman Webhook: katalog event + contoh JSON, verifikasi tanda tangan, kebijakan kirim ulang.
 import { computed, ref } from 'vue'
 import { Copy } from 'lucide-vue-next'
+import AppButton from '@/components/ui/AppButton/index.vue'
 import AppSegmented from '@/components/ui/AppSegmented/index.vue'
 import { useToastStore } from '@/stores/toast'
 
-const props = defineProps({ catalog: { type: Object, required: true }, endpointUrl: { type: String, default: '' } })
+const props = defineProps({ catalog: { type: Object, required: true }, endpointUrl: { type: String, default: '' }, secret: { type: String, default: '' } })
+const emit = defineEmits(['rotate'])
+const SECRET_PLACEHOLDER = 'rahasia-webhook-anda'
 const toast = useToastStore()
 const tab = ref('events')
 const picked = ref(props.catalog.events[0]?.key)
@@ -24,7 +27,7 @@ const curlSnippet = computed(() => {
   const body = JSON.stringify(ev?.sample ?? {})
   const url = props.endpointUrl || 'https://server-anda.example/webhooks/tapcard' // isi placeholder bila belum ada endpoint
   return `# 1) Uji endpoint Anda: kirim event contoh yang sudah ditandatangani
-SECRET='rahasia-webhook-anda'
+SECRET='${props.secret || SECRET_PLACEHOLDER}'
 URL='${url}'
 TS=$(date +%s)
 BODY='${body}'
@@ -40,8 +43,8 @@ curl -sS -X POST "$URL" \\
 })
 
 // Sisi penerima: simpan body mentah dulu, lalu hitung ulang tanda tangan dengan header yang masuk.
-const verifySnippet = `# 2) Verifikasi di server Anda (body mentah disimpan ke /tmp/body.json)
-SECRET='rahasia-webhook-anda'  # rahasia dari halaman Webhook
+const verifySnippet = computed(() => `# 2) Verifikasi di server Anda (body mentah disimpan ke /tmp/body.json)
+SECRET='${props.secret || SECRET_PLACEHOLDER}'  # rahasia dari halaman Webhook
 TIMESTAMP=1767225600  # isi dari header X-TapCard-Timestamp
 SIGNATURE='v1=...'  # isi dari header X-TapCard-Signature
 EXPECT="v1=$(printf '%s.' "$TIMESTAMP" | cat - /tmp/body.json | openssl dgst -sha256 -hmac "$SECRET" | sed 's/^.* //')"
@@ -49,7 +52,7 @@ EXPECT="v1=$(printf '%s.' "$TIMESTAMP" | cat - /tmp/body.json | openssl dgst -sh
 [ "$EXPECT" = "$SIGNATURE" ] || { echo "401 tanda tangan salah"; exit 1; }
 AGE=$(( $(date +%s) - TIMESTAMP ))
 [ "$AGE" -ge -300 ] && [ "$AGE" -le 300 ] || { echo "401 timestamp kedaluwarsa"; exit 1; }
-echo "200 diterima"`
+echo "200 diterima"`)
 async function copy(text) {
   try { await navigator.clipboard.writeText(text); toast.ok('Disalin.') } catch { toast.error('Tidak bisa menyalin.') }
 }
@@ -89,6 +92,10 @@ async function copy(text) {
         <li><b>X-TapCard-Signature</b> — v1=HMAC-SHA256(rahasia, timestamp + "." + body) dalam hex</li>
       </ul>
       <p class="text-muted">Hitung ulang tanda tangan dari body <b>mentah</b>, bandingkan dengan perbandingan waktu-konstan, dan tolak timestamp yang lebih tua dari 5 menit.</p>
+      <div class="grid gap-2 rounded-md border border-line p-3">
+        <p class="text-muted">{{ props.secret ? 'Rahasia terisi di contoh. Rahasia ini sudah tersimpan di server.' : 'Rahasia tidak bisa dilihat ulang. Buat rahasia baru: langsung tersimpan di server, mengisi contoh ini, dan rahasia lama tidak berlaku lagi.' }}</p>
+        <div><AppButton variant="secondary" :disabled="!endpointUrl" @click="emit('rotate')">Buat rahasia baru</AppButton></div>
+      </div>
       <div class="relative min-w-0">
         <button type="button" class="absolute top-2 right-2 grid size-9 cursor-pointer place-items-center rounded-md bg-surface text-muted hover:text-fg" aria-label="Salin contoh cURL" @click="copy(curlSnippet)"><Copy class="size-4" /></button>
         <pre class="max-h-[480px] max-w-full overflow-auto whitespace-pre-wrap break-words rounded-md bg-surface-2 p-4 font-mono text-xs">{{ curlSnippet }}</pre>
