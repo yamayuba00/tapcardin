@@ -102,6 +102,13 @@ final class DesignValidator
                     ? $add($id, 'error', "{$label($l)} berada di area lubang lanyard. Geser ke bawah.")
                     : $add($id, 'warning', "{$label($l)} akan terpotong lubang lanyard.");
             }
+            // bentuk dekoratif (motif, garis, poligon) di tali: ikut dicek tepi jahitan, kecuali pita penuh lebar tali
+            if ($lanyard && ! $content && ! ($l['allowBleed'] ?? false)
+                && ! ($box['y'] <= 0.01 && $this->g->height() - 0.01 <= $box['y'] + $box['h'])) {
+                if ($box['y'] < $safe['y'] - 0.01 || $box['y'] + $box['h'] > $safe['y'] + $safe['h'] + 0.01) {
+                    $add($id, 'warning', "{$label($l)} melewati tepi tali (margin {$s} mm) dan bisa terpotong jahitan.");
+                }
+            }
             if ($content && ! ($l['allowBleed'] ?? false)) {
                 $outside = $lanyard
                     ? $box['y'] < $safe['y'] - 0.01 || $box['y'] + $box['h'] > $safe['y'] + $safe['h'] + 0.01

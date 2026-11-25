@@ -177,7 +177,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
     </template>
 
     <template #tools>
-      <ToolRail :has-kit-logo="!!kit?.logo" :rings="false" @add="ed.add" @image="ed.addImage" @glyph="(n) => ed.add('glyph', { name: n })" @kit-logo="ed.addKitLogo" />
+      <ToolRail :has-kit-logo="!!kit?.logo" :rings="false" @add="ed.add" @motif="ed.addMotif" @image="ed.addImage" @glyph="(n) => ed.add('glyph', { name: n })" @kit-logo="ed.addKitLogo" />
     </template>
 
     <template #canvas>
@@ -200,9 +200,10 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 
         <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px] xl:items-start">
           <section class="grid gap-2" aria-labelledby="strip-title">
-            <h2 id="strip-title" class="label">Hasil sepanjang tali · 45 cm pertama{{ twoSided ? ` · sisi ${active === 'front' ? 'depan' : 'belakang'}` : '' }}</h2>
-            <div class="overflow-x-auto rounded-md border border-line bg-surface p-3 scrollbar-none">
-              <LanyardStrip :side="side" :kit="kit" :vars="vars" :length="450" :scale="2" />
+            <h2 id="strip-title" class="label">Tali penuh 90 cm · pola berulang{{ twoSided ? ` · sisi ${active === 'front' ? 'depan' : 'belakang'}` : '' }}</h2>
+            <div class="max-w-full overflow-x-auto rounded-md border border-line bg-surface p-3">
+              <LanyardStrip :side="side" :kit="kit" :vars="vars" :length="spec.length_mm" :scale="1" :safe="ed.safe.value" />
+              <p class="mt-2 text-xs text-muted">Garis putus-putus = sambungan pola · merah muda = margin jahitan · abu = zona kait/klip (tanpa cetakan).</p>
             </div>
           </section>
           <section class="grid gap-2" aria-labelledby="mockup-title">
