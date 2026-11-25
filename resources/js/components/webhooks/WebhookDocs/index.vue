@@ -8,7 +8,6 @@ import { useToastStore } from '@/stores/toast'
 const props = defineProps({ catalog: { type: Object, required: true } })
 const toast = useToastStore()
 const tab = ref('events')
-const lang = ref('php')
 const picked = ref(props.catalog.events[0]?.key)
 const event = computed(() => props.catalog.events.find((e) => e.key === picked.value))
 const groups = computed(() => {
@@ -19,55 +18,37 @@ const groups = computed(() => {
 const json = (v) => JSON.stringify(v, null, 2)
 const RETRY_LABEL = (s) => (s < 3600 ? `${s / 60} menit` : `${s / 3600} jam`)
 
-const SNIPPETS = {
-  php: `<?php
-// Laravel / PHP murni — tolak bila tanda tangan salah atau lebih tua dari 5 menit
-$secret = getenv('TAPCARD_WEBHOOK_SECRET');
-$body = file_get_contents('php://input');            // body mentah, jangan di-decode dulu
-$ts = $_SERVER['HTTP_X_TAPCARD_TIMESTAMP'] ?? '';
-$sig = $_SERVER['HTTP_X_TAPCARD_SIGNATURE'] ?? '';
-$expected = 'v1=' . hash_hmac('sha256', $ts . '.' . $body, $secret);
+// Contoh cURL memakai event yang sedang dipilih: body = JSON contoh yang persis dikirim, lalu ditandatangani.
+const curlSnippet = computed(() => {
+  const ev = event.value ?? props.catalog.events[0]
+  const body = JSON.stringify(ev?.sample ?? {})
+  return `# 1) Uji endpoint Anda: kirim event contoh yang sudah ditandatangani
+SECRET='rahasia-webhook-anda'
+URL='https://server-anda.example/webhooks/tapcard'
+TS=$(date +%s)
+BODY='${body}'
+SIG=$(printf '%s.%s' "$TS" "$BODY" | openssl dgst -sha256 -hmac "$SECRET" | sed 's/^.* //')
 
-if (!hash_equals($expected, $sig) || abs(time() - (int) $ts) > 300) {
-    http_response_code(401);
-    exit;
-}
-$event = json_decode($body, true);
-// simpan $event['id'] untuk mencegah proses ganda, lalu balas cepat (< 5 detik)
-http_response_code(200);`,
-  node: `// Node.js (Express) — pakai body mentah
-const crypto = require('crypto')
-app.post('/webhooks/tapcard', express.raw({ type: 'application/json' }), (req, res) => {
-  const ts = req.get('X-TapCard-Timestamp')
-  const sig = req.get('X-TapCard-Signature') || ''
-  const expected = 'v1=' + crypto.createHmac('sha256', process.env.TAPCARD_WEBHOOK_SECRET)
-    .update(ts + '.' + req.body).digest('hex')
-  const ok = sig.length === expected.length && crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))
-  if (!ok || Math.abs(Date.now() / 1000 - Number(ts)) > 300) return res.sendStatus(401)
+curl -sS -X POST "$URL" \
+  -H 'Content-Type: application/json' \
+  -H 'X-TapCard-Event: ${ev?.key ?? 'ping'}' \
+  -H "X-TapCard-Timestamp: $TS" \
+  -H "X-TapCard-Signature: v1=$SIG" \
+  -H 'User-Agent: TapCard-Webhooks/1.0' \
+  -d "$BODY" -w '\nHTTP %{http_code}\n'`
+})
 
-  const event = JSON.parse(req.body)
-  // simpan event.id untuk mencegah proses ganda; kerjakan yang berat di antrean
-  res.sendStatus(200)
-})`,
-  python: `# Python (Flask)
-import hashlib, hmac, os, time
-from flask import Flask, request, abort
+// Sisi penerima: simpan body mentah dulu, lalu hitung ulang tanda tangan dengan header yang masuk.
+const verifySnippet = `# 2) Verifikasi di server Anda (body mentah disimpan ke /tmp/body.json)
+SECRET='rahasia-webhook-anda'  # rahasia dari halaman Webhook
+TIMESTAMP=1767225600  # isi dari header X-TapCard-Timestamp
+SIGNATURE='v1=...'  # isi dari header X-TapCard-Signature
+EXPECT="v1=$(printf '%s.' "$TIMESTAMP" | cat - /tmp/body.json | openssl dgst -sha256 -hmac "$SECRET" | sed 's/^.* //')"
 
-app = Flask(__name__)
-
-@app.post('/webhooks/tapcard')
-def tapcard():
-    body = request.get_data()  # bytes mentah
-    ts = request.headers.get('X-TapCard-Timestamp', '')
-    sig = request.headers.get('X-TapCard-Signature', '')
-    expected = 'v1=' + hmac.new(os.environ['TAPCARD_WEBHOOK_SECRET'].encode(),
-                                f'{ts}.'.encode() + body, hashlib.sha256).hexdigest()
-    if not hmac.compare_digest(expected, sig) or abs(time.time() - int(ts or 0)) > 300:
-        abort(401)
-    event = request.get_json()
-    # simpan event['id'] untuk mencegah proses ganda
-    return '', 200`,
-}
+[ "$EXPECT" = "$SIGNATURE" ] || { echo "401 tanda tangan salah"; exit 1; }
+AGE=$(( $(date +%s) - TIMESTAMP ))
+[ "$AGE" -ge -300 ] && [ "$AGE" -le 300 ] || { echo "401 timestamp kedaluwarsa"; exit 1; }
+echo "200 diterima"`
 async function copy(text) {
   try { await navigator.clipboard.writeText(text); toast.ok('Disalin.') } catch { toast.error('Tidak bisa menyalin.') }
 }
@@ -107,10 +88,13 @@ async function copy(text) {
         <li><b>X-TapCard-Signature</b> — v1=HMAC-SHA256(rahasia, timestamp + "." + body) dalam hex</li>
       </ul>
       <p class="text-muted">Hitung ulang tanda tangan dari body <b>mentah</b>, bandingkan dengan perbandingan waktu-konstan, dan tolak timestamp yang lebih tua dari 5 menit.</p>
-      <AppSegmented v-model="lang" label="Bahasa" :options="[{ value: 'php', label: 'PHP' }, { value: 'node', label: 'Node.js' }, { value: 'python', label: 'Python' }]" />
       <div class="relative">
-        <button type="button" class="absolute top-2 right-2 grid size-9 cursor-pointer place-items-center rounded-md bg-surface text-muted hover:text-fg" aria-label="Salin kode" @click="copy(SNIPPETS[lang])"><Copy class="size-4" /></button>
-        <pre class="max-h-[480px] overflow-auto rounded-md bg-surface-2 p-4 font-mono text-xs">{{ SNIPPETS[lang] }}</pre>
+        <button type="button" class="absolute top-2 right-2 grid size-9 cursor-pointer place-items-center rounded-md bg-surface text-muted hover:text-fg" aria-label="Salin contoh cURL" @click="copy(curlSnippet)"><Copy class="size-4" /></button>
+        <pre class="max-h-[480px] overflow-auto rounded-md bg-surface-2 p-4 font-mono text-xs">{{ curlSnippet }}</pre>
+      </div>
+      <div class="relative">
+        <button type="button" class="absolute top-2 right-2 grid size-9 cursor-pointer place-items-center rounded-md bg-surface text-muted hover:text-fg" aria-label="Salin kode verifikasi" @click="copy(verifySnippet)"><Copy class="size-4" /></button>
+        <pre class="max-h-[480px] overflow-auto rounded-md bg-surface-2 p-4 font-mono text-xs">{{ verifySnippet }}</pre>
       </div>
     </div>
 
