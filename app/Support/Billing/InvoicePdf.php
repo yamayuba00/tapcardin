@@ -46,13 +46,9 @@ final class InvoicePdf
         $paid = $invoice->status === 'paid';
         // format sama dengan halaman tagihan (dateTime): "25 Nov, 21.22"
         $date = fn ($d) => $d ? $d->timezone('Asia/Jakarta')->format('j M, H.i') : '—';
-        $banner = $paid
-            ? 'Lunas '.$date($invoice->paid_at).($invoice->payment_method ? ' via '.$invoice->payment_method : '').'.'.($invoice->plan ? ' Paket '.$invoice->plan->name.' aktif.' : '')
-            : null;
 
         return [
             'number' => $invoice->number,
-            'banner' => $banner,
             'logo' => 'data:image/svg+xml;base64,'.base64_encode((string) file_get_contents(resource_path('images/brand/tapcard-mark.svg'))),
             'title' => $paid ? 'Kuitansi' : 'Invoice',
             'paid' => $paid,

@@ -17,8 +17,6 @@
   .right { text-align: right; }
   table { width: 100%; border-collapse: collapse; }
   td { vertical-align: top; }
-  .banner { border: 1px solid #7FB8A4; padding: 8px 12px; color: #7FB8A4; font-size: 10px; }
-  .banner.warn { border-color: #E0A458; color: #E0A458; }
   .badge { display: inline-block; padding: 3px 10px; border: 1px solid; border-radius: 10px; font-size: 9px; }
   .b-ok { border-color: #7FB8A4; color: #7FB8A4; }
   .b-warn { border-color: #E0A458; color: #E0A458; }
@@ -36,12 +34,6 @@
 </head>
 <body>
 <div class="card">
-
-  @if ($banner)
-    <div class="banner" style="margin-bottom: 18px;">{{ $banner }}</div>
-  @elseif (! $paid && $status !== 'Lunas')
-    <div class="banner warn" style="margin-bottom: 18px;">{{ $status }} · {{ $number }}</div>
-  @endif
 
   <table>
     <tr>
