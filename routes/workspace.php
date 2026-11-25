@@ -187,6 +187,7 @@ Route::middleware('auth')->prefix('api')->name('api.')->group(function () {
     Route::post('/billing/cancel', [BillingController::class, 'cancel'])->name('billing.cancel');
     Route::get('/billing/invoices', [BillingController::class, 'invoices'])->name('billing.invoices');
     Route::get('/billing/invoices/{invoice}', [BillingController::class, 'invoice'])->name('billing.invoice');
+    Route::get('/billing/invoices/{invoice}/pdf', [BillingController::class, 'invoicePdf'])->name('billing.invoice.pdf');
     Route::post('/billing/invoices/{invoice}/pay', [BillingController::class, 'pay'])->name('billing.pay');
     Route::post('/billing/invoices/{invoice}/check', [BillingController::class, 'check'])->middleware('throttle:30,1')->name('billing.check');
     Route::post('/billing/invoices/{invoice}/simulate', [BillingController::class, 'simulate'])->name('billing.simulate');

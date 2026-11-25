@@ -17,9 +17,11 @@ use App\Models\Subscription;
 use App\Services\Payment\Gateways\SimulatorGateway;
 use App\Services\Payment\PaymentService;
 use App\Support\Audit;
+use App\Support\Billing\InvoicePdf;
 use App\Support\Http\Table;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Validation\Rule;
 
 /** OR-05 â€” Paket & tagihan: paket aktif + pemakaian, perbandingan paket, checkout, invoice, batal/lanjutkan langganan. */
@@ -117,6 +119,17 @@ class BillingController extends WorkspaceController
 
         return Table::json(Table::paginate($q, $request, ['number' => 'number', 'total' => 'total', 'created_at' => 'created_at', 'paid_at' => 'paid_at'], '-created_at', ['number'], 10),
             fn (Invoice $i) => self::presentInvoice($i), $request);
+    }
+
+    /** GET /api/billing/invoices/{invoice}/pdf — tagihan sebagai PDF (unduh). */
+    public function invoicePdf(Invoice $invoice): Response
+    {
+        $this->authorizeInvoice($invoice, 'billing.view');
+
+        return response(InvoicePdf::render($invoice, $this->tenant()->name), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="'.InvoicePdf::filename($invoice).'"',
+        ]);
     }
 
     public function invoice(Invoice $invoice): JsonResponse

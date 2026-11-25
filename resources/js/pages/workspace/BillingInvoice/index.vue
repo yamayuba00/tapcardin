@@ -3,13 +3,14 @@
 // Setelah kembali dari gateway, status ditanyakan langsung ke gateway beberapa saat sampai pembayaran terkonfirmasi.
 import { computed, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { CircleCheck, Clock, House, Printer, TimerOff } from 'lucide-vue-next'
+import { CircleCheck, Clock, Download, House, Printer, TimerOff } from 'lucide-vue-next'
 import AppBadge from '@/components/ui/AppBadge/index.vue'
 import AppButton from '@/components/ui/AppButton/index.vue'
 import AppSkeleton from '@/components/ui/AppSkeleton/index.vue'
 import ActivePeriod from '@/components/billing/ActivePeriod/index.vue'
 import BrandLogo from '@/components/common/BrandLogo/index.vue'
 import PageHeader from '@/components/common/PageHeader/index.vue'
+import { download } from '@/api/client'
 import { billingApi } from '@/api/workspace'
 import { useAction, useAsync } from '@/composables/useAsync'
 import { usePaymentWatch } from '@/composables/usePaymentWatch'
@@ -17,6 +18,7 @@ import { clock } from '@/lib/countdown'
 import { useNotificationStore } from '@/stores/notifications'
 import { dateTime } from '@/lib/format'
 import { useAuthStore } from '@/stores/auth'
+import { useToastStore } from '@/stores/toast'
 
 const route = useRoute()
 const router = useRouter()
@@ -24,6 +26,7 @@ const auth = useAuthStore()
 const id = route.params.id
 const { data: inv, reload } = useAsync(() => billingApi.invoice(id))
 const { busy, run } = useAction()
+const toast = useToastStore()
 const rupiah = (n) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n ?? 0)
 const STATUS = { issued: ['warn', 'Belum dibayar'], overdue: ['danger', 'Terlambat'], paid: ['ok', 'Lunas'], void: ['muted', 'Dibatalkan'], draft: ['muted', 'Draf'] }
 const payable = computed(() => state.value === 'pending')
@@ -39,6 +42,8 @@ const justPaid = computed(() => state.value === 'paid' && !!route.query.paid)
 const showTenant = computed(() => inv.value?.tenant && inv.value.tenant !== inv.value.bill_to?.name)
 
 const print = () => window.print()
+// PDF dari server (unduhan dengan sesi login)
+const pdf = () => download(`/api/billing/invoices/${inv.value.id}/pdf`, `${inv.value.number.replace(/[^A-Za-z0-9._-]+/g, '-')}.pdf`).catch((e) => toast.error(e.message))
 
 async function pay() {
   const res = await run(() => billingApi.pay(id)).catch(() => null)
@@ -51,7 +56,8 @@ async function pay() {
 
 <template>
   <div class="print:hidden"><PageHeader eyebrow="Tagihan" :title="inv?.number ?? 'Invoice'" back="/billing" back-label="Paket & tagihan">
-    <AppButton v-if="inv" variant="secondary" @click="print"><Printer class="size-5" /> Cetak / PDF</AppButton>
+    <AppButton v-if="inv" variant="secondary" @click="pdf"><Download class="size-5" /> Unduh PDF</AppButton>
+    <AppButton v-if="inv" variant="secondary" @click="print"><Printer class="size-5" /> Cetak</AppButton>
     <AppButton v-if="payable && auth.can('billing.manage')" :loading="busy" @click="pay">Bayar {{ rupiah(inv.total) }}</AppButton>
   </PageHeader></div>
 
