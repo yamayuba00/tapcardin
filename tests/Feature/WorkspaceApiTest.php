@@ -151,7 +151,7 @@ class WorkspaceApiTest extends TestCase
             ->assertJsonCount(43, 'data.templates')
             ->assertJsonPath('data.templates.0.preview.portrait.front.size.w', 54)
             ->assertJsonCount(8, 'data.bio.presets')
-            ->assertJsonPath('data.sample.display_name', 'Rina Saputra')
+            ->assertJsonPath('data.sample.display_name', 'Bayu Priyambada')
             ->assertJsonPath('data.plans.0.key', 'personal_free');
         $this->get('http://localhost/')->assertOk()->assertSee('id="app"', false);
     }

@@ -27,8 +27,8 @@ class ShowcaseController extends Controller
 {
     /** Contoh yang realistis untuk etalase (Variables::SAMPLE berisi label placeholder untuk Studio). */
     public const PERSONA = [
-        'name' => 'Rina Saputra', 'title' => 'Konsultan Pajak', 'company' => 'Saputra & Rekan',
-        'phone' => '+62 812 3456 7890', 'email' => 'rina@saputra.id', 'website' => 'saputra.id',
+        'name' => 'Bayu Priyambada', 'title' => 'Owner TapCard', 'company' => 'TapCard',
+        'phone' => '+62 812 3456 7890', 'email' => 'bayu@tapcardin.my.id', 'website' => 'tapcardin.my.id',
     ];
 
     public function __invoke(): JsonResponse
@@ -118,7 +118,7 @@ class ShowcaseController extends Controller
             'display_name' => $v['name'],
             'title' => $v['title'],
             'company' => $v['company'],
-            'bio' => 'Membantu UMKM merapikan pajak & pembukuan. Konsultasi pertama gratis.',
+            'bio' => 'Owner TapCard. Kartu nama digital untuk tim sales, komunitas, dan organisasi.',
             'avatar_url' => null,
             'theme' => BioTheme::resolve(['preset' => 'onyx']),
             'locale' => 'id',
@@ -127,12 +127,12 @@ class ShowcaseController extends Controller
             'brand' => null,
             'quick' => ['whatsapp' => '#', 'phone' => '#', 'email' => '#'],
             'links' => [
-                ['id' => 's1', 'type' => 'url', 'group' => 'business', 'icon' => 'Globe', 'action' => 'link', 'label' => 'Website', 'display' => 'saputra.id', 'url' => null, 'copy' => null, 'image' => null],
-                ['id' => 's2', 'type' => 'instagram', 'group' => 'social', 'icon' => 'Instagram', 'action' => 'link', 'label' => 'Instagram', 'display' => '@saputra.rekan', 'url' => null, 'copy' => null, 'image' => null],
-                ['id' => 's3', 'type' => 'linkedin', 'group' => 'social', 'icon' => 'Linkedin', 'action' => 'link', 'label' => 'LinkedIn', 'display' => '@rina-saputra', 'url' => null, 'copy' => null, 'image' => null],
+                ['id' => 's1', 'type' => 'url', 'group' => 'business', 'icon' => 'Globe', 'action' => 'link', 'label' => 'Website', 'display' => 'tapcardin.my.id', 'url' => null, 'copy' => null, 'image' => null],
+                ['id' => 's2', 'type' => 'instagram', 'group' => 'social', 'icon' => 'Instagram', 'action' => 'link', 'label' => 'Instagram', 'display' => '@tapcardin', 'url' => null, 'copy' => null, 'image' => null],
+                ['id' => 's3', 'type' => 'linkedin', 'group' => 'social', 'icon' => 'Linkedin', 'action' => 'link', 'label' => 'LinkedIn', 'display' => '@bayupriyambada', 'url' => null, 'copy' => null, 'image' => null],
                 ['id' => 's4', 'type' => 'booking', 'group' => 'business', 'icon' => 'CalendarCheck', 'action' => 'link', 'label' => 'Jadwalkan konsultasi', 'display' => 'calendly.com/rina', 'url' => null, 'copy' => null, 'image' => null],
-                ['id' => 's5', 'type' => 'shopee', 'group' => 'store', 'icon' => 'ShoppingBag', 'action' => 'link', 'label' => 'Shopee', 'display' => '@saputra-store', 'url' => null, 'copy' => null, 'image' => null],
-                ['id' => 's6', 'type' => 'bank', 'group' => 'payment', 'icon' => 'Landmark', 'action' => 'copy', 'label' => 'Rekening bank', 'display' => 'BCA · 1234567890 a.n. Rina Saputra', 'url' => null, 'copy' => '1234567890', 'image' => null],
+                ['id' => 's5', 'type' => 'shopee', 'group' => 'store', 'icon' => 'ShoppingBag', 'action' => 'link', 'label' => 'Shopee', 'display' => '@tapcard-store', 'url' => null, 'copy' => null, 'image' => null],
+                ['id' => 's6', 'type' => 'bank', 'group' => 'payment', 'icon' => 'Landmark', 'action' => 'copy', 'label' => 'Rekening bank', 'display' => 'BCA · 1234567890 a.n. Bayu Priyambada', 'url' => null, 'copy' => '1234567890', 'image' => null],
                 ['id' => 's7', 'type' => 'address', 'group' => 'business', 'icon' => 'MapPin', 'action' => 'map', 'label' => 'Kantor', 'display' => 'Jl. Sudirman 21, Jakarta', 'url' => null, 'copy' => null, 'image' => null],
             ],
             'vcard_url' => null,
