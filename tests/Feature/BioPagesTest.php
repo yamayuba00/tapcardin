@@ -144,7 +144,7 @@ class BioPagesTest extends TestCase
         $this->save($bio1, $main, [['type' => 'button', 'data' => ['label' => 'Portofolio', 'url' => 'https://behance.net/rina']]])->assertOk();
         $this->postJson($this->pagesUrl($bio1), ['name' => 'Event'])->assertCreated();
 
-        $rina->personalTenant->update(['plan_id' => Plan::where('key', 'personal_pro')->value('id')]);
+        $rina->personalTenant->update(['plan_id' => Plan::where('key', 'personal_pro')->value('id'), 'limit_overrides' => ['cards_active' => 10]]);
         $rina->unsetRelation('personalTenant');
         PlanFeatures::forget($rina->personalTenant);
         $second = $this->makeCard(CardStatus::Unclaimed, buyer: $rina);

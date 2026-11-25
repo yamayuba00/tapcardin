@@ -76,7 +76,7 @@ class WorkspaceApiTest extends TestCase
         $this->patchJson($this->host('app', "/api/profiles/{$bio1->public_id}"), ['title' => 'Konsultan Pajak'])->assertOk();
 
         // kartu kedua: dapat salinan bio terakhir, bukan profil yang sama
-        $rina->personalTenant->update(['plan_id' => Plan::where('key', 'personal_pro')->value('id')]);
+        $rina->personalTenant->update(['plan_id' => Plan::where('key', 'personal_pro')->value('id'), 'limit_overrides' => ['cards_active' => 10]]);
         $rina->unsetRelation('personalTenant');
         PlanFeatures::forget($rina->personalTenant);
         $second = $this->makeCard(CardStatus::Unclaimed, buyer: $rina);

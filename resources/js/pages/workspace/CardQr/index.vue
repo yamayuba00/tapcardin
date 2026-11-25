@@ -54,7 +54,7 @@ const pct = computed(() => (qr.value ? (left.value / qr.value.ttl) * 100 : 0))
       v-if="error?.code === 'feature_locked'"
       title="QR aman sekali pakai"
       text="Tampilkan QR di layar yang berganti tiap 60 detik dan hanya bisa di-scan sekali — cocok saat kartu tertinggal atau QR cetak tidak ingin difoto orang."
-      :benefits="['QR baru otomatis tiap 60 detik, layar tetap menyala', 'Setiap QR hanya bisa dipakai satu kali', 'Tap tercatat sebagai QR aman di analitik', 'Plus 10 kartu aktif & koneksi tanpa batas']"
+      :benefits="['QR baru otomatis tiap 60 detik, layar tetap menyala', 'Setiap QR hanya bisa dipakai satu kali', 'Tap tercatat sebagai QR aman di analitik', 'Plus kartu digital & koneksi tanpa batas']"
     />
     <p v-else-if="error" class="text-danger" role="alert">{{ error.message }}</p>
 

@@ -31,7 +31,7 @@ class PlanSeeder extends Seeder
                 ['members' => 1, 'cards_active' => 1, 'profiles_per_user' => 1, 'connections' => 100, 'analytics_days' => 30, 'audit_days' => 0, 'qr_rotation_days' => 7],
                 [...$none, 'reminders' => false]],
             ['personal_pro', 'personal', 'Personal Pro', 49000, 0,
-                ['members' => 1, 'cards_active' => 10, 'profiles_per_user' => 5, 'connections' => null, 'analytics_days' => 365, 'audit_days' => 0],
+                ['members' => 1, 'cards_active' => 1, 'profiles_per_user' => 5, 'connections' => null, 'analytics_days' => 365, 'audit_days' => 0],
                 [...$none, 'dynamic_qr' => true, 'unlimited_digital_taps' => true]],
             ['starter', 'company', 'Starter', 0, 300000, $companyLimits(25, 365, 30), [...$none, ...$company]],
             ['growth', 'company', 'Growth', 0, 900000, $companyLimits(100, 730, 365), [...$none, ...$company]],
