@@ -191,7 +191,7 @@ async function destroy() {
       <template #actions><AppBadge tone="outline">{{ settings.plan.name }}</AppBadge><AppButton variant="secondary" to="/billing">Kelola paket</AppButton></template>
       <div class="grid gap-4">
         <AppMeter v-for="(label, k) in USAGE" :key="k" :label="label" :value="settings.plan.usage[k]" :max="settings.plan.limits[k]" />
-        <p class="text-sm text-muted">Kartu fisik (NFC) tanpa batas tap dan bisa punya sampai 3 bio link per kartu.</p>
+        <p class="text-sm text-muted">Kartu fisik (NFC) punya sampai 3 bio link per kartu. Kartu pribadi tanpa batas tap; kartu perusahaan punya kuota tap per kartu setiap 6 bulan.</p>
         <div><AppButton variant="ghost" @click="showPerms = !showPerms"><ShieldCheck class="size-5" /> Apa yang bisa saya lakukan?</AppButton></div>
         <ul v-if="showPerms" class="font-mono text-sm">
           <li v-for="p in settings.permissions" :key="p" class="border-b border-line py-2 last:border-b-0">{{ p }}</li>

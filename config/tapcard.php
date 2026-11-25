@@ -72,6 +72,10 @@ return [
         'grace_days' => 7,
         'renewal_price' => (int) env('CARD_RENEWAL_PRICE', 150000), // PLACEHOLDER: bisa diubah di panel → Katalog
     ],
+    // kartu fisik perusahaan: masa pakai 6 bulan per periode, kuota tap 6.000 per periode (reset tiap periode baru)
+    'company_card' => [
+        'tap_quota' => (int) env('COMPANY_CARD_TAP_QUOTA', 6000),
+    ],
     'digital_card' => [
         'tap_quota' => (int) env('DIGITAL_TAP_QUOTA', 1500),
         'topup_taps' => (int) env('DIGITAL_TOPUP_TAPS', 2000),

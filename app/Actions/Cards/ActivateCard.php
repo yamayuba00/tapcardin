@@ -11,6 +11,7 @@ use App\Models\Card;
 use App\Models\ProductEvent;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Support\CardPeriod;
 use App\Support\Crockford;
 use App\Tenancy\CurrentTenant;
 use Illuminate\Support\Facades\DB;
@@ -62,6 +63,12 @@ final class ActivateCard
                 ? $old->profile_id
                 : $this->current->run($tenant, fn () => $this->provision->handle($user, $card))->id;
 
+            // kartu perusahaan: masa pakai 6 bulan & kuota tap per periode (mulai saat aktivasi)
+            $period = $isCompanyCard ? [
+                'valid_until' => now()->addMonths(CardPeriod::months()),
+                'tap_quota' => (int) config('tapcard.company_card.tap_quota'),
+                'tap_used' => 0,
+            ] : [];
             $this->status->handle($card, CardStatus::Active, 'Aktivasi', extra: [
                 'tenant_id' => $tenant->id,
                 'holder_user_id' => $user->id,
@@ -70,7 +77,7 @@ final class ActivateCard
                 'activation_code_hash' => null,
                 'activation_attempts' => 0,
                 'activation_locked_until' => null,
-            ]);
+            ] + $period);
 
             // Kartu pengganti mengambil alih profil yang sama; kartu lama dicabut (AFD F-13).
             if ($old) {

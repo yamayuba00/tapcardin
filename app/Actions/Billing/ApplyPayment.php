@@ -177,9 +177,18 @@ final class ApplyPayment
         if ($card === null) {
             return;
         }
+        $wasExpired = $card->valid_until === null || CardPeriod::expired($card->valid_until, now());
         $from = CardPeriod::renewalBase($card->valid_until, now());
         $until = $from->addMonths((int) $s['months']);
         $card->forceFill(['valid_until' => $until])->save();
+        // kartu perusahaan: periode baru (sudah lewat tenggang) → kuota tap & pemakaian di-reset;
+        // perpanjangan dini / dalam masa → kuota ditambah, pemakaian berjalan tidak direset
+        if (Tenant::withoutGlobalScopes()->whereKey($card->tenant_id)->where('type', 'company')->exists()) {
+            $quota = (int) config('tapcard.company_card.tap_quota');
+            $card->forceFill($wasExpired
+                ? ['tap_used' => 0, 'tap_quota' => $quota]
+                : ['tap_quota' => ($card->tap_quota ?? $card->tap_used) + $quota])->save();
+        }
         Cache::forget("card:{$card->card_token}");
         $invoice->update(['billing_snapshot' => $s + ['period_from' => $from->toIso8601String(), 'period_until' => $until->toIso8601String()]]);
         Audit::tenant($invoice->tenant_id, 'card.renewed', $invoice, null, ['number' => $invoice->number, 'total' => $invoice->total, 'until' => $until->toDateString()]);
