@@ -140,11 +140,46 @@ class Health extends Command
             $checks[] = ['label' => 'Ruang disk tersisa', 'value' => self::bytes((int) $free)." ($pct%)", 'ok' => $pct > 10];
         }
 
+        foreach (self::envChecks() as $c) {
+            $checks[] = $c;
+        }
+
         $redis = config('queue.default') !== 'redis' && ($lag >= 60 || $taps >= 50000 || $online >= 200);
 
         return ['checks' => $checks, 'redis_recommended' => $redis, 'drivers' => [
             'cache' => config('cache.default'), 'queue' => config('queue.default'), 'session' => config('session.driver'),
         ]];
+    }
+
+    /**
+     * Pengaturan lingkungan yang wajib benar di produksi. Kunci API, gateway pembayaran & ongkir sudah diperiksa di atas.
+     *
+     * @return list<array{label:string,value:string,ok:bool,hint?:string,advisory?:bool}>
+     */
+    private static function envChecks(): array
+    {
+        $prod = app()->isProduction();
+        $checks = [];
+
+        // pesan galat Laravel memuat jejak & variabel konfigurasi bila debug menyala
+        $debug = (bool) config('app.debug');
+        $checks[] = ['label' => 'Mode debug (APP_DEBUG)', 'value' => $debug ? 'aktif' : 'mati', 'ok' => ! ($prod && $debug)]
+            + ($prod ? ['hint' => 'Set APP_DEBUG=false di .env produksi'] : []);
+
+        // log/array = surat tidak terkirim ke siapa pun
+        $mailer = (string) config('mail.default');
+        $mailOk = ! ($prod && in_array($mailer, ['log', 'array'], true));
+        $checks[] = ['label' => 'Surat elektronik', 'value' => $mailer, 'ok' => $mailOk]
+            + ($mailOk ? [] : ['hint' => 'Atur MAIL_MAILER ke SMTP atau penyedia surat sungguhan']);
+
+        // domain aplikasi harus berada di bawah domain dasar TapCard (subdomain tenant & panel bergantung padanya)
+        $base = strtolower((string) config('tapcard.base_domain'));
+        $host = strtolower((string) parse_url((string) config('app.url'), PHP_URL_HOST));
+        $hostOk = $host !== '' && $base !== '' && ($host === $base || str_ends_with($host, '.'.$base));
+        $checks[] = ['label' => 'Domain aplikasi', 'value' => $host ?: '(APP_URL kosong)', 'ok' => $hostOk, 'advisory' => true]
+            + ($hostOk ? [] : ['hint' => "APP_URL harus berada di bawah TAPCARD_BASE_DOMAIN ({$base})"]);
+
+        return $checks;
     }
 
     private static function bytes(int $b): string

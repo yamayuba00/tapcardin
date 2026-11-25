@@ -46,4 +46,34 @@ class HealthTest extends TestCase
         $this->assertFalse($h['redis_recommended'], 'sudah memakai Redis');
         $this->assertNotNull($this->check($h, 'Job gagal 24 jam'));
     }
+
+    public function test_production_flags_simulator_payment_and_log_mail(): void
+    {
+        app()->detectEnvironment(fn () => 'production');
+        config(['payment.driver' => 'simulator', 'mail.default' => 'log', 'app.debug' => false]);
+
+        $h = Health::collect();
+        $this->assertFalse($this->check($h, 'Gateway pembayaran')['ok']);
+        $this->assertFalse($this->check($h, 'Surat elektronik')['ok']);
+        $this->assertTrue($this->check($h, 'Mode debug (APP_DEBUG)')['ok']);
+    }
+
+    public function test_production_flags_debug_mode(): void
+    {
+        app()->detectEnvironment(fn () => 'production');
+        config(['app.debug' => true, 'mail.default' => 'smtp']);
+
+        $h = Health::collect();
+        $this->assertFalse($this->check($h, 'Mode debug (APP_DEBUG)')['ok']);
+        $this->assertTrue($this->check($h, 'Surat elektronik')['ok']);
+    }
+
+    public function test_app_url_outside_base_domain_is_advisory_warning(): void
+    {
+        config(['app.url' => 'https://contoh.org', 'tapcard.base_domain' => 'tapcard.id']);
+
+        $row = $this->check(Health::collect(), 'Domain aplikasi');
+        $this->assertFalse($row['ok']);
+        $this->assertTrue($row['advisory']);
+    }
 }
