@@ -33,6 +33,17 @@ const { data: cat } = useAsync(() => ordersApi.catalog())
 const vars = (kit) => ({ ...(cat.value?.variables ?? {}), ...kitVars(kit) })
 const { busy, run } = useAction()
 
+// ── langkah wizard (?step=1|2|3, bisa dibuka ulang & dengan tombol kembali browser) ──
+const STEPS = [{ n: 1, label: 'Keranjang' }, { n: 2, label: 'Pengiriman' }, { n: 3, label: 'Bayar' }]
+const step = computed(() => {
+  const n = Number(route.query.step)
+  return n >= 1 && n <= 3 ? n : 1
+})
+function goStep(n) {
+  router.replace({ query: { ...route.query, step: n } })
+  window.scrollTo({ top: 0 })
+}
+
 // ── keranjang ──────────────────────────────────────────────
 const cart = ref(null)
 const selected = ref(new Set()) // id item keranjang yang ikut dipesan
@@ -115,7 +126,7 @@ watch([cat, cart], ([c, items]) => {
   const id = String(route.query.design || '')
   if (!c || !items || !id) return
   const d = c.designs.find((x) => x.id === id)
-  router.replace({ query: {} })
+  router.replace({ query: { ...route.query, design: undefined } })
   if (d?.ready && !inCart(d)) addToCart(d)
   if (d) tab.value = d.kind === 'lanyard' ? 'lanyard' : isBadge(d) ? 'badge' : 'card'
 })
@@ -151,6 +162,17 @@ watch(() => ({ ...ship }), () => (serverErrors.value = {}), { deep: true })
 const filledRequired = computed(() => Object.keys(RULES).filter((k) => !RULES[k](ship[k] ?? '')).length)
 
 // ── promo & ringkasan harga (server) ───────────────────────
+const canNext = computed(() => (step.value === 1 ? chosen.value.length > 0 : step.value === 2 ? !missing.value : true))
+function next() {
+  if (step.value === 1 && !chosen.value.length) return toast.error('Centang minimal satu item keranjang dulu.')
+  if (step.value === 2) {
+    for (const k of Object.keys(RULES)) touched[k] = true
+    if (missing.value) return toast.error(`Lengkapi ${missing.value} kolom pengiriman yang ditandai merah.`)
+  }
+  goStep(step.value + 1)
+}
+const back = () => goStep(step.value - 1)
+
 const promo = ref('')
 const appliedPromo = ref('')
 const promoError = ref('')
@@ -190,8 +212,14 @@ function clearPromo() {
 // ── bayar ──────────────────────────────────────────────────
 async function submit() {
   for (const k of Object.keys(RULES)) touched[k] = true
-  if (!chosen.value.length) return toast.error('Centang minimal satu item keranjang untuk dipesan.')
-  if (missing.value) return toast.error(`Lengkapi ${missing.value} kolom pengiriman yang ditandai merah.`)
+  if (!chosen.value.length) {
+    goStep(1)
+    return toast.error('Centang minimal satu item keranjang untuk dipesan.')
+  }
+  if (missing.value) {
+    goStep(2)
+    return toast.error(`Lengkapi ${missing.value} kolom pengiriman yang ditandai merah.`)
+  }
   serverErrors.value = {}
   const res = await run(() => ordersApi.create({
     items: payload.value, shipping: { ...ship }, promo: appliedPromo.value || null, cart: chosen.value.map((i) => i.id),
@@ -217,8 +245,23 @@ async function submit() {
 
   <div v-else class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start">
     <div class="grid min-w-0 gap-6">
+      <nav aria-label="Langkah pesanan">
+        <ol class="grid grid-cols-3 gap-2 text-sm">
+          <li v-for="s in STEPS" :key="s.n">
+            <button
+              type="button" :aria-current="step === s.n ? 'step' : undefined"
+              :class="['flex w-full items-center gap-2 rounded-md border px-3 py-2 text-left', step === s.n ? 'border-accent bg-surface-2 font-medium' : 'border-line text-muted hover:border-line-strong']"
+              :disabled="s.n > step && !canNext"
+              @click="goStep(s.n)"
+            >
+              <span class="font-mono">{{ s.n }}</span> {{ s.label }}
+            </button>
+          </li>
+        </ol>
+      </nav>
+
       <!-- 1. tambah ke keranjang -->
-      <AppPanel title="1 · Tambah ke keranjang">
+      <AppPanel v-if="step === 1" title="1 · Tambah ke keranjang">
         <div class="grid gap-4">
           <AppSegmented v-model="tab" label="Jenis produk" :options="TABS" />
           <p v-if="tab === 'badge'" class="text-sm text-muted">ID Badge = desain kartu <b class="text-fg">potret dengan lubang lanyard</b>. Buat di Design Studio: kartu baru potret, lalu aktifkan "Kartu dipakai dengan lanyard".</p>
@@ -242,7 +285,7 @@ async function submit() {
       </AppPanel>
 
       <!-- 2. keranjang -->
-      <AppPanel :title="`2 · Keranjang (${cart.length})`">
+      <AppPanel v-if="step === 1" :title="`2 · Keranjang (${cart.length})`">
         <p v-if="!cart.length" class="flex items-center gap-2 text-sm text-muted"><ShoppingCart class="size-5" /> Keranjang kosong. Tambahkan desain dari langkah 1.</p>
         <ul v-else class="grid gap-3">
           <li v-for="it in cart" :key="it.id" :class="['grid gap-3 rounded-md border p-3', selected.has(it.id) ? 'border-accent' : 'border-line opacity-80']">
@@ -276,7 +319,7 @@ async function submit() {
       </AppPanel>
 
       <!-- 3. pengiriman -->
-      <AppPanel title="3 · Pengiriman">
+      <AppPanel v-if="step === 2" title="3 · Pengiriman">
         <div class="grid gap-4">
           <div class="grid gap-2 sm:grid-cols-3">
             <button
@@ -319,6 +362,18 @@ async function submit() {
           <AppField label="Catatan untuk kurir / tim (opsional)"><AppInput v-model="ship.notes" maxlength="300" placeholder="mis. titip di resepsionis" /></AppField>
         </div>
       </AppPanel>
+      <!-- 4. periksa sebelum bayar -->
+      <AppPanel v-if="step === 3" title="4 · Periksa & bayar">
+        <div class="grid gap-3 text-sm">
+          <p>{{ chosen.length }} item dipesan dari keranjang.</p>
+          <p v-if="method?.needs_address" class="grid gap-0.5">
+            <span class="font-medium">{{ ship.recipient_name }} · {{ ship.recipient_phone }}</span>
+            <span class="text-muted">{{ ship.address_line }}, {{ ship.district }}, {{ ship.city }}, {{ ship.province }} {{ ship.postal_code }}</span>
+          </p>
+          <p v-else class="text-muted">{{ method?.name }}: diambil tanpa alamat kirim.</p>
+          <p class="text-muted">Periksa ringkasan di samping. Setelah bayar, pesanan tidak bisa diubah; batalkan dari halaman pesanan jika perlu.</p>
+        </div>
+      </AppPanel>
     </div>
 
     <!-- ringkasan & bayar -->
@@ -357,9 +412,16 @@ async function submit() {
           </div>
           <p v-if="!cat.payment" class="text-sm text-warn">Pembayaran online sedang disiapkan — pesanan belum bisa dibayar.</p>
           <p v-else-if="chosen.length && method?.needs_address && missing" class="flex items-start gap-2 text-sm text-warn"><CircleAlert class="mt-0.5 size-4 flex-none" /> Lengkapi {{ missing }} kolom pengiriman dulu.</p>
-          <AppButton block size="lg" :loading="busy" :disabled="!chosen.length || !cat.payment || !quote" @click="submit">
-            <QrCode class="size-5" /> Bayar {{ quote ? rupiah(quote.total) : '' }} dengan QRIS
-          </AppButton>
+          <div v-if="step < 3" class="grid gap-2">
+            <AppButton block size="lg" :disabled="!canNext" @click="next">{{ step === 1 ? 'Lanjut ke pengiriman' : 'Lanjut ke pembayaran' }}</AppButton>
+            <AppButton v-if="step > 1" block variant="ghost" @click="back">Kembali</AppButton>
+          </div>
+          <div v-else class="grid gap-2">
+            <AppButton block size="lg" :loading="busy" :disabled="!chosen.length || !cat.payment || !quote" @click="submit">
+              <QrCode class="size-5" /> Bayar {{ quote ? rupiah(quote.total) : '' }} dengan QRIS
+            </AppButton>
+            <AppButton block variant="ghost" @click="back">Kembali</AppButton>
+          </div>
           <p class="flex items-start gap-2 text-xs text-muted">
             <ShieldCheck class="mt-0.5 size-4 flex-none text-ok" />
             <span>Item yang tidak dicentang tetap tersimpan di keranjang. Produksi dimulai setelah pembayaran terkonfirmasi; kartu bisa langsung diaktifkan begitu tiba.</span>
