@@ -93,4 +93,17 @@ class CheckoutTest extends TestCase
 
         $this->api('GET', "/checkouts/{$draft['id']}")->assertStatus(410)->assertJsonPath('error.code', 'checkout_expired');
     }
+
+    public function test_prune_removes_only_expired_open_drafts(): void
+    {
+        $d = $this->designs();
+        $this->api('POST', '/cart', ['design' => $d['card']])->assertCreated();
+        $old = $this->api('POST', '/checkouts')->assertCreated()->json('data');
+        $fresh = $this->api('POST', '/checkouts')->assertCreated()->json('data');
+        Checkout::withoutGlobalScopes()->where('public_id', $old['id'])->update(['expires_at' => now()->subDays(2)]);
+
+        $this->artisan('tapcard:checkouts-prune')->assertSuccessful();
+        $this->assertNull(Checkout::withoutGlobalScopes()->where('public_id', $old['id'])->first());
+        $this->assertNotNull(Checkout::withoutGlobalScopes()->where('public_id', $fresh['id'])->first());
+    }
 }

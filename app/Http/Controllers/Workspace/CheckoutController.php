@@ -68,31 +68,33 @@ class CheckoutController extends WorkspaceController
         $c = $this->open($checkout);
         $origin = $request->getSchemeAndHttpHost();
 
-        if ($c->status === 'paid') {
-            $order = Order::findOrFail($c->order_id);
+        // baris draf dikunci: klik ganda atau dua tab tidak bisa membuat dua pesanan dari draf yang sama
+        $out = DB::transaction(function () use ($c, $create, $origin) {
+            $locked = Checkout::whereKey($c->id)->lockForUpdate()->firstOrFail();
+            if ($locked->status === 'paid') {
+                $order = Order::findOrFail($locked->order_id);
 
-            return response()->json(['data' => ['order' => OrderController::detail($order), 'payment_url' => CreateOrder::payUrl($order, $this->user(), $origin)]]);
-        }
-        $ship = $c->shipping ?? [];
-        if (blank($ship['method'] ?? null)) {
-            throw new ApiError('checkout_shipping', 'Pilih metode pengiriman dulu.', 422, ['field' => 'shipping.method']);
-        }
-        $items = CartItem::where('user_id', $this->user()->id)->whereIn('public_id', $c->cart_ids ?? [])->with(['design', 'product'])->get();
-        if ($items->isEmpty()) {
-            throw new ApiError('checkout_empty', 'Tidak ada item yang dipilih. Pilih item dari keranjang.', 422);
-        }
-        $payload = $items->map(fn (CartItem $i) => array_filter([
-            'kind' => $i->kind, 'design' => $i->design->public_id, 'product' => $i->product?->key, 'quantity' => $i->quantity,
-        ], fn ($v) => $v !== null))->values()->all();
+                return ['order' => $order, 'payment_url' => CreateOrder::payUrl($order, $this->user(), $origin), 'created' => false];
+            }
+            $ship = $locked->shipping ?? [];
+            if (blank($ship['method'] ?? null)) {
+                throw new ApiError('checkout_shipping', 'Pilih metode pengiriman dulu.', 422, ['field' => 'shipping.method']);
+            }
+            $items = CartItem::where('user_id', $this->user()->id)->whereIn('public_id', $locked->cart_ids ?? [])->with(['design', 'product'])->get();
+            if ($items->isEmpty()) {
+                throw new ApiError('checkout_empty', 'Tidak ada item yang dipilih. Pilih item dari keranjang.', 422);
+            }
+            $payload = $items->map(fn (CartItem $i) => array_filter([
+                'kind' => $i->kind, 'design' => $i->design->public_id, 'product' => $i->product?->key, 'quantity' => $i->quantity,
+            ], fn ($v) => $v !== null))->values()->all();
 
-        $r = DB::transaction(function () use ($create, $c, $payload, $ship, $origin) {
-            $r = $create->handle($this->tenant(), $this->user(), $payload, $ship, $origin, $c->promo, $c->cart_ids ?? []);
-            $c->update(['status' => 'paid', 'order_id' => $r['order']->id]);
+            $r = $create->handle($this->tenant(), $this->user(), $payload, $ship, $origin, $locked->promo, $locked->cart_ids ?? []);
+            $locked->update(['status' => 'paid', 'order_id' => $r['order']->id]);
 
-            return $r;
+            return $r + ['created' => true];
         });
 
-        return response()->json(['data' => ['order' => OrderController::detail($r['order']), 'payment_url' => $r['payment_url']]], 201);
+        return response()->json(['data' => ['order' => OrderController::detail($out['order']), 'payment_url' => $out['payment_url']]], $out['created'] ? 201 : 200);
     }
 
     private function rules(): array
