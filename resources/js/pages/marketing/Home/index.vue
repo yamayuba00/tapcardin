@@ -7,7 +7,7 @@
 import { computed, onMounted, ref } from 'vue'
 import {
   Activity, ArrowRight, Bell, CalendarCheck, ChartColumn, Check, DatabaseBackup, Globe, IdCard, Lock, MessageCircle,
-  Nfc, Palette, QrCode, ScanLine, ShieldCheck, Smartphone, Truck, UserPlus, Users, Wallet, Webhook, X,
+  Nfc, Palette, QrCode, ScanLine, ShieldCheck, Smartphone, Ticket, Truck, Users, Wallet, Webhook, X,
 } from 'lucide-vue-next'
 import AppButton from '@/components/ui/AppButton/index.vue'
 import AppSkeleton from '@/components/ui/AppSkeleton/index.vue'
@@ -15,6 +15,8 @@ import BioShowcase from '@/components/marketing/BioShowcase/index.vue'
 import EditorShowcase from '@/components/marketing/EditorShowcase/index.vue'
 import FaqList from '@/components/marketing/FaqList/index.vue'
 import HeroDemo from '@/components/marketing/HeroDemo/index.vue'
+import HowItWorks from '@/components/marketing/HowItWorks/index.vue'
+import ProductGrid from '@/components/marketing/ProductGrid/index.vue'
 import TickerStrip from '@/components/marketing/TickerStrip/index.vue'
 import LiveStatus from '@/components/marketing/LiveStatus/index.vue'
 import PricingTable from '@/components/marketing/PricingTable/index.vue'
@@ -28,7 +30,6 @@ import { marketingApi } from '@/api/public'
 import { config, takeInitial } from '@/config'
 import { salesWhatsAppUrl } from '@/lib/salesWhatsApp'
 import { track } from '@/lib/track'
-import { prefersReducedMotion, tiltFromPointer } from '@/lib/motion'
 import { vReveal } from '@/lib/reveal'
 
 const initial = takeInitial('landing') ?? {}
@@ -36,28 +37,22 @@ const full = ref(null)
 const show = computed(() => (full.value ? { ...initial, ...full.value } : initial))
 const hero = computed(() => full.value?.templates?.[0] ?? initial.hero ?? null)
 const signup = `${config.appUrl}/login`
-const MOCKUP = '/marketing/dashboard-mockup.png' // public/, bukan aset Vite
 const HERO_WORDS = ['Kartu', 'nama', 'yang', 'menyimpan', 'kontak', 'Anda', 'dengan']
-// Miring pelan mengikuti pointer (desktop saja, transform; tanpa layout). Rect dibaca sekali saat pointer masuk.
-const mockup = ref(null)
-let tiltOk = false
-let tiltRect = null
-function onTiltEnter() { if (tiltOk && mockup.value) tiltRect = mockup.value.getBoundingClientRect() }
-function onTiltMove(e) {
-  if (!tiltRect || !mockup.value) return
-  const { rx, ry } = tiltFromPointer(e.clientX - tiltRect.left, e.clientY - tiltRect.top, tiltRect.width, tiltRect.height, 4)
-  mockup.value.style.transform = `perspective(1200px) rotateX(${rx}deg) rotateY(${ry}deg)`
-}
-function onTiltLeave() { tiltRect = null; if (mockup.value) mockup.value.style.transform = '' }
 onMounted(() => {
   marketingApi.showcase().then((r) => (full.value = r.data)).catch(() => {})
-  tiltOk = !prefersReducedMotion() && !!window.matchMedia?.('(hover: hover) and (pointer: fine)').matches
 })
 
 const rupiah = (n) => (n == null ? '—' : new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n))
 const num = (n) => new Intl.NumberFormat('id-ID').format(n ?? 0)
 const digital = computed(() => show.value.digital_card ?? { tap_quota: 1500, bio_pages: 1, topup_taps: 2000, topup_price: 70000 })
-const cardFrom = computed(() => (show.value.card_products?.length ? Math.min(...show.value.card_products.map((c) => c.price)) : null))
+// Katalog kartu (card_products, CardProduct): ID badge dipisah dari kartu fisik NFC biasa
+const isIdBadge = (c) => /ID Badge/i.test(c.name)
+const physicalCards = computed(() => (show.value.card_products ?? []).filter((c) => !isIdBadge(c)))
+const idBadge = computed(() => (show.value.card_products ?? []).find(isIdBadge) ?? null)
+const cardFrom = computed(() => (physicalCards.value.length ? Math.min(...physicalCards.value.map((c) => c.price)) : null))
+const pvc = computed(() => physicalCards.value.find((c) => c.chip === 'ntag215') ?? physicalCards.value[0] ?? null)
+const secure = computed(() => physicalCards.value.find((c) => c.chip === 'ntag424') ?? null)
+const personalPro = computed(() => (show.value.plans ?? []).find((p) => p.key === 'personal_pro') ?? null)
 const companyPlans = computed(() => show.value.company_plans ?? [])
 const trialDays = computed(() => companyPlans.value[0]?.trial_days ?? 14)
 const companyFrom = computed(() => (companyPlans.value.length ? Math.min(...companyPlans.value.map((p) => p.price_semiannual)) : null))
@@ -67,6 +62,7 @@ const merch = computed(() => {
   const soon = all.filter((m) => m.coming_soon).map((m) => m.name)
   return [ready.length ? `${ready.join(', ')} — tersedia` : '', soon.length ? `${soon.join(', ')} — segera hadir` : ''].filter(Boolean).join('; ') || 'Kaos, tote bag, mug — segera hadir'
 })
+const merchAllSoon = computed(() => (show.value.merch ?? []).every((m) => m.coming_soon))
 // ID badge + lanyard (bagian perusahaan): tali 20 mm bila ada, pengait pertama dari katalog
 const lanyard = computed(() => {
   const e = show.value.editor
@@ -79,11 +75,71 @@ const lanyard = computed(() => {
 const wa = (place) => salesWhatsAppUrl(config.salesWhatsapp, place)
 const cta = (location) => track('cta_click', { location })
 
-const STEPS = [
-  { n: '01', icon: Smartphone, title: 'Buat kartu — gratis', text: 'Masuk dengan Google. Kartu digital Anda langsung aktif: QR di layar ponsel & tautan pendek untuk WhatsApp.' },
-  { n: '02', icon: Nfc, title: 'Tempel atau scan', text: 'Lawan bicara menempelkan ponselnya ke kartu, atau scan QR. Profil Anda terbuka di browser — tanpa aplikasi.' },
-  { n: '03', icon: UserPlus, title: 'Kontak tersimpan, koneksi tercatat', text: 'Satu ketukan "Simpan ke Kontak HP". Mereka juga bisa membagikan kontaknya balik — langsung masuk daftar lead Anda.' },
-]
+// Sembilan produk untuk bagian "Produk". Setiap fakta bersumber dari katalog/config/seeder:
+// - digital: config/tapcard.php digital_card.tap_quota (show.digital_card)
+// - kartu fisik & ID badge: tabel card_products (migrasi 2026_11_15 & 2026_11_25) lewat show.card_products
+// - lanyard: tabel lanyard_widths (migrasi 2026_11_08: 15/20/25 mm, harga single mulai show.lanyard_from)
+// - event & check-in: PlanSeeder (event_mode di semua paket personal; events_checkin di paket perusahaan)
+// - bio link: show.physical_bio_pages (BioBlocks::MAX_PAGES) dan digital_card.bio_pages
+// - pengingat follow-up: PlanSeeder (reminders false di Personal Free, true di Personal Pro)
+// - webhook: PlanSeeder (webhooks true hanya di paket Business)
+// - merchandise: merch_products (migrasi 2026_11_23) status coming_soon → show.merch
+const PRODUCTS = computed(() => [
+  {
+    key: 'digital', icon: Smartphone, name: 'Kartu digital',
+    what: 'Profil di ponsel, dibagikan lewat QR atau tautan pendek. Tanpa cetak.',
+    who: 'Siapa saja yang ingin mulai hari ini.',
+    fact: `Gratis, ${num(digital.value.tap_quota)} tap`,
+  },
+  {
+    key: 'pvc', icon: Nfc, name: 'Kartu fisik NFC',
+    what: `Kartu PVC 0,76 mm, cetak dua sisi, chip NFC + QR${secure.value ? `. Varian Secure (chip NTAG 424 DNA, anti-salin) ${rupiah(secure.value.price)}` : ''}.`,
+    who: 'Orang yang sering bertemu klien atau mitra secara langsung.',
+    fact: pvc.value ? `${rupiah(pvc.value.price)} per kartu` : 'Harga tampil saat memesan',
+  },
+  {
+    key: 'badge', icon: IdCard, name: 'ID badge',
+    what: 'Kartu ID potret dengan lubang lanyard, cetak dua sisi, chip NFC.',
+    who: 'Panitia acara, staf, dan tim yang memakai tali.',
+    fact: idBadge.value ? `${rupiah(idBadge.value.price)} per kartu` : 'Harga tampil saat memesan',
+  },
+  {
+    key: 'lanyard', icon: Ticket, name: 'Lanyard',
+    what: 'Tali leher serasi dengan ID badge, pilihan lebar 15, 20, atau 25 mm.',
+    who: 'Acara, expo, dan tim yang memakai ID badge.',
+    fact: `Mulai ${rupiah(show.value.lanyard_from)} per pcs`,
+  },
+  {
+    key: 'event', icon: CalendarCheck, name: 'Mode Event & check-in',
+    what: 'Tandai koneksi per pameran. Panitia mencatat peserta lewat tap kartu atau scan QR.',
+    who: 'Panitia acara, expo, dan komunitas.',
+    fact: 'Mode Event ada di semua paket personal; check-in peserta di paket perusahaan',
+  },
+  {
+    key: 'bio', icon: QrCode, name: 'Bio link & QR',
+    what: 'Halaman tautan berisi kontak, tombol, video, dan formulir. Terbuka saat kartu di-tap atau QR dipindai.',
+    who: 'Pemilik usaha, kreator, dan profesional yang butuh beberapa tautan.',
+    fact: `${digital.value.bio_pages} bio link di kartu digital; sampai ${show.value.physical_bio_pages ?? 3} per kartu fisik`,
+  },
+  {
+    key: 'lead', icon: Users, name: 'Lead & follow-up',
+    what: 'Setiap koneksi tercatat sebagai lead, dengan tahap dan catatan.',
+    who: 'Sales dan tim yang perlu menindaklanjuti pertemuan.',
+    fact: personalPro.value ? `Pengingat follow-up mulai Personal Pro, ${rupiah(personalPro.value.price_monthly)} per bulan` : 'Tahap & catatan lead di semua paket',
+  },
+  {
+    key: 'webhook', icon: Webhook, name: 'Webhook untuk perusahaan',
+    what: 'Lead, tap, dan check-in dikirim otomatis ke CRM atau spreadsheet Anda.',
+    who: 'Perusahaan yang sudah memakai sistem sendiri.',
+    fact: 'Tersedia di paket Business',
+  },
+  {
+    key: 'merch', icon: Palette, name: 'Desain & merchandise',
+    what: 'Editor kartu dan lanyard di browser. Merchandise: kaos, jaket, tote bag, mug, topi.',
+    who: 'Tim dan komunitas yang ingin tampilan seragam.',
+    fact: `Kartu & lanyard bisa didesain sekarang. Merchandise ${merchAllSoon.value ? 'segera hadir' : 'sebagian sudah tersedia'}`,
+  },
+])
 const AFTER = [
   { icon: ChartColumn, title: 'Analitik tap yang jujur', text: 'Kota, NFC atau QR, perangkat, dan tautan yang diklik. Kunjungan berulang & bot tidak menggelembungkan angka.' },
   { icon: Bell, title: 'Tahu saat profil dibuka', text: 'Notifikasi seketika — tap beruntun dari satu kartu digabung, jadi Anda tidak dibanjiri.' },
@@ -149,44 +205,21 @@ const RELIABLE = [
           <span class="flex items-center gap-2"><Smartphone class="size-4 text-accent-text" aria-hidden="true" /> iPhone & Android</span>
           <AppButton variant="ghost" href="#cara-kerja" class="max-sm:hidden">Lihat cara kerja</AppButton>
         </div>
-        <!-- Produk nyata: tangkapan layar dashboard TapCard (akun demo) dalam bingkai -->
-        <figure
-          ref="mockup" class="hero-in tilt-card mt-8 w-full max-w-[1100px] rounded-[20px] border border-line bg-surface p-2 sm:p-3 hd-850"
-          @pointerenter="onTiltEnter" @pointermove="onTiltMove" @pointerleave="onTiltLeave"
-        >
-          <img
-            :src="MOCKUP" width="1280" height="1000" fetchpriority="high" decoding="async"
-            alt="Dashboard TapCard: ringkasan tap 7 hari, pengunjung unik, simpan kontak, dan funnel lead"
-            class="block h-auto w-full rounded-[12px] border border-line"
-          />
-        </figure>
-      </section>
-
-      <TickerStrip />
-
-      <!-- Kartu di-tap: kartu fisik dan profil yang terbuka di ponsel penerima -->
-      <section v-reveal class="mx-auto grid max-w-[1200px] justify-items-center px-4 pt-4 pb-14 sm:px-6 lg:pb-20">
-        <div class="w-full max-w-[560px]">
+        <!-- Ilustrasi kartu + ponsel dengan data contoh (bukan data pengguna nyata) -->
+        <div class="hero-in w-full max-w-[560px] pt-4 hd-850">
           <HeroDemo v-if="hero && show.sample" :card="hero.preview.landscape.front" :vars="show.variables" :qr="show.qr" :profile="show.sample" />
           <AppSkeleton v-else class="!aspect-[16/10] !h-auto w-full" />
         </div>
       </section>
 
-      <!-- Cara kerja -->
+      <TickerStrip />
+
+      <!-- Cara kerja: animasi dari dekat ke tap sampai kontak tersimpan (bingkai akhir langsung tampil tanpa JS) -->
       <section id="cara-kerja" v-reveal class="scroll-mt-20 border-y border-line bg-surface">
         <div class="mx-auto grid max-w-[1200px] gap-10 px-4 py-16 sm:px-6 lg:py-20">
-          <SectionHeading eyebrow="Cara kerja" title="Dari jabat tangan ke kontak tersimpan dalam 2 detik" />
-          <ol class="grid gap-8 md:grid-cols-3 md:gap-6">
-            <li v-for="(s, i) in STEPS" :key="s.n" v-reveal :class="`st-${i}`" class="grid content-start gap-3">
-              <span class="flex items-center gap-3">
-                <span class="grid size-11 place-items-center rounded-full border border-accent bg-bg"><component :is="s.icon" class="size-5 text-accent-text" aria-hidden="true" /></span>
-                <span class="font-mono text-sm text-muted">{{ s.n }}</span>
-                <span class="hidden h-px flex-1 bg-line md:block" aria-hidden="true"></span>
-              </span>
-              <h3 class="font-display text-xl font-bold">{{ s.title }}</h3>
-              <p class="text-muted">{{ s.text }}</p>
-            </li>
-          </ol>
+          <SectionHeading eyebrow="Cara kerja" title="Dari tap ke kontak tersimpan, langkah demi langkah" text="Contoh ilustrasi dengan data fiktif. Penerima tidak perlu install aplikasi." />
+          <HowItWorks v-if="hero && show.sample" :card="hero.preview.landscape.front" :vars="show.variables" :qr="show.qr" :profile="show.sample" />
+          <AppSkeleton v-else class="!h-[420px] w-full" />
         </div>
       </section>
 
@@ -215,6 +248,12 @@ const RELIABLE = [
             <AppButton class="justify-self-start" variant="secondary" href="#perusahaan" data-event="cta_click" data-location="audience_company" @click="cta('audience_company')">Lihat fitur organisasi</AppButton>
           </article>
         </div>
+      </section>
+
+      <!-- Produk: setiap produk = apa, untuk siapa, dan satu fakta dari katalog -->
+      <section id="produk" v-reveal class="mx-auto grid max-w-[1200px] scroll-mt-20 gap-10 px-4 py-16 sm:px-6 lg:py-20">
+        <SectionHeading eyebrow="Produk" title="Semua yang bisa Anda pesan atau pakai" text="Satu ringkasan per produk: apa itu, untuk siapa, dan satu fakta dari katalog kami." />
+        <ProductGrid :items="PRODUCTS" />
       </section>
 
       <!-- Kartu digital vs fisik -->

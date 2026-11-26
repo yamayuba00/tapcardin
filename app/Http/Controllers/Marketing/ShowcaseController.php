@@ -27,8 +27,8 @@ class ShowcaseController extends Controller
 {
     /** Contoh yang realistis untuk etalase (Variables::SAMPLE berisi label placeholder untuk Studio). */
     public const PERSONA = [
-        'name' => 'Bayu Priyambada', 'title' => 'Owner TapCard', 'company' => 'TapCard',
-        'phone' => '+62 812 3456 7890', 'email' => 'bayu@tapcardin.my.id', 'website' => 'tapcardin.my.id',
+        'name' => 'Nama Anda', 'title' => 'Jabatan Anda', 'company' => 'Perusahaan Anda',
+        'phone' => '+62 8xx-xxxx-xxxx', 'email' => 'email.id', 'website' => 'situs-anda.id',
     ];
 
     public function __invoke(): JsonResponse
@@ -40,7 +40,7 @@ class ShowcaseController extends Controller
     /** Data etalase (di-cache 1 jam) — dipakai API ini dan render server landing page (Landing). */
     public static function data(): array
     {
-        return Cache::remember('showcase:v11', now()->addHour(), function () {
+        return Cache::remember('showcase:v12', now()->addHour(), function () {
             $qr = SvgRenderer::payload(config('tapcard.resolver_url').'/c/XXXXXXXXXX?src=qr');
 
             return [
@@ -118,7 +118,7 @@ class ShowcaseController extends Controller
             'display_name' => $v['name'],
             'title' => $v['title'],
             'company' => $v['company'],
-            'bio' => 'Owner TapCard. Kartu nama digital untuk tim sales, komunitas, dan organisasi.',
+            'bio' => 'Contoh bio singkat untuk kartu nama digital Anda.',
             'avatar_url' => null,
             'theme' => BioTheme::resolve(['preset' => 'onyx']),
             'locale' => 'id',
@@ -127,13 +127,13 @@ class ShowcaseController extends Controller
             'brand' => null,
             'quick' => ['whatsapp' => '#', 'phone' => '#', 'email' => '#'],
             'links' => [
-                ['id' => 's1', 'type' => 'url', 'group' => 'business', 'icon' => 'Globe', 'action' => 'link', 'label' => 'Website', 'display' => 'tapcardin.my.id', 'url' => null, 'copy' => null, 'image' => null],
-                ['id' => 's2', 'type' => 'instagram', 'group' => 'social', 'icon' => 'Instagram', 'action' => 'link', 'label' => 'Instagram', 'display' => '@tapcardin', 'url' => null, 'copy' => null, 'image' => null],
-                ['id' => 's3', 'type' => 'linkedin', 'group' => 'social', 'icon' => 'Linkedin', 'action' => 'link', 'label' => 'LinkedIn', 'display' => '@bayupriyambada', 'url' => null, 'copy' => null, 'image' => null],
-                ['id' => 's4', 'type' => 'booking', 'group' => 'business', 'icon' => 'CalendarCheck', 'action' => 'link', 'label' => 'Jadwalkan konsultasi', 'display' => 'calendly.com/rina', 'url' => null, 'copy' => null, 'image' => null],
-                ['id' => 's5', 'type' => 'shopee', 'group' => 'store', 'icon' => 'ShoppingBag', 'action' => 'link', 'label' => 'Shopee', 'display' => '@tapcard-store', 'url' => null, 'copy' => null, 'image' => null],
-                ['id' => 's6', 'type' => 'bank', 'group' => 'payment', 'icon' => 'Landmark', 'action' => 'copy', 'label' => 'Rekening bank', 'display' => 'BCA · 1234567890 a.n. Bayu Priyambada', 'url' => null, 'copy' => '1234567890', 'image' => null],
-                ['id' => 's7', 'type' => 'address', 'group' => 'business', 'icon' => 'MapPin', 'action' => 'map', 'label' => 'Kantor', 'display' => 'Jl. Sudirman 21, Jakarta', 'url' => null, 'copy' => null, 'image' => null],
+                ['id' => 's1', 'type' => 'url', 'group' => 'business', 'icon' => 'Globe', 'action' => 'link', 'label' => 'Website', 'display' => 'situs-anda.id', 'url' => null, 'copy' => null, 'image' => null],
+                ['id' => 's2', 'type' => 'instagram', 'group' => 'social', 'icon' => 'Instagram', 'action' => 'link', 'label' => 'Instagram', 'display' => '@namaanda', 'url' => null, 'copy' => null, 'image' => null],
+                ['id' => 's3', 'type' => 'linkedin', 'group' => 'social', 'icon' => 'Linkedin', 'action' => 'link', 'label' => 'LinkedIn', 'display' => '@namaanda', 'url' => null, 'copy' => null, 'image' => null],
+                ['id' => 's4', 'type' => 'booking', 'group' => 'business', 'icon' => 'CalendarCheck', 'action' => 'link', 'label' => 'Jadwalkan konsultasi', 'display' => 'calendly.com/namaanda', 'url' => null, 'copy' => null, 'image' => null],
+                ['id' => 's5', 'type' => 'shopee', 'group' => 'store', 'icon' => 'ShoppingBag', 'action' => 'link', 'label' => 'Shopee', 'display' => '@tokoanda', 'url' => null, 'copy' => null, 'image' => null],
+                ['id' => 's6', 'type' => 'bank', 'group' => 'payment', 'icon' => 'Landmark', 'action' => 'copy', 'label' => 'Rekening bank', 'display' => 'Nama bank · a.n. Nama Anda', 'url' => null, 'copy' => '0000000000', 'image' => null],
+                ['id' => 's7', 'type' => 'address', 'group' => 'business', 'icon' => 'MapPin', 'action' => 'map', 'label' => 'Kantor', 'display' => 'Alamat kantor Anda', 'url' => null, 'copy' => null, 'image' => null],
             ],
             'vcard_url' => null,
             'exchange' => ['url' => null, 't' => null],
