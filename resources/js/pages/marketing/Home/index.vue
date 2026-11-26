@@ -15,6 +15,7 @@ import BioShowcase from '@/components/marketing/BioShowcase/index.vue'
 import EditorShowcase from '@/components/marketing/EditorShowcase/index.vue'
 import FaqList from '@/components/marketing/FaqList/index.vue'
 import HeroDemo from '@/components/marketing/HeroDemo/index.vue'
+import DashboardFrame from '@/components/marketing/DashboardFrame/index.vue'
 import HowItWorks from '@/components/marketing/HowItWorks/index.vue'
 import ProductGrid from '@/components/marketing/ProductGrid/index.vue'
 import TickerStrip from '@/components/marketing/TickerStrip/index.vue'
@@ -179,7 +180,7 @@ const RELIABLE = [
 
     <main>
       <!-- Hero: produk nyata + hasil tap + satu aksi utama dalam layar pertama (ponsel: judul → visual → aksi) -->
-      <section id="hero" class="mx-auto grid max-w-[1200px] justify-items-center gap-6 px-4 pt-12 pb-10 text-center sm:px-6 lg:pt-20">
+      <section id="hero" class="mx-auto grid max-w-[1200px] grid-cols-[minmax(0,1fr)] justify-items-center gap-6 px-4 pt-12 pb-10 text-center sm:px-6 lg:pt-20">
         <span class="hero-in inline-flex max-w-full items-center gap-2 rounded-full border border-line bg-surface p-1 pr-4 text-sm text-muted hd-0">
           <span class="live-dot ml-2" aria-hidden="true"></span>
           <span class="rounded-full bg-accent px-3 py-0.5 text-xs font-semibold text-accent-ink">Populer</span>
@@ -209,6 +210,10 @@ const RELIABLE = [
         <div class="hero-in w-full max-w-[560px] pt-4 hd-850">
           <HeroDemo v-if="hero && show.sample" :card="hero.preview.landscape.front" :vars="show.variables" :qr="show.qr" :profile="show.sample" />
           <AppSkeleton v-else class="!aspect-[16/10] !h-auto w-full" />
+        </div>
+        <!-- Bingkai dashboard besar di bawah visual hero (layar pertama tetap: judul, aksi, kartu + ponsel) -->
+        <div v-reveal class="w-full max-w-[1200px]">
+          <DashboardFrame />
         </div>
       </section>
 
