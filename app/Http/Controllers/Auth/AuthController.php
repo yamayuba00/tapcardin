@@ -4,18 +4,23 @@ namespace App\Http\Controllers\Auth;
 
 use App\Actions\Auth\CardLogin;
 use App\Actions\Auth\LoginUser;
+use App\Enums\MemberStatus;
 use App\Http\Controllers\Controller;
+use App\Models\TenantMember;
 use App\Models\User;
 use App\Support\Altcha;
+use App\Support\HostTenant;
 use Database\Seeders\DummyAccountSeeder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
 /**
  * Login pengguna workspace (app. & {slug}.): Google (lihat GoogleController) atau kartu NFC + kode akun.
- * Tidak ada email + password untuk pengguna; akun baru dibuat otomatis saat pertama masuk dengan Google.
+ * Tidak ada email + password untuk pengguna, kecuali anggota workspace perusahaan di host perusahaan (lihat password()).
+ * Akun baru dibuat otomatis saat pertama masuk dengan Google.
  */
 class AuthController extends Controller
 {
@@ -44,6 +49,33 @@ class AuthController extends Controller
         Altcha::require($request);
 
         $user = $card->handle($data['token'], $data['uid'] ?? null, $data['key'] ?? null, $data['code']);
+        $login->login($user, (bool) ($data['remember'] ?? false));
+
+        return $this->userResponse($user);
+    }
+
+    /**
+     * POST /api/auth/password — email + kata sandi di host perusahaan (subdomain / domain kustom).
+     * Hanya untuk anggota aktif workspace di host itu; di app. atau host lain: 404.
+     */
+    public function password(Request $request, LoginUser $login): JsonResponse
+    {
+        $tenant = HostTenant::resolve($request->getHost());
+        abort_if($tenant === null || $tenant->isPersonal(), 404);
+        $data = $request->validate([
+            'email' => ['required', 'string', 'email', 'max:190'],
+            'password' => ['required', 'string', 'max:200'],
+            'remember' => ['boolean'],
+        ], ['email.email' => 'Tulis email yang valid.']);
+
+        $user = User::whereRaw('lower(email) = ?', [strtolower(trim($data['email']))])->first();
+        $member = $user && TenantMember::acrossTenants()
+            ->where(['tenant_id' => $tenant->id, 'user_id' => $user->id, 'status' => MemberStatus::Active->value])->exists();
+        // pesan sama untuk email tak dikenal, bukan anggota, kata sandi salah, atau belum punya kata sandi (akun Google/kartu)
+        if (! $member || ! $user->password || ! Hash::check($data['password'], $user->password) || $user->isBlocked()) {
+            throw ValidationException::withMessages(['email' => 'Email atau password salah.']);
+        }
+
         $login->login($user, (bool) ($data['remember'] ?? false));
 
         return $this->userResponse($user);

@@ -60,5 +60,15 @@ class AppServiceProvider extends ServiceProvider
             Limit::perHour(5)->by('card:'.($r->input('token') ?? Crockford::normalize((string) $r->input('short_code')))),
             Limit::perHour(20)->by($ip($r)),
         ]);
+        // login email + kata sandi di host perusahaan: per IP+email (tebak sandi satu akun) dan longgar per IP
+        RateLimiter::for('company-login', fn (Request $r) => [
+            Limit::perMinutes(15, 10)->by('pw:'.$ip($r).'|'.strtolower((string) $r->input('email'))),
+            Limit::perMinute(60)->by('pwip:'.$ip($r)),
+        ]);
+        // aktivasi undangan: per token dan per IP
+        RateLimiter::for('invite-accept', fn (Request $r) => [
+            Limit::perHour(10)->by('invite:'.$r->route('token')),
+            Limit::perHour(30)->by('invite-ip:'.$ip($r)),
+        ]);
     }
 }

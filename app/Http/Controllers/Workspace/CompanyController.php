@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Workspace;
 
 use App\Actions\Cards\ChangeCardStatus;
+use App\Actions\Company\SendTenantInvite;
 use App\Authz\PermissionResolver;
 use App\Authz\PlanFeatures;
 use App\Enums\CardStatus;
@@ -16,6 +17,7 @@ use App\Models\StaffAccount;
 use App\Models\Subscription;
 use App\Models\Tap;
 use App\Models\TeamMember;
+use App\Models\TenantInvite;
 use App\Models\TenantMember;
 use App\Models\User;
 use App\Support\Audit;
@@ -104,6 +106,63 @@ class CompanyController extends WorkspaceController
         Webhooks::emit($this->tenant()->id, 'member.added', fn () => $this->hookMember($user, $role->key, 'active'));
 
         return response()->json(['data' => $this->member($m->fresh(['user', 'role']), $this->tenant()->owner_user_id)], 201);
+    }
+
+    /** GET /api/company/invites — undangan email yang belum diterima (menunggu atau kedaluwarsa). */
+    public function invites(): JsonResponse
+    {
+        $this->company('members.invite');
+        $rows = TenantInvite::with('role')->whereNull('accepted_at')->whereNull('revoked_at')->latest('id')->get();
+
+        return response()->json(['data' => $rows->map(fn (TenantInvite $i) => $this->inviteRow($i))->values()]);
+    }
+
+    /** POST /api/company/invites {email, role} — undangan lewat email, juga untuk email yang belum punya akun. */
+    public function invite(Request $request, SendTenantInvite $send): JsonResponse
+    {
+        $this->company('members.invite');
+        $data = $request->validate([
+            'email' => ['required', 'email', 'max:190'],
+            'role' => ['required', Rule::in(self::ROLES)],
+        ], ['email.email' => 'Tulis email yang valid.']);
+        $email = strtolower(trim($data['email']));
+        if (StaffAccount::whereRaw('lower(email) = ?', [$email])->exists()) {
+            throw new ApiError('invite_staff', 'Email ini akun staf TapCard dan tidak bisa diundang sebagai karyawan.', 422, ['fields' => ['email' => ['Email ini akun staf TapCard dan tidak bisa diundang sebagai karyawan.']]]);
+        }
+        $user = User::whereRaw('lower(email) = ?', [$email])->first();
+        if ($user && TenantMember::where('user_id', $user->id)->where('status', MemberStatus::Active->value)->exists()) {
+            throw new ApiError('member_exists', 'Akun ini sudah menjadi anggota.', 422, ['fields' => ['email' => ['Akun ini sudah menjadi anggota.']]]);
+        }
+
+        // undangan terbuka untuk email yang sama diperbarui (token baru), bukan dibuat ganda
+        $open = TenantInvite::whereNull('accepted_at')->whereNull('revoked_at')->where('email', $email)->latest('id')->first();
+        $invite = $send->handle($this->tenant(), $email, Role::system($data['role']), $this->user(), $open);
+        Audit::tenant($this->tenant()->id, 'member.invited', $invite, null, ['email' => $email, 'role' => $data['role']]);
+
+        return response()->json(['data' => $this->inviteRow($invite->fresh('role'))], 201);
+    }
+
+    /** POST /api/company/invites/{invite}/resend — tautan lama tidak berlaku lagi, berlaku 72 jam dari sekarang. */
+    public function resendInvite(TenantInvite $invite, SendTenantInvite $send): JsonResponse
+    {
+        $this->company('members.invite');
+        $this->assertOpenInvite($invite);
+        $invite->load('role');
+        $invite = $send->handle($this->tenant(), $invite->email, $invite->role, $this->user(), $invite);
+        Audit::tenant($this->tenant()->id, 'member.invite_resent', $invite, null, ['email' => $invite->email]);
+
+        return response()->json(['data' => $this->inviteRow($invite->fresh('role'))]);
+    }
+
+    /** DELETE /api/company/invites/{invite} — batalkan undangan; tautannya langsung tidak bisa dipakai. */
+    public function revokeInvite(TenantInvite $invite): JsonResponse
+    {
+        $this->company('members.invite');
+        $this->assertOpenInvite($invite);
+        $invite->forceFill(['revoked_at' => now()])->save();
+        Audit::tenant($this->tenant()->id, 'member.invite_revoked', $invite, null, ['email' => $invite->email]);
+
+        return response()->json(['data' => ['ok' => true]]);
     }
 
     /** PATCH /api/company/members/{user} {role} */
@@ -284,6 +343,21 @@ class CompanyController extends WorkspaceController
             $status->handle($card, CardStatus::Unclaimed, 'Ditarik dari karyawan', extra: ['holder_user_id' => null, 'assigned_user_id' => null, 'profile_id' => null]);
             CardLoginKey::where('card_id', $card->id)->delete();
         }
+    }
+
+    private function assertOpenInvite(TenantInvite $invite): void
+    {
+        if ($invite->accepted_at !== null || $invite->revoked_at !== null) {
+            throw new ApiError('invite_closed', 'Undangan ini sudah diterima atau dibatalkan.', 422);
+        }
+    }
+
+    private function inviteRow(TenantInvite $i): array
+    {
+        return [
+            'id' => $i->id, 'email' => $i->email, 'role' => $i->role->key, 'role_name' => $i->role->name,
+            'status' => $i->status(), 'expires_at' => $i->expires_at->toIso8601String(),
+        ];
     }
 
     private function hookMember(User $u, string $role, string $status): array

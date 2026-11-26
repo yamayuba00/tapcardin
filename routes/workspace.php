@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\GoogleController;
+use App\Http\Controllers\Auth\TenantInviteController;
 use App\Http\Controllers\Workspace\ActivationController;
 use App\Http\Controllers\Workspace\AddonController;
 use App\Http\Controllers\Workspace\AnalyticsController;
@@ -42,8 +43,14 @@ use Illuminate\Support\Facades\Route;
 Route::controller(AuthController::class)->prefix('api/auth')->group(function () {
     Route::get('/altcha', 'altcha')->middleware('throttle:60,1')->name('auth.altcha');
     Route::post('/card', 'card')->middleware('throttle:10,1')->name('auth.card');
+    Route::post('/password', 'password')->middleware('throttle:company-login')->name('auth.password');
     Route::post('/dev', 'dev')->middleware('throttle:30,1')->name('auth.dev');
     Route::post('/logout', 'logout')->name('logout');
+});
+// Undangan karyawan (host perusahaan): cek tautan & aktivasi — tamu belum punya sesi
+Route::controller(TenantInviteController::class)->prefix('api/invites')->name('invites.')->group(function () {
+    Route::get('/{token}', 'show')->middleware('throttle:60,1')->name('show');
+    Route::post('/{token}/accept', 'accept')->middleware('throttle:invite-accept')->name('accept');
 });
 Route::get('/auth/google/redirect', [GoogleController::class, 'redirect'])->name('google.redirect');
 Route::get('/auth/google/callback', [GoogleController::class, 'callback'])->name('google.callback');
@@ -200,6 +207,10 @@ Route::middleware('auth')->prefix('api')->name('api.')->group(function () {
         Route::patch('/members/{user}', 'role')->name('members.role');
         Route::post('/members/{user}/deactivate', 'deactivate')->name('members.deactivate');
         Route::post('/members/{user}/reactivate', 'reactivate')->name('members.reactivate');
+        Route::get('/invites', 'invites')->name('invites.index');
+        Route::post('/invites', 'invite')->middleware('throttle:30,1')->name('invites.store');
+        Route::post('/invites/{invite}/resend', 'resendInvite')->middleware('throttle:10,1')->name('invites.resend');
+        Route::delete('/invites/{invite}', 'revokeInvite')->name('invites.revoke');
         Route::get('/cards', 'cards')->name('cards');
         Route::get('/cards/assignees', 'assignees')->name('cards.assignees');
         Route::put('/cards/{token}/assign', 'assign')->name('cards.assign');
