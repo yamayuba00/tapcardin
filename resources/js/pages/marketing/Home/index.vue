@@ -206,14 +206,17 @@ const RELIABLE = [
           <span class="flex items-center gap-2"><Smartphone class="size-4 text-accent-text" aria-hidden="true" /> iPhone & Android</span>
           <AppButton variant="ghost" href="#cara-kerja" class="max-sm:hidden">Lihat cara kerja</AppButton>
         </div>
-        <!-- Ilustrasi kartu + ponsel dengan data contoh (bukan data pengguna nyata) -->
-        <div class="hero-in w-full max-w-[560px] pt-4 hd-850">
-          <HeroDemo v-if="hero && show.sample" :card="hero.preview.landscape.front" :vars="show.variables" :qr="show.qr" :profile="show.sample" />
-          <AppSkeleton v-else class="!aspect-[16/10] !h-auto w-full" />
-        </div>
-        <!-- Bingkai dashboard besar di bawah visual hero (layar pertama tetap: judul, aksi, kartu + ponsel) -->
-        <div v-reveal class="w-full max-w-[1200px]">
-          <DashboardFrame />
+        <!-- Panggung visual hero: dashboard contoh (dominan) + kartu & ponsel contoh.
+             Ponsel: menumpuk di bawah dashboard (<640), di sudut kiri bawah (640+), kiri bawah lebih besar (1024+). -->
+        <div class="relative w-full max-w-[1200px] pt-6 sm:pb-10 lg:pb-6">
+          <div v-reveal class="w-full lg:ml-auto lg:w-[82%]">
+            <DashboardFrame />
+          </div>
+          <div class="hero-in hd-850 relative z-20 mx-auto -mt-16 w-[353px] max-w-full sm:absolute sm:bottom-[-40px] sm:left-0 sm:mt-0 sm:mx-0 sm:w-[420px] lg:bottom-[-24px] lg:w-[560px]">
+            <!-- Ilustrasi kartu + ponsel dengan data contoh (bukan data pengguna nyata) -->
+            <HeroDemo v-if="hero && show.sample" :card="hero.preview.landscape.front" :vars="show.variables" :qr="show.qr" :profile="show.sample" />
+            <AppSkeleton v-else class="!aspect-[16/10] !h-auto w-full" />
+          </div>
         </div>
       </section>
 

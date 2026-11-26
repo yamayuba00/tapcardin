@@ -11,7 +11,6 @@ const SRC = '/marketing/dashboard-mockup.png'
       <span class="size-2.5 rounded-full bg-onyx-700"></span>
       <span class="size-2.5 rounded-full bg-onyx-700"></span>
       <span class="size-2.5 rounded-full bg-onyx-700"></span>
-      <span class="ml-3 truncate text-xs text-muted">Dashboard TapCard · data contoh</span>
     </div>
     <div class="aspect-[4/5] overflow-hidden rounded-[18px] border border-line bg-bg sm:aspect-[16/9]">
       <img
