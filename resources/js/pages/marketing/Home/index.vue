@@ -33,6 +33,7 @@ const full = ref(null)
 const show = computed(() => (full.value ? { ...initial, ...full.value } : initial))
 const hero = computed(() => full.value?.templates?.[0] ?? initial.hero ?? null)
 const signup = `${config.appUrl}/login`
+const MOCKUP = '/marketing/dashboard-mockup.png' // public/, bukan aset Vite
 onMounted(() => marketingApi.showcase().then((r) => (full.value = r.data)).catch(() => {}))
 
 const rupiah = (n) => (n == null ? '—' : new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n))
@@ -104,30 +105,43 @@ const RELIABLE = [
 
     <main>
       <!-- Hero: produk nyata + hasil tap + satu aksi utama dalam layar pertama (ponsel: judul → visual → aksi) -->
-      <section id="hero" class="mx-auto grid max-w-[1200px] items-center gap-x-12 gap-y-5 px-4 pt-6 pb-14 sm:px-6 lg:grid-cols-[1fr_1.05fr] lg:pt-16 lg:pb-20">
-        <div class="contents lg:grid lg:content-start lg:gap-6">
-          <span class="label hidden !text-accent-text lg:block">Kartu nama NFC & QR · bio link · lead</span>
-          <h1 class="font-display text-[32px] leading-[1.05] font-bold tracking-[-.02em] sm:text-[48px] lg:text-[56px]">
-            Kartu nama yang menyimpan kontak Anda dengan <span class="text-accent-text">satu tap</span>.
-          </h1>
-          <div class="order-3 grid gap-5 lg:order-none">
-            <div class="flex flex-wrap items-center gap-3">
-              <AppButton size="lg" :href="signup" class="max-sm:w-full" data-event="cta_click" data-location="hero" @click="cta('hero')">Buat kartu gratis <ArrowRight class="size-5" /></AppButton>
-              <AppButton size="lg" variant="secondary" href="#cara-kerja" class="max-sm:hidden">Lihat cara kerja</AppButton>
-            </div>
-            <p class="max-w-[540px] text-lg text-muted">
-              Kartu ini berisi profil Anda. Orang lain cukup menempelkan kartu ke HP mereka, atau memindai QR-nya,
-              lalu profil Anda langsung terbuka dan mereka bisa menyimpan kontak Anda. Tanpa install aplikasi.
-              Mulai gratis dengan kartu digital, pesan kartu fisik kapan saja.
-            </p>
-            <ul class="flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted">
-              <li class="flex items-center gap-2"><Check class="size-4 text-ok" aria-hidden="true" /> Gratis {{ num(digital.tap_quota) }} tap, tanpa kartu kredit</li>
-              <li class="flex items-center gap-2"><Nfc class="size-4 text-accent-text" aria-hidden="true" /> NFC + QR di setiap kartu</li>
-              <li class="flex items-center gap-2"><Smartphone class="size-4 text-accent-text" aria-hidden="true" /> iPhone & Android</li>
-            </ul>
-          </div>
+      <section id="hero" class="mx-auto grid max-w-[1200px] justify-items-center gap-6 px-4 pt-12 pb-10 text-center sm:px-6 lg:pt-20">
+        <span class="inline-flex max-w-full items-center gap-2 rounded-full border border-line bg-surface p-1 pr-4 text-sm text-muted">
+          <span class="rounded-full bg-accent px-3 py-0.5 text-xs font-semibold text-accent-ink">Populer</span>
+          <span class="truncate">Kartu nama NFC & QR · bio link · lead</span>
+        </span>
+        <h1 class="max-w-[860px] font-display text-[36px] leading-[1.05] font-bold tracking-[-.02em] sm:text-[52px] lg:text-[64px]">
+          Kartu nama yang menyimpan kontak Anda dengan <span class="text-accent-text">satu tap</span>.
+        </h1>
+        <p class="max-w-[640px] text-base text-muted sm:text-lg">
+          Kartu ini berisi profil Anda. Orang lain cukup menempelkan kartu ke HP mereka, atau memindai QR-nya,
+          lalu profil Anda langsung terbuka dan mereka bisa menyimpan kontak Anda. Tanpa install aplikasi.
+          Mulai gratis dengan kartu digital, pesan kartu fisik kapan saja.
+        </p>
+        <form :action="signup" method="get" class="flex w-full max-w-[520px] items-center gap-2 rounded-full border border-line-strong bg-surface p-1.5 pl-5 text-left focus-within:border-accent">
+          <label for="hero-email" class="sr-only">Email kerja</label>
+          <input id="hero-email" type="email" name="email" autocomplete="email" placeholder="Email kerja Anda" class="min-w-0 flex-1 bg-transparent text-fg outline-none placeholder:text-muted" />
+          <AppButton type="submit" class="!rounded-full whitespace-nowrap" data-event="cta_click" data-location="hero" @click="cta('hero')">Mulai gratis <ArrowRight class="size-5" /></AppButton>
+        </form>
+        <div class="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm text-muted">
+          <span class="flex items-center gap-2"><Check class="size-4 text-ok" aria-hidden="true" /> Gratis {{ num(digital.tap_quota) }} tap, tanpa kartu kredit</span>
+          <span class="flex items-center gap-2"><Nfc class="size-4 text-accent-text" aria-hidden="true" /> NFC + QR di setiap kartu</span>
+          <span class="flex items-center gap-2"><Smartphone class="size-4 text-accent-text" aria-hidden="true" /> iPhone & Android</span>
+          <AppButton variant="ghost" href="#cara-kerja" class="max-sm:hidden">Lihat cara kerja</AppButton>
         </div>
-        <div class="order-2 lg:order-none">
+        <!-- Produk nyata: tangkapan layar dashboard TapCard (akun demo) dalam bingkai -->
+        <figure class="mt-8 w-full max-w-[1100px] rounded-[20px] border border-line bg-surface p-2 sm:p-3">
+          <img
+            :src="MOCKUP" width="1280" height="1000" fetchpriority="high" decoding="async"
+            alt="Dashboard TapCard: ringkasan tap 7 hari, pengunjung unik, simpan kontak, dan funnel lead"
+            class="block h-auto w-full rounded-[12px] border border-line"
+          />
+        </figure>
+      </section>
+
+      <!-- Kartu di-tap: kartu fisik dan profil yang terbuka di ponsel penerima -->
+      <section class="mx-auto grid max-w-[1200px] justify-items-center px-4 pt-4 pb-14 sm:px-6 lg:pb-20">
+        <div class="w-full max-w-[560px]">
           <HeroDemo v-if="hero && show.sample" :card="hero.preview.landscape.front" :vars="show.variables" :qr="show.qr" :profile="show.sample" />
           <AppSkeleton v-else class="!aspect-[16/10] !h-auto w-full" />
         </div>
