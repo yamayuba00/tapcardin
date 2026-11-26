@@ -58,17 +58,17 @@ function go(id) {
 <template>
   <header class="sticky top-0 z-30 border-b border-line bg-bg">
     <div class="mx-auto flex h-16 max-w-[1200px] items-center gap-6 px-4 sm:px-6 lg:grid lg:grid-cols-[1fr_auto_1fr]">
-      <a href="/" class="no-underline lg:justify-self-start" aria-label="TapCard beranda"><BrandLogo /></a>
+      <a href="/" class="inline-flex min-h-11 items-center no-underline lg:justify-self-start" aria-label="TapCard beranda"><BrandLogo /></a>
       <nav class="hidden h-full items-stretch gap-6 text-sm lg:flex" aria-label="Utama">
         <a
           v-for="l in LINKS" :key="l.id" :href="`#${l.id}`" :aria-current="active === l.id ? 'location' : undefined"
-          class="relative flex items-center text-muted no-underline transition-colors hover:text-fg aria-[current=location]:font-medium aria-[current=location]:text-fg after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:rounded-full after:bg-transparent aria-[current=location]:after:bg-accent"
+          class="link-grow flex items-center text-muted no-underline transition-colors hover:text-fg aria-[current=location]:font-medium aria-[current=location]:text-fg"
           @click="go(l.id)"
         >{{ l.label }}</a>
       </nav>
       <div class="ml-auto hidden items-center gap-2 sm:flex lg:justify-self-end">
         <AppButton variant="ghost" :href="`${config.appUrl}/login`">Masuk</AppButton>
-        <AppButton class="!rounded-full" :href="`${config.appUrl}/login`" data-event="cta_click" data-location="header" @click="track('cta_click', { location: 'header' })">Buat kartu gratis</AppButton>
+        <AppButton class="cta-lift !rounded-full" :href="`${config.appUrl}/login`" data-event="cta_click" data-location="header" @click="track('cta_click', { location: 'header' })">Buat kartu gratis</AppButton>
       </div>
       <AppButton variant="ghost" icon class="ml-auto sm:ml-0 lg:hidden" :aria-label="open ? 'Tutup menu' : 'Buka menu'" :aria-expanded="open" @click="open = !open">
         <component :is="open ? X : Menu" class="size-5" />

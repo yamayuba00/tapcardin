@@ -7,7 +7,7 @@ defineProps({ items: { type: Array, required: true } }) // [{ q, a }]
 
 <template>
   <div class="divide-y divide-line border-y border-line">
-    <details v-for="(it, i) in items" :key="i" class="group" @toggle="(e) => e.target.open && track('faq_open', { question: it.q })">
+    <details v-for="(it, i) in items" :key="i" class="faq-item group" @toggle="(e) => e.target.open && track('faq_open', { question: it.q })">
       <summary class="flex min-h-16 cursor-pointer list-none items-center justify-between gap-4 py-4 text-lg font-medium [&::-webkit-details-marker]:hidden">
         {{ it.q }}
         <ChevronDown class="size-5 flex-none text-muted transition-transform group-open:rotate-180" aria-hidden="true" />

@@ -15,6 +15,7 @@ import BioShowcase from '@/components/marketing/BioShowcase/index.vue'
 import EditorShowcase from '@/components/marketing/EditorShowcase/index.vue'
 import FaqList from '@/components/marketing/FaqList/index.vue'
 import HeroDemo from '@/components/marketing/HeroDemo/index.vue'
+import TickerStrip from '@/components/marketing/TickerStrip/index.vue'
 import LiveStatus from '@/components/marketing/LiveStatus/index.vue'
 import PricingTable from '@/components/marketing/PricingTable/index.vue'
 import SectionHeading from '@/components/marketing/SectionHeading/index.vue'
@@ -27,6 +28,8 @@ import { marketingApi } from '@/api/public'
 import { config, takeInitial } from '@/config'
 import { salesWhatsAppUrl } from '@/lib/salesWhatsApp'
 import { track } from '@/lib/track'
+import { prefersReducedMotion, tiltFromPointer } from '@/lib/motion'
+import { vReveal } from '@/lib/reveal'
 
 const initial = takeInitial('landing') ?? {}
 const full = ref(null)
@@ -34,7 +37,22 @@ const show = computed(() => (full.value ? { ...initial, ...full.value } : initia
 const hero = computed(() => full.value?.templates?.[0] ?? initial.hero ?? null)
 const signup = `${config.appUrl}/login`
 const MOCKUP = '/marketing/dashboard-mockup.png' // public/, bukan aset Vite
-onMounted(() => marketingApi.showcase().then((r) => (full.value = r.data)).catch(() => {}))
+const HERO_WORDS = ['Kartu', 'nama', 'yang', 'menyimpan', 'kontak', 'Anda', 'dengan']
+// Miring pelan mengikuti pointer (desktop saja, transform; tanpa layout). Rect dibaca sekali saat pointer masuk.
+const mockup = ref(null)
+let tiltOk = false
+let tiltRect = null
+function onTiltEnter() { if (tiltOk && mockup.value) tiltRect = mockup.value.getBoundingClientRect() }
+function onTiltMove(e) {
+  if (!tiltRect || !mockup.value) return
+  const { rx, ry } = tiltFromPointer(e.clientX - tiltRect.left, e.clientY - tiltRect.top, tiltRect.width, tiltRect.height, 4)
+  mockup.value.style.transform = `perspective(1200px) rotateX(${rx}deg) rotateY(${ry}deg)`
+}
+function onTiltLeave() { tiltRect = null; if (mockup.value) mockup.value.style.transform = '' }
+onMounted(() => {
+  marketingApi.showcase().then((r) => (full.value = r.data)).catch(() => {})
+  tiltOk = !prefersReducedMotion() && !!window.matchMedia?.('(hover: hover) and (pointer: fine)').matches
+})
 
 const rupiah = (n) => (n == null ? '—' : new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n))
 const num = (n) => new Intl.NumberFormat('id-ID').format(n ?? 0)
@@ -106,31 +124,36 @@ const RELIABLE = [
     <main>
       <!-- Hero: produk nyata + hasil tap + satu aksi utama dalam layar pertama (ponsel: judul → visual → aksi) -->
       <section id="hero" class="mx-auto grid max-w-[1200px] justify-items-center gap-6 px-4 pt-12 pb-10 text-center sm:px-6 lg:pt-20">
-        <span class="inline-flex max-w-full items-center gap-2 rounded-full border border-line bg-surface p-1 pr-4 text-sm text-muted">
+        <span class="hero-in inline-flex max-w-full items-center gap-2 rounded-full border border-line bg-surface p-1 pr-4 text-sm text-muted hd-0">
+          <span class="live-dot ml-2" aria-hidden="true"></span>
           <span class="rounded-full bg-accent px-3 py-0.5 text-xs font-semibold text-accent-ink">Populer</span>
           <span class="truncate">Kartu nama NFC & QR · bio link · lead</span>
         </span>
         <h1 class="max-w-[860px] font-display text-[36px] leading-[1.05] font-bold tracking-[-.02em] sm:text-[52px] lg:text-[64px]">
-          Kartu nama yang menyimpan kontak Anda dengan <span class="text-accent-text">satu tap</span>.
+          <template v-for="(w, i) in HERO_WORDS" :key="w"><span class="hero-word" :class="`hw-${i}`">{{ w }}</span>{{ ' ' }}</template>
+          <span class="hero-word text-accent-text hw-7">satu tap</span><span class="hero-word hw-8">.</span>
         </h1>
-        <p class="max-w-[640px] text-base text-muted sm:text-lg">
+        <p class="hero-in max-w-[640px] text-base text-muted sm:text-lg hd-420">
           Kartu ini berisi profil Anda. Orang lain cukup menempelkan kartu ke HP mereka, atau memindai QR-nya,
           lalu profil Anda langsung terbuka dan mereka bisa menyimpan kontak Anda. Tanpa install aplikasi.
           Mulai gratis dengan kartu digital, pesan kartu fisik kapan saja.
         </p>
-        <form :action="signup" method="get" class="flex w-full max-w-[520px] items-center gap-2 rounded-full border border-line-strong bg-surface p-1.5 pl-5 text-left focus-within:border-accent">
+        <form :action="signup" method="get" class="hero-in hd-600 flex w-full max-w-[520px] items-center gap-2 rounded-full border border-line-strong bg-surface p-1.5 pl-5 text-left focus-within:border-accent">
           <label for="hero-email" class="sr-only">Email kerja</label>
           <input id="hero-email" type="email" name="email" autocomplete="email" placeholder="Email kerja Anda" class="min-w-0 flex-1 bg-transparent text-fg outline-none placeholder:text-muted" />
-          <AppButton type="submit" class="!rounded-full whitespace-nowrap" data-event="cta_click" data-location="hero" @click="cta('hero')">Mulai gratis <ArrowRight class="size-5" /></AppButton>
+          <AppButton type="submit" class="cta-lift !rounded-full whitespace-nowrap" data-event="cta_click" data-location="hero" @click="cta('hero')">Mulai gratis <ArrowRight class="size-5" /></AppButton>
         </form>
-        <div class="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm text-muted">
+        <div class="hero-in flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm text-muted hd-700">
           <span class="flex items-center gap-2"><Check class="size-4 text-ok" aria-hidden="true" /> Gratis {{ num(digital.tap_quota) }} tap, tanpa kartu kredit</span>
           <span class="flex items-center gap-2"><Nfc class="size-4 text-accent-text" aria-hidden="true" /> NFC + QR di setiap kartu</span>
           <span class="flex items-center gap-2"><Smartphone class="size-4 text-accent-text" aria-hidden="true" /> iPhone & Android</span>
           <AppButton variant="ghost" href="#cara-kerja" class="max-sm:hidden">Lihat cara kerja</AppButton>
         </div>
         <!-- Produk nyata: tangkapan layar dashboard TapCard (akun demo) dalam bingkai -->
-        <figure class="mt-8 w-full max-w-[1100px] rounded-[20px] border border-line bg-surface p-2 sm:p-3">
+        <figure
+          ref="mockup" class="hero-in tilt-card mt-8 w-full max-w-[1100px] rounded-[20px] border border-line bg-surface p-2 sm:p-3 hd-850"
+          @pointerenter="onTiltEnter" @pointermove="onTiltMove" @pointerleave="onTiltLeave"
+        >
           <img
             :src="MOCKUP" width="1280" height="1000" fetchpriority="high" decoding="async"
             alt="Dashboard TapCard: ringkasan tap 7 hari, pengunjung unik, simpan kontak, dan funnel lead"
@@ -139,8 +162,10 @@ const RELIABLE = [
         </figure>
       </section>
 
+      <TickerStrip />
+
       <!-- Kartu di-tap: kartu fisik dan profil yang terbuka di ponsel penerima -->
-      <section class="mx-auto grid max-w-[1200px] justify-items-center px-4 pt-4 pb-14 sm:px-6 lg:pb-20">
+      <section v-reveal class="mx-auto grid max-w-[1200px] justify-items-center px-4 pt-4 pb-14 sm:px-6 lg:pb-20">
         <div class="w-full max-w-[560px]">
           <HeroDemo v-if="hero && show.sample" :card="hero.preview.landscape.front" :vars="show.variables" :qr="show.qr" :profile="show.sample" />
           <AppSkeleton v-else class="!aspect-[16/10] !h-auto w-full" />
@@ -148,11 +173,11 @@ const RELIABLE = [
       </section>
 
       <!-- Cara kerja -->
-      <section id="cara-kerja" class="scroll-mt-20 border-y border-line bg-surface">
+      <section id="cara-kerja" v-reveal class="scroll-mt-20 border-y border-line bg-surface">
         <div class="mx-auto grid max-w-[1200px] gap-10 px-4 py-16 sm:px-6 lg:py-20">
           <SectionHeading eyebrow="Cara kerja" title="Dari jabat tangan ke kontak tersimpan dalam 2 detik" />
           <ol class="grid gap-8 md:grid-cols-3 md:gap-6">
-            <li v-for="s in STEPS" :key="s.n" class="grid content-start gap-3">
+            <li v-for="(s, i) in STEPS" :key="s.n" v-reveal :class="`st-${i}`" class="grid content-start gap-3">
               <span class="flex items-center gap-3">
                 <span class="grid size-11 place-items-center rounded-full border border-accent bg-bg"><component :is="s.icon" class="size-5 text-accent-text" aria-hidden="true" /></span>
                 <span class="font-mono text-sm text-muted">{{ s.n }}</span>
@@ -166,10 +191,10 @@ const RELIABLE = [
       </section>
 
       <!-- Untuk siapa: dua jalur -->
-      <section id="untuk-siapa" class="mx-auto grid max-w-[1200px] scroll-mt-20 gap-10 px-4 py-16 sm:px-6 lg:py-20">
+      <section id="untuk-siapa" v-reveal class="mx-auto grid max-w-[1200px] scroll-mt-20 gap-10 px-4 py-16 sm:px-6 lg:py-20">
         <SectionHeading eyebrow="Untuk siapa" title="Satu kartu untuk Anda, atau seragam untuk seluruh tim" />
         <div class="grid gap-px overflow-hidden rounded-lg border border-line bg-line md:grid-cols-2">
-          <article class="grid content-start gap-4 bg-bg p-6 sm:p-8">
+          <article class="lift-card grid content-start gap-4 bg-bg p-6 sm:p-8">
             <span class="label">Perorangan</span>
             <h3 class="font-display text-2xl font-bold">Sales, konsultan, freelancer, pemilik usaha</h3>
             <ul class="grid gap-2 text-sm">
@@ -179,7 +204,7 @@ const RELIABLE = [
             </ul>
             <AppButton class="justify-self-start" :href="signup" data-event="cta_click" data-location="personal" @click="cta('personal')">Buat kartu gratis <ArrowRight class="size-5" /></AppButton>
           </article>
-          <article class="grid content-start gap-4 bg-surface p-6 sm:p-8">
+          <article class="lift-card grid content-start gap-4 bg-surface p-6 sm:p-8">
             <span class="label">Perusahaan, komunitas & organisasi</span>
             <h3 class="font-display text-2xl font-bold">Tim sales, agensi, HR, panitia acara, organisasi</h3>
             <ul class="grid gap-2 text-sm">
@@ -193,11 +218,11 @@ const RELIABLE = [
       </section>
 
       <!-- Kartu digital vs fisik -->
-      <section id="kartu" class="scroll-mt-20 border-t border-line bg-surface">
+      <section id="kartu" v-reveal class="scroll-mt-20 border-t border-line bg-surface">
         <div class="mx-auto grid max-w-[1200px] gap-10 px-4 py-16 sm:px-6 lg:py-20">
           <SectionHeading eyebrow="Dua cara berbagi" title="Mulai digital hari ini, tambah kartu fisik saat siap" text="Keduanya membuka bio link yang sama, menyimpan kontak dengan satu ketukan, dan mencatat setiap koneksi." />
           <div class="grid gap-4 md:grid-cols-2">
-            <article class="grid content-start gap-4 rounded-lg border border-line bg-bg p-6">
+            <article v-reveal class="st-0 lift-card grid content-start gap-4 rounded-lg border border-line bg-bg p-6">
               <span class="flex items-center gap-3"><Smartphone class="size-7 text-accent-text" aria-hidden="true" /><h3 class="font-display text-2xl font-bold">Kartu digital</h3></span>
               <p class="font-display text-[32px] font-bold">Gratis <span class="text-base font-normal text-muted">untuk setiap akun</span></p>
               <ul class="grid gap-2 text-sm">
@@ -207,7 +232,7 @@ const RELIABLE = [
                 <li class="flex gap-2"><Check class="size-5 flex-none text-ok" aria-hidden="true" /> Tambah {{ num(digital.topup_taps) }} tap seharga {{ rupiah(digital.topup_price) }} bila habis</li>
               </ul>
             </article>
-            <article class="grid content-start gap-4 rounded-lg border border-accent bg-bg p-6">
+            <article v-reveal class="st-1 lift-card grid content-start gap-4 rounded-lg border border-accent bg-bg p-6">
               <span class="flex items-center gap-3"><Nfc class="size-7 text-accent-text" aria-hidden="true" /><h3 class="font-display text-2xl font-bold">Kartu fisik NFC</h3></span>
               <p class="font-display text-[32px] font-bold">{{ cardFrom ? `Mulai ${rupiah(cardFrom)}` : '—' }} <span class="text-base font-normal text-muted">per kartu</span></p>
               <dl class="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-2 text-sm">
@@ -222,7 +247,7 @@ const RELIABLE = [
       </section>
 
       <!-- Desain: template -->
-      <section id="template" class="scroll-mt-20 border-t border-line bg-surface-2">
+      <section id="template" v-reveal class="scroll-mt-20 border-t border-line bg-surface-2">
         <div class="mx-auto grid max-w-[1200px] gap-10 px-4 py-16 sm:px-6 lg:py-20">
           <SectionHeading
             :eyebrow="show.template_count ? `${show.template_count} template siap cetak` : 'Template siap cetak'"
@@ -235,14 +260,14 @@ const RELIABLE = [
       </section>
 
       <!-- Desain: editor -->
-      <section id="editor" class="mx-auto grid max-w-[1200px] scroll-mt-20 gap-8 px-4 py-16 sm:px-6 lg:py-20">
+      <section id="editor" v-reveal class="mx-auto grid max-w-[1200px] scroll-mt-20 gap-8 px-4 py-16 sm:px-6 lg:py-20">
         <SectionHeading eyebrow="Design Studio" title="Editor kartu & lanyard — cobalah di sini" text="Editor yang sama dengan di aplikasi: 28 font, teks melengkung, potong gambar ke bentuk, penggaris mm, dan pola lanyard berulang." />
         <EditorShowcase v-if="full?.editor" :templates="show.templates" :vars="show.variables" :qr="show.qr" :editor="show.editor" />
         <AppSkeleton v-else class="!h-[560px]" />
       </section>
 
       <!-- Bio link -->
-      <section id="bio-link" class="scroll-mt-20 border-t border-line bg-surface-2">
+      <section id="bio-link" v-reveal class="scroll-mt-20 border-t border-line bg-surface-2">
         <div class="mx-auto grid max-w-[1200px] gap-10 px-4 py-16 sm:px-6 lg:py-20">
           <SectionHeading
             eyebrow="Bio link per kartu"
@@ -255,10 +280,10 @@ const RELIABLE = [
       </section>
 
       <!-- Setelah tap: bento -->
-      <section id="fitur" class="mx-auto grid max-w-[1200px] scroll-mt-20 gap-10 px-4 py-16 sm:px-6 lg:py-20">
+      <section id="fitur" v-reveal class="mx-auto grid max-w-[1200px] scroll-mt-20 gap-10 px-4 py-16 sm:px-6 lg:py-20">
         <SectionHeading eyebrow="Setelah tap" title="Setiap pertemuan jadi lead yang bisa di-follow up" />
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <article class="grid content-start gap-4 rounded-lg border border-accent bg-surface p-6 sm:col-span-2 lg:col-span-1 lg:row-span-2">
+          <article class="lift-card grid content-start gap-4 rounded-lg border border-accent bg-surface p-6 sm:col-span-2 lg:col-span-1 lg:row-span-2">
             <Users class="size-6 text-accent-text" aria-hidden="true" />
             <h3 class="font-display text-2xl font-bold">Tukar Kontak & pipeline</h3>
             <p class="text-sm text-muted">Lawan bicara membagikan kontaknya balik dengan persetujuan tercatat. Kontak ganda digabung otomatis; tahap, catatan, pengingat follow-up, ekspor & impor CSV.</p>
@@ -270,7 +295,7 @@ const RELIABLE = [
             </ul>
             <p class="text-xs text-muted">Contoh tampilan dengan nama fiktif.</p>
           </article>
-          <article v-for="(f, i) in AFTER" :key="f.title" :class="['grid content-start gap-2 rounded-lg border border-line p-6', i === AFTER.length - 1 ? 'sm:col-span-2 lg:col-span-3' : '']">
+          <article v-for="(f, i) in AFTER" :key="f.title" v-reveal :class="[`st-${i}`, 'lift-card grid content-start gap-2 rounded-lg border border-line p-6', i === AFTER.length - 1 ? 'sm:col-span-2 lg:col-span-3' : '']">
             <component :is="f.icon" class="size-6 text-accent-text" aria-hidden="true" />
             <h3 class="mt-1 text-lg font-semibold">{{ f.title }}</h3>
             <p class="text-sm text-muted">{{ f.text }}</p>
@@ -279,7 +304,7 @@ const RELIABLE = [
       </section>
 
       <!-- Perusahaan -->
-      <section id="perusahaan" class="scroll-mt-20 border-t border-line bg-surface">
+      <section id="perusahaan" v-reveal class="scroll-mt-20 border-t border-line bg-surface">
         <div class="mx-auto grid max-w-[1200px] items-start gap-12 px-4 py-16 sm:px-6 lg:grid-cols-2 lg:py-20">
           <div class="grid content-start gap-8">
             <SectionHeading
@@ -288,7 +313,7 @@ const RELIABLE = [
               :text="`Workspace organisasi dibayar per 6 bulan dengan harga tetap, jumlah anggota tidak dibatasi, uji coba gratis ${trialDays} hari.`"
             />
             <ul class="grid gap-5">
-              <li v-for="f in COMPANY" :key="f.title" class="flex gap-4">
+              <li v-for="(f, i) in COMPANY" :key="f.title" v-reveal :class="`st-${i}`" class="flex gap-4">
                 <component :is="f.icon" class="mt-0.5 size-6 flex-none text-accent-text" aria-hidden="true" />
                 <span class="grid gap-1"><strong>{{ f.title }}</strong><span class="text-sm text-muted">{{ f.text }}</span></span>
               </li>
@@ -312,10 +337,10 @@ const RELIABLE = [
       </section>
 
       <!-- Pesan kartu & lanyard -->
-      <section id="pesan" class="mx-auto grid max-w-[1200px] scroll-mt-20 gap-10 px-4 py-16 sm:px-6 lg:py-20">
+      <section id="pesan" v-reveal class="mx-auto grid max-w-[1200px] scroll-mt-20 gap-10 px-4 py-16 sm:px-6 lg:py-20">
         <SectionHeading eyebrow="Pesan langsung dari aplikasi" title="Kartu, ID badge, dan lanyard — dicetak sesuai desain Anda" />
         <div class="grid gap-4 md:grid-cols-3">
-          <article v-for="c in show.card_products ?? []" :key="c.name" class="grid content-start gap-2 rounded-lg border border-line bg-surface p-5">
+          <article v-for="(c, i) in show.card_products ?? []" :key="c.name" v-reveal :class="`st-${i}`" class="lift-card grid content-start gap-2 rounded-lg border border-line bg-surface p-5">
             <h3 class="text-lg font-semibold">{{ c.name }}</h3>
             <p class="font-display text-2xl font-bold">{{ rupiah(c.price) }} <span class="text-sm font-normal text-muted">/ kartu</span></p>
             <p class="text-sm text-muted">{{ c.description }}</p>
@@ -330,7 +355,7 @@ const RELIABLE = [
       </section>
 
       <!-- Perbandingan -->
-      <section class="border-t border-line bg-surface-2">
+      <section v-reveal class="border-t border-line bg-surface-2">
         <div class="mx-auto grid max-w-[900px] gap-8 px-4 py-16 sm:px-6 lg:py-20">
           <SectionHeading center eyebrow="Kenapa beralih" title="Kartu kertas berhenti bekerja setelah diberikan" />
           <div class="overflow-x-auto rounded-lg border border-line bg-bg">
@@ -351,7 +376,7 @@ const RELIABLE = [
       </section>
 
       <!-- Harga -->
-      <section id="harga" class="mx-auto grid max-w-[1200px] scroll-mt-20 gap-10 px-4 py-16 sm:px-6 lg:py-20">
+      <section id="harga" v-reveal class="mx-auto grid max-w-[1200px] scroll-mt-20 gap-10 px-4 py-16 sm:px-6 lg:py-20">
         <SectionHeading eyebrow="Harga" title="Mulai gratis, upgrade saat jaringan Anda tumbuh" text="Kartu digital gratis termasuk di semua paket; kartu fisik & lanyard dipesan terpisah sesuai desain Anda." />
         <PricingTable
           v-if="show.plans" :plans="show.plans" :company-plans="companyPlans" :physical-bio-pages="show.physical_bio_pages"
@@ -367,12 +392,12 @@ const RELIABLE = [
       </section>
 
       <!-- Keandalan -->
-      <section id="keandalan" class="scroll-mt-20 border-t border-line bg-surface">
+      <section id="keandalan" v-reveal class="scroll-mt-20 border-t border-line bg-surface">
         <div class="mx-auto grid max-w-[1200px] gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[1fr_1.1fr] lg:items-start lg:py-20">
           <div class="grid content-start gap-8">
             <SectionHeading eyebrow="Keandalan" title="Setiap tap harus berhasil, kapan pun" text="Kami memantau layanan terus-menerus dan mengumumkan setiap gangguan secara terbuka." />
             <ul class="grid gap-6">
-              <li v-for="r in RELIABLE" :key="r.title" class="flex gap-4">
+              <li v-for="(r, i) in RELIABLE" :key="r.title" v-reveal :class="`st-${i}`" class="flex gap-4">
                 <component :is="r.icon" class="mt-0.5 size-6 flex-none text-accent-text" aria-hidden="true" />
                 <span class="grid gap-1"><strong class="text-lg">{{ r.title }}</strong><span class="text-sm text-muted">{{ r.text }}</span></span>
               </li>
@@ -383,18 +408,18 @@ const RELIABLE = [
       </section>
 
       <!-- FAQ -->
-      <section id="faq" class="mx-auto grid max-w-[1200px] scroll-mt-20 gap-8 px-4 py-16 sm:px-6 lg:grid-cols-[1fr_1.6fr] lg:py-20">
+      <section id="faq" v-reveal class="mx-auto grid max-w-[1200px] scroll-mt-20 gap-8 px-4 py-16 sm:px-6 lg:grid-cols-[1fr_1.6fr] lg:py-20">
         <SectionHeading eyebrow="FAQ" title="Pertanyaan yang sering diajukan" text="Belum terjawab? Tanyakan langsung ke tim kami." />
         <FaqList :items="show.faq ?? []" />
       </section>
 
       <!-- CTA penutup -->
-      <section id="penutup" class="bg-accent text-accent-ink">
+      <section id="penutup" v-reveal class="bg-accent text-accent-ink">
         <div class="mx-auto grid max-w-[1200px] justify-items-start gap-6 px-4 py-16 sm:px-6 lg:py-20">
           <h2 class="max-w-[760px] font-display text-[32px] leading-[1.05] font-bold tracking-[-.015em] sm:text-[48px]">Kartu digital Anda bisa aktif dalam semenit — gratis.</h2>
           <p class="max-w-[560px] text-lg">Bagikan lewat QR atau tautan hari ini. Pesan kartu fisik NFC kapan pun Anda siap.</p>
           <div class="flex flex-wrap items-center gap-3">
-            <AppButton size="lg" :href="signup" class="!bg-onyx-950 !text-bone-50 focus-visible:!outline-onyx-950" data-event="cta_click" data-location="closing" @click="cta('closing')">Buat kartu gratis <ArrowRight class="size-5" /></AppButton>
+            <AppButton size="lg" :href="signup" class="cta-lift !bg-onyx-950 !text-bone-50 focus-visible:!outline-onyx-950" data-event="cta_click" data-location="closing" @click="cta('closing')">Buat kartu gratis <ArrowRight class="size-5" /></AppButton>
             <AppButton
               v-if="wa('closing')" size="lg" variant="secondary" :href="wa('closing')" target="_blank" rel="noopener"
               class="!border-onyx-950 !text-onyx-950 hover:!bg-champagne-300 focus-visible:!outline-onyx-950" data-event="whatsapp_click" data-location="closing" @click="track('whatsapp_click', { location: 'closing' })"

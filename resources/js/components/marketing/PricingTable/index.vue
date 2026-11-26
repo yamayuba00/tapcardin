@@ -54,9 +54,9 @@ const list = computed(() => (scope.value === 'personal'
     <AppSegmented v-if="companyPlans.length" v-model="scope" label="Jenis paket" :options="[{ value: 'personal', label: 'Personal' }, { value: 'company', label: 'Tim & perusahaan' }]" class="justify-self-start" />
     <div class="grid gap-4" :class="list.length > 2 ? 'md:grid-cols-3' : 'md:grid-cols-2'">
       <article
-        v-for="p in list"
-        :key="p.key"
-        :class="['grid grid-rows-[auto_auto_1fr_auto] gap-5 rounded-lg border bg-surface p-6', p.highlight ? 'border-accent' : 'border-line']"
+        v-for="(p, i) in list"
+        :key="p.key" v-reveal
+        :class="[`st-${i}`, 'lift-card relative grid grid-rows-[auto_auto_1fr_auto] gap-5 rounded-lg border bg-surface p-6', p.highlight ? 'border-accent border-t-4' : 'border-line']"
       >
         <div class="flex items-center justify-between gap-2">
           <h3 class="font-display text-xl font-bold">{{ p.name }}</h3>

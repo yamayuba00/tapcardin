@@ -9,25 +9,29 @@ const year = new Date().getFullYear()
   <footer class="border-t border-line">
     <div class="mx-auto grid max-w-[1200px] gap-8 px-4 py-12 sm:grid-cols-[1.4fr_1fr_1fr] sm:px-6">
       <div class="grid content-start gap-3">
-        <BrandLogo />
+        <!-- logo: satu cincin champagne sekali saat hover/fokus -->
+        <a href="/" class="logo-hover justify-self-start no-underline" aria-label="TapCard beranda"><BrandLogo /><span class="logo-ring" aria-hidden="true"></span></a>
         <p class="max-w-xs text-sm text-muted">Kartu nama NFC & QR dengan bio link yang selalu terbaru. Satu sentuhan, langsung terhubung.</p>
+        <a :href="config.statusUrl" class="link-grow flex min-h-11 items-center justify-self-start gap-2 text-sm text-muted no-underline hover:text-fg">
+          <span class="size-2 rounded-full bg-ok" aria-hidden="true"></span>Lihat status layanan
+        </a>
       </div>
       <nav class="grid content-start gap-2 text-sm" aria-label="Produk">
         <span class="label">Produk</span>
-        <a href="#template" class="text-muted no-underline hover:text-fg">Template kartu</a>
-        <a href="#bio-link" class="text-muted no-underline hover:text-fg">Bio link</a>
-        <a href="#kartu" class="text-muted no-underline hover:text-fg">Kartu digital & fisik</a>
-        <a href="#perusahaan" class="text-muted no-underline hover:text-fg">Untuk perusahaan</a>
-        <a href="#pesan" class="text-muted no-underline hover:text-fg">Pesan kartu & lanyard</a>
-        <a href="#harga" class="text-muted no-underline hover:text-fg">Harga</a>
+        <a href="#template" class="link-grow flex min-h-11 items-center justify-self-start text-muted no-underline hover:text-fg">Template kartu</a>
+        <a href="#bio-link" class="link-grow flex min-h-11 items-center justify-self-start text-muted no-underline hover:text-fg">Bio link</a>
+        <a href="#kartu" class="link-grow flex min-h-11 items-center justify-self-start text-muted no-underline hover:text-fg">Kartu digital & fisik</a>
+        <a href="#perusahaan" class="link-grow flex min-h-11 items-center justify-self-start text-muted no-underline hover:text-fg">Untuk perusahaan</a>
+        <a href="#pesan" class="link-grow flex min-h-11 items-center justify-self-start text-muted no-underline hover:text-fg">Pesan kartu & lanyard</a>
+        <a href="#harga" class="link-grow flex min-h-11 items-center justify-self-start text-muted no-underline hover:text-fg">Harga</a>
       </nav>
       <nav class="grid content-start gap-2 text-sm" aria-label="Akun">
         <span class="label">Akun</span>
-        <a :href="`${config.appUrl}/login`" class="text-muted no-underline hover:text-fg">Masuk</a>
-        <a :href="`${config.appUrl}/login`" class="text-muted no-underline hover:text-fg">Daftar gratis</a>
-        <a :href="`${config.resolverUrl}/k`" class="text-muted no-underline hover:text-fg">Masukkan kode kartu</a>
-        <a href="#faq" class="text-muted no-underline hover:text-fg">Bantuan</a>
-        <a :href="config.statusUrl" class="text-muted no-underline hover:text-fg">Status layanan</a>
+        <a :href="`${config.appUrl}/login`" class="link-grow flex min-h-11 items-center justify-self-start text-muted no-underline hover:text-fg">Masuk</a>
+        <a :href="`${config.appUrl}/login`" class="link-grow flex min-h-11 items-center justify-self-start text-muted no-underline hover:text-fg">Daftar gratis</a>
+        <a :href="`${config.resolverUrl}/k`" class="link-grow flex min-h-11 items-center justify-self-start text-muted no-underline hover:text-fg">Masukkan kode kartu</a>
+        <a href="#faq" class="link-grow flex min-h-11 items-center justify-self-start text-muted no-underline hover:text-fg">Bantuan</a>
+        <a :href="config.statusUrl" class="link-grow flex min-h-11 items-center justify-self-start text-muted no-underline hover:text-fg">Status layanan</a>
       </nav>
     </div>
     <p class="border-t border-line px-4 py-6 text-center text-xs text-muted">© {{ year }} TapCard dan Teknovasi Robotika Indonesia Maju. Dibuat di Indonesia.</p>
