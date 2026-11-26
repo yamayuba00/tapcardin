@@ -15,7 +15,8 @@ const routesByContext = { public: publicRoutes, workspace: workspaceRoutes, admi
 export const router = createRouter({
   history: createWebHistory(),
   routes: routesByContext[context],
-  scrollBehavior: (to, from, saved) => saved ?? { top: 0 },
+  // tautan jangkar (#bagian) harus mendarat di bawah header sticky (64 px + ruang baca), bukan di atas halaman
+  scrollBehavior: (to, from, saved) => saved ?? (to.hash ? { el: to.hash, top: 80 } : { top: 0 }),
 })
 
 router.beforeEach(async (to) => {

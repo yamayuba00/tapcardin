@@ -20,10 +20,10 @@ const tapKey = ref(0) // naik tiap klik → cincin dipasang ulang
 
 <template>
   <figure
-    class="relative mx-auto h-[217px] w-[353px] sm:h-[258px] sm:w-[420px] lg:h-[344px] lg:w-[560px]"
+    class="relative mx-auto h-[172px] w-[280px] min-[390px]:h-[217px] min-[390px]:w-[353px] sm:h-[258px] sm:w-[420px] lg:h-[344px] lg:w-[560px]"
     aria-label="Contoh: kartu ditempel ke ponsel, profil pemilik kartu langsung terbuka"
   >
-    <div class="absolute top-0 left-0 h-[344px] w-[560px] origin-top-left scale-[.63] sm:scale-75 lg:scale-100">
+    <div class="absolute top-0 left-0 h-[344px] w-[560px] origin-top-left scale-50 min-[390px]:scale-[.63] sm:scale-75 lg:scale-100">
       <!-- kartu fisik (template Onyx, data contoh) -->
       <div class="absolute top-10 left-7 z-10 w-[364px] -rotate-6 overflow-hidden rounded-[14px] border border-line-strong">
         <CardSide :side="card" :vars="vars" :qr="qr" :overlays="false" />

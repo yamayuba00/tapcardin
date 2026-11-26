@@ -29,7 +29,7 @@ const CONTROLS = [
 </script>
 
 <template>
-  <div class="grid items-center gap-10 lg:grid-cols-[minmax(0,1fr)_400px]">
+  <div class="grid grid-cols-[minmax(0,1fr)] items-center gap-10 lg:grid-cols-[minmax(0,1fr)_400px]">
     <div class="grid gap-6">
       <div class="grid gap-2">
         <span class="label">Coba tema</span>
@@ -59,7 +59,7 @@ const CONTROLS = [
     </div>
 
     <div class="mx-auto w-full max-w-[380px] rounded-[36px] border border-line-strong bg-surface p-3">
-      <div class="h-[640px] overflow-y-auto overscroll-contain rounded-[26px] scrollbar-none" tabindex="0" aria-label="Contoh bio link (bisa di-scroll)">
+      <div class="h-[640px] overflow-y-auto overscroll-auto rounded-[26px] scrollbar-none" tabindex="0" aria-label="Contoh bio link (bisa di-scroll)">
         <PublicProfileView :profile="profile" preview />
       </div>
     </div>
