@@ -181,7 +181,8 @@ const businessKpis = computed(() => {
     </div>
 
     <template v-if="m.business">
-      <div class="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+      <!-- angka rupiah panjang: 2 kolom dari tablet ke atas agar tidak terpotong di desktop -->
+      <div class="grid gap-3 sm:grid-cols-2 sm:gap-4">
         <StatTile v-for="k in businessKpis" :key="k.key" :icon="k.icon" :label="k.label" :value="k.value" :sub="k.sub" :delta="k.delta ?? null" />
       </div>
       <AppPanel title="Pendapatan 30 hari">
