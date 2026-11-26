@@ -31,7 +31,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKey))
       <div class="fixed inset-0 z-50 bg-scrim lg:bg-transparent" aria-hidden="true" @click="open = false"></div>
       <section
         role="dialog" aria-label="Notifikasi"
-        class="fixed inset-x-0 bottom-0 z-50 grid max-h-[85dvh] animate-rise grid-rows-[auto_minmax(0,1fr)_auto] rounded-t-lg border-t border-line-strong bg-surface pb-[env(safe-area-inset-bottom)] lg:inset-x-auto lg:top-4 lg:bottom-auto lg:left-[256px] lg:max-h-[min(640px,85vh)] lg:w-[400px] lg:rounded-lg lg:border lg:pb-0"
+        class="fixed inset-x-0 bottom-0 z-50 grid max-h-[85dvh] animate-rise grid-rows-[auto_minmax(0,1fr)_auto] rounded-t-lg border-t border-line-strong bg-surface pb-[env(safe-area-inset-bottom)] lg:inset-x-auto lg:top-4 lg:bottom-auto lg:left-auto lg:right-4 lg:max-h-[min(640px,85vh)] lg:w-[400px] lg:rounded-lg lg:border lg:pb-0"
       >
         <header class="flex items-center gap-2 border-b border-line px-4 py-3">
           <h2 class="flex-1 font-display text-lg font-semibold">Notifikasi</h2>

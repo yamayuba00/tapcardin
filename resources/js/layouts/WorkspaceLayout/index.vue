@@ -2,11 +2,13 @@
 // AFD §8 — desktop: sidebar berkelompok (Kartu · Lead · Lainnya) setinggi layar tanpa ikut scroll;
 // ponsel: bottom bar 4 item (Beranda · Koneksi · Kartu · Menu). "Menu" membuka lembar berisi semua menu sidebar
 // + akun (tema, pasang aplikasi, keluar), jadi tidak ada halaman yang hanya bisa dibuka dari desktop.
+// Desain dashboard (referensi): tablet 768–1279 = sidebar ikon saja (tanpa bottom bar); ≥1280 = sidebar penuh
+// yang bisa dilipat ke ikon. Topbar (lokasi · cari · lonceng · tindak lanjut) tampil mulai 768px.
 // Rute dengan `meta.fullscreen` (editor kartu & lanyard) tampil tanpa sidebar & padding.
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import {
-  BellRing, Blocks, Building2, CalendarDays, ChartColumn, ChevronsUpDown, ClipboardList, CreditCard, Gem, House, LayoutDashboard, LogOut, Moon, Package, Palette, Settings, User, Users, Webhook,
+  BellRing, Blocks, Building2, CalendarDays, ChartColumn, ChevronRight, ChevronsUpDown, CircleAlert, ClipboardList, CreditCard, Gem, House, LayoutDashboard, LogOut, Moon, Package, PanelLeft, Palette, Search, Settings, User, Users, Webhook,
 } from 'lucide-vue-next'
 import NotificationBell from '@/components/common/NotificationBell/index.vue'
 import BrandLogo from '@/components/common/BrandLogo/index.vue'
@@ -64,6 +66,22 @@ const { pull, refreshing, threshold } = usePullToRefresh(mainEl, async () => {
 })
 const fullscreen = computed(() => route.meta.fullscreen === true)
 
+// sidebar dilipat ke ikon (xl) — pilihan per perangkat, disimpan di localStorage bila tersedia
+const COLLAPSE_KEY = 'tapcard.sidebar.collapsed'
+const readCollapsed = () => {
+  try { return localStorage.getItem(COLLAPSE_KEY) === '1' } catch { return false }
+}
+const collapsed = ref(readCollapsed())
+const toggleCollapsed = () => {
+  collapsed.value = !collapsed.value
+  try { localStorage.setItem(COLLAPSE_KEY, collapsed.value ? '1' : '0') } catch { /* mode privat: tetap jalan */ }
+}
+// lebar kolom: md = ikon (76px); xl = penuh (248px) kecuali dilipat
+const shellCls = computed(() => (collapsed.value ? 'md:grid-cols-[76px_minmax(0,1fr)]' : 'md:grid-cols-[76px_minmax(0,1fr)] xl:grid-cols-[248px_minmax(0,1fr)]'))
+const labelCls = computed(() => (collapsed.value ? 'hidden' : 'hidden xl:inline'))
+const groupLabelCls = computed(() => (collapsed.value ? 'hidden' : 'hidden xl:block'))
+const wsName = computed(() => (auth.workspace?.type === 'personal' ? 'Personal' : auth.workspace?.name ?? ''))
+
 // ponsel: 3 tab utama + "Menu" (kelompok berlabel; Beranda sudah jadi tab)
 const tabs = computed(() => [
   { key: 'dashboard', label: 'Beranda', icon: House, to: '/dashboard' },
@@ -80,56 +98,91 @@ onMounted(() => {
   document.addEventListener('pointerdown', closeMenu)
 })
 onBeforeUnmount(() => document.removeEventListener('pointerdown', closeMenu))
-const link = 'group flex min-h-9 cursor-pointer items-center gap-3 rounded-lg px-3 text-[14px] font-medium text-muted no-underline hover:bg-surface-2 hover:text-fg aria-[current=page]:bg-surface-2 aria-[current=page]:text-fg'
+// pill aktif: latar solid surface-2 (tanpa gradien/bayangan)
+const link = 'group flex min-h-10 cursor-pointer items-center gap-3 rounded-md px-3 text-[14px] font-medium text-muted no-underline hover:bg-surface-2 hover:text-fg aria-[current=page]:bg-surface-2 aria-[current=page]:text-fg'
 </script>
 
 <template>
   <div v-if="fullscreen" class="min-h-dvh"><RouterView /></div>
 
   <!-- app shell: tinggi dikunci setinggi layar; hanya <main> yang scroll, sidebar diam -->
-  <div v-else class="grid h-dvh grid-rows-[minmax(0,1fr)] lg:grid-cols-[248px_minmax(0,1fr)] print:block print:h-auto">
-    <aside class="hidden min-h-0 flex-col gap-5 overflow-y-auto overscroll-contain print:!hidden border-r border-line px-4 py-5 scrollbar-none lg:flex" aria-label="Navigasi utama">
-      <div class="flex items-center justify-between gap-2"><RouterLink to="/dashboard" class="px-1 no-underline"><BrandLogo /></RouterLink><NotificationBell /></div>
+  <div v-else :class="['grid h-dvh grid-rows-[minmax(0,1fr)] print:block print:h-auto', shellCls]">
+    <aside class="hidden min-h-0 flex-col gap-5 overflow-y-auto overscroll-contain bg-surface px-3 py-5 scrollbar-none print:!hidden border-r border-line md:flex" aria-label="Navigasi utama">
+      <div :class="['flex flex-col items-center gap-3', collapsed ? '' : 'xl:flex-row xl:items-center xl:justify-between']">
+        <RouterLink to="/dashboard" class="min-w-0 px-1 no-underline" aria-label="Beranda">
+          <span :class="collapsed ? '' : 'xl:hidden'"><BrandLogo :wordmark="false" /></span>
+          <span v-if="!collapsed" class="hidden xl:block"><BrandLogo /></span>
+        </RouterLink>
+        <button type="button" class="hidden size-9 cursor-pointer place-items-center rounded-md text-muted hover:bg-surface-2 hover:text-fg xl:grid" :aria-label="collapsed ? 'Buka sidebar' : 'Lipat sidebar'" :aria-expanded="!collapsed" @click="toggleCollapsed">
+          <PanelLeft class="size-5" aria-hidden="true" />
+        </button>
+      </div>
 
       <nav class="grid gap-4">
         <div v-for="(g, gi) in groups" :key="gi" class="grid gap-0.5">
-          <p v-if="g.label" class="label mb-1 px-3 !text-[10px]">{{ g.label }}</p>
-          <RouterLink v-for="item in g.items" :key="item.key" :to="item.to" :aria-current="active === item.key ? 'page' : undefined" :class="link">
+          <div v-if="gi > 0" :class="['mx-3 mb-2 border-t border-line', collapsed ? '' : 'xl:hidden']" aria-hidden="true"></div>
+          <p v-if="g.label" :class="['label mb-1 px-3 !text-[10px]', groupLabelCls]">{{ g.label }}</p>
+          <RouterLink v-for="item in g.items" :key="item.key" :to="item.to" :title="item.label" :aria-label="item.label" :aria-current="active === item.key ? 'page' : undefined" :class="[link, 'justify-center', collapsed ? '' : 'xl:justify-start']">
             <component :is="item.icon" class="size-[18px] flex-none group-aria-[current=page]:text-accent-text" aria-hidden="true" />
-            <span class="truncate">{{ item.label }}</span>
+            <span :class="['truncate', labelCls]">{{ item.label }}</span>
           </RouterLink>
         </div>
       </nav>
 
-      <!-- akun: workspace, tema, keluar dalam satu menu agar sidebar tetap pendek -->
-      <div ref="menuEl" class="relative mt-auto">
-        <div v-if="menu" class="absolute inset-x-0 bottom-full mb-2 grid gap-0.5 rounded-md border border-line-strong bg-surface p-1.5" role="menu">
-          <RouterLink to="/settings" class="flex min-h-9 cursor-pointer items-center gap-3 rounded-sm px-3 text-sm text-fg no-underline hover:bg-surface-2" role="menuitem" @click="menu = false"><User class="size-4" /> Akun & pengaturan</RouterLink>
-          <button type="button" class="flex min-h-9 cursor-pointer items-center gap-3 rounded-sm px-3 text-sm text-fg hover:bg-surface-2" role="menuitem" @click="toggle"><Moon class="size-4" /> Ganti tema</button>
-          <InstallApp link-class="flex min-h-9 w-full items-center gap-3 rounded-sm px-3 text-sm text-fg hover:bg-surface-2 [&_svg]:size-4" />
-          <button type="button" class="flex min-h-9 cursor-pointer items-center gap-3 rounded-sm px-3 text-sm text-danger hover:bg-surface-2" role="menuitem" @click="auth.askLogout()"><LogOut class="size-4" /> Keluar</button>
+      <!-- akun: ikon saja di tablet/terlipat (ke Pengaturan); menu lengkap (tema, pasang, keluar) di xl -->
+      <div class="mt-auto">
+        <RouterLink to="/settings" :class="['mx-auto grid size-9 place-items-center rounded-md bg-surface-2 font-display text-sm font-semibold no-underline text-fg', collapsed ? '' : 'xl:hidden']" aria-label="Akun & pengaturan">
+          {{ (auth.me?.name || auth.workspace?.name || '?')[0]?.toUpperCase() }}
+        </RouterLink>
+        <div ref="menuEl" :class="['relative', collapsed ? 'hidden' : 'hidden xl:block']">
+          <div v-if="menu" class="absolute inset-x-0 bottom-full mb-2 grid gap-0.5 rounded-md border border-line-strong bg-surface p-1.5" role="menu">
+            <RouterLink to="/settings" class="flex min-h-9 cursor-pointer items-center gap-3 rounded-sm px-3 text-sm text-fg no-underline hover:bg-surface-2" role="menuitem" @click="menu = false"><User class="size-4" /> Akun & pengaturan</RouterLink>
+            <button type="button" class="flex min-h-9 cursor-pointer items-center gap-3 rounded-sm px-3 text-sm text-fg hover:bg-surface-2" role="menuitem" @click="toggle"><Moon class="size-4" /> Ganti tema</button>
+            <InstallApp link-class="flex min-h-9 w-full items-center gap-3 rounded-sm px-3 text-sm text-fg hover:bg-surface-2 [&_svg]:size-4" />
+            <button type="button" class="flex min-h-9 cursor-pointer items-center gap-3 rounded-sm px-3 text-sm text-danger hover:bg-surface-2" role="menuitem" @click="auth.askLogout()"><LogOut class="size-4" /> Keluar</button>
+          </div>
+          <button type="button" class="flex w-full cursor-pointer items-center gap-3 rounded-md p-2 text-left hover:bg-surface-2" :aria-expanded="menu" aria-haspopup="menu" @click="menu = !menu">
+            <span class="grid size-9 flex-none place-items-center rounded-md bg-surface-2 font-display text-sm font-semibold" aria-hidden="true">{{ (auth.me?.name || auth.workspace?.name || '?')[0]?.toUpperCase() }}</span>
+            <span class="grid min-w-0 flex-1">
+              <span class="truncate text-sm font-semibold">{{ auth.me?.name || 'Akun' }}</span>
+              <span class="truncate text-xs text-muted">{{ auth.me?.email || workspaceLine }}</span>
+            </span>
+            <ChevronsUpDown class="size-4 flex-none text-muted" aria-hidden="true" />
+          </button>
         </div>
-        <button type="button" class="flex w-full cursor-pointer items-center gap-3 rounded-md border border-line-strong bg-surface p-2.5 text-left hover:bg-surface-2" :aria-expanded="menu" aria-haspopup="menu" @click="menu = !menu">
-          <span class="grid size-8 flex-none place-items-center rounded-sm bg-surface-2 font-display text-sm font-semibold" aria-hidden="true">{{ (auth.me?.name || auth.workspace?.name || '?')[0]?.toUpperCase() }}</span>
-          <span class="grid min-w-0 flex-1">
-            <span class="truncate text-sm font-semibold">{{ auth.me?.name || 'Akun' }}</span>
-            <span class="label min-w-0 break-words !text-[10px] !tracking-[.12em]">{{ auth.workspace?.type === 'personal' ? 'Personal' : auth.workspace?.name }} · {{ auth.workspace?.plan_name }}</span>
-          </span>
-          <ChevronsUpDown class="size-4 flex-none text-muted" aria-hidden="true" />
-        </button>
       </div>
     </aside>
 
     <PullIndicator :pull="pull" :refreshing="refreshing" :threshold="threshold" />
-    <main ref="mainEl" class="min-h-0 min-w-0 overflow-y-auto overscroll-contain px-4 pt-6 print:overflow-visible print:p-0 pb-[calc(88px+env(safe-area-inset-bottom))] lg:px-8 lg:pt-8 lg:pb-12">
+    <main ref="mainEl" class="min-h-0 min-w-0 overflow-y-auto overscroll-contain px-4 pt-6 pb-[calc(88px+env(safe-area-inset-bottom))] print:overflow-visible print:p-0 md:px-6 md:pb-10 lg:px-8 lg:pt-8 lg:pb-12">
       <div class="grid w-full gap-6">
         <!-- ponsel: bilah atas ringkas dengan lonceng notifikasi -->
-        <div class="-mt-2 -mb-2 flex items-center justify-between lg:hidden print:hidden"><RouterLink to="/dashboard" class="no-underline"><BrandLogo /></RouterLink><NotificationBell /></div>
+        <div class="-mt-2 -mb-2 flex items-center justify-between md:hidden print:hidden"><RouterLink to="/dashboard" class="no-underline"><BrandLogo /></RouterLink><NotificationBell /></div>
+
+        <!-- tablet & desktop: topbar — lokasi (workspace › halaman), cari, lonceng, tindak lanjut -->
+        <header class="hidden items-center gap-3 print:hidden md:flex">
+          <nav aria-label="Lokasi" class="min-w-0 flex-1">
+            <p class="flex min-w-0 items-center gap-1.5 text-sm text-muted">
+              <span class="truncate">{{ wsName }}</span>
+              <ChevronRight class="size-4 flex-none" aria-hidden="true" />
+              <span class="truncate font-medium text-fg" aria-current="page">{{ route.meta.title }}</span>
+            </p>
+          </nav>
+          <RouterLink to="/connections" class="hidden h-10 w-64 items-center gap-2 rounded-md border border-line bg-surface px-3 text-sm text-muted no-underline hover:text-fg xl:flex" aria-label="Cari kontak">
+            <Search class="size-4 flex-none" aria-hidden="true" /><span class="min-w-0 flex-1 truncate">Cari kontak…</span>
+          </RouterLink>
+          <NotificationBell />
+          <RouterLink to="/follow-up" class="grid size-10 flex-none place-items-center rounded-md text-muted no-underline hover:bg-surface-2 hover:text-fg" aria-label="Perlu tindak lanjut">
+            <CircleAlert class="size-5" aria-hidden="true" />
+          </RouterLink>
+        </header>
+
         <RouterView v-slot="{ Component }"><component :is="Component" :key="refreshKey" /></RouterView>
       </div>
     </main>
 
     <MobileNav
+      bp="md"
       :tabs="tabs" :groups="groups.filter((g) => g.label)" :active="active"
       :title="auth.me?.name || 'Akun'" :subtitle="workspaceLine" :initial="(auth.me?.name || auth.workspace?.name || '?')[0]?.toUpperCase()"
     >

@@ -14,6 +14,7 @@ const props = defineProps({
   title: { type: String, default: '' }, // nama akun di kepala lembar
   subtitle: { type: String, default: '' },
   initial: { type: String, default: '?' },
+  bp: { type: String, default: 'lg' }, // breakpoint sidebar penuh: lg (default) atau md (sidebar ikon mulai 768px)
 })
 
 const route = useRoute()
@@ -29,12 +30,13 @@ onBeforeUnmount(() => {
   document.documentElement.removeAttribute('data-sheet-open')
 })
 
+const hideAt = computed(() => (props.bp === 'md' ? 'md:hidden' : 'lg:hidden'))
 const tab = 'relative grid min-w-0 justify-items-center gap-1 px-1 pt-2.5 pb-2 text-[11px] font-medium text-muted no-underline aria-[current=page]:text-accent-text'
 const badge = 'h-5 min-w-5 rounded-full bg-accent px-1.5 text-center font-mono text-[11px] leading-5 font-semibold text-accent-ink'
 </script>
 
 <template>
-  <nav class="fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] print:hidden lg:hidden" aria-label="Navigasi">
+  <nav class="fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] print:hidden" :class="hideAt" aria-label="Navigasi">
     <RouterLink v-for="t in tabs" :key="t.key" :to="t.to" :aria-current="active === t.key ? 'page' : undefined" :class="tab">
       <component :is="t.icon" class="size-[22px]" aria-hidden="true" /><span class="max-w-full truncate">{{ t.label }}</span>
       <span v-if="t.badge" :class="['absolute top-1 left-1/2 ml-2', badge]">{{ t.badge }}</span>
@@ -45,10 +47,10 @@ const badge = 'h-5 min-w-5 rounded-full bg-accent px-1.5 text-center font-mono t
   </nav>
 
   <template v-if="open">
-    <div class="fixed inset-0 z-20 bg-scrim lg:hidden" aria-hidden="true" @click="open = false"></div>
+    <div class="fixed inset-0 z-20 bg-scrim" :class="hideAt" aria-hidden="true" @click="open = false"></div>
     <section
       id="mobile-menu" role="dialog" aria-modal="true" aria-label="Menu"
-      class="fixed inset-x-0 bottom-0 z-20 grid max-h-[85dvh] animate-rise content-start gap-4 overflow-y-auto overscroll-contain rounded-t-lg border-t border-line-strong bg-surface px-4 pt-3 pb-[calc(76px+env(safe-area-inset-bottom))] lg:hidden"
+      class="fixed inset-x-0 bottom-0 z-20 grid max-h-[85dvh] animate-rise content-start gap-4 overflow-y-auto overscroll-contain rounded-t-lg border-t border-line-strong bg-surface px-4 pt-3 pb-[calc(76px+env(safe-area-inset-bottom))]" :class="hideAt"
     >
       <div class="flex items-center justify-between">
         <span class="flex min-w-0 items-center gap-3">
