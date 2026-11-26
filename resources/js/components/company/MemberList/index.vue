@@ -1,7 +1,7 @@
 <script setup>
 // Karyawan: tambah dengan email akun terdaftar, ubah peran, nonaktifkan (kartunya kembali ke stok) / aktifkan lagi.
 import { ref } from 'vue'
-import { Plus, Search } from 'lucide-vue-next'
+import { Mail, Plus, Search } from 'lucide-vue-next'
 import AppBadge from '@/components/ui/AppBadge/index.vue'
 import AppButton from '@/components/ui/AppButton/index.vue'
 import AppField from '@/components/ui/AppField/index.vue'
@@ -47,6 +47,31 @@ async function reactivate(m) {
   const res = await run(() => companyApi.reactivate(m.user_id), 'Karyawan diaktifkan kembali.').catch(() => null)
   if (res) replace(res.data)
 }
+
+// undangan lewat email: karyawan yang belum punya akun juga bisa diundang
+const invites = ref([])
+const inviteForm = ref({ email: '', role: 'member' })
+const inviteErrors = ref({})
+async function loadInvites() {
+  if (auth.can('members.invite')) invites.value = (await companyApi.invites().catch(() => ({ data: [] }))).data
+}
+async function sendInvite() {
+  inviteErrors.value = {}
+  try {
+    await run(() => companyApi.invite(inviteForm.value.email, inviteForm.value.role), 'Undangan dikirim.')
+    inviteForm.value.email = ''
+    loadInvites()
+  } catch (e) { inviteErrors.value = e.fields ?? {} }
+}
+async function resendInvite(i) {
+  await run(() => companyApi.resendInvite(i.id), 'Undangan dikirim ulang.').catch(() => null)
+  loadInvites()
+}
+async function revokeInvite(i) {
+  await run(() => companyApi.revokeInvite(i.id), 'Undangan dibatalkan.').catch(() => null)
+  loadInvites()
+}
+loadInvites()
 </script>
 
 <template>
@@ -58,7 +83,28 @@ async function reactivate(m) {
       <AppField label="Peran"><AppSelect v-model="form.role" :options="roles()" /></AppField>
       <AppButton type="submit" :loading="busy"><Plus class="size-5" /> Tambah</AppButton>
     </form>
-    <p class="mt-3 text-sm text-muted">Karyawan harus sudah pernah login ke TapCard dengan email ini. Belum punya akun? Minta mereka masuk sekali dengan Google.</p>
+    <p class="mt-3 text-sm text-muted">Karyawan harus sudah pernah login ke TapCard dengan email ini. Belum punya akun? Gunakan undangan email di bawah.</p>
+  </AppPanel>
+
+  <AppPanel v-if="auth.can('members.invite')" title="Undang lewat email">
+    <form class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_14rem_auto] sm:items-end" @submit.prevent="sendInvite">
+      <AppField label="Email karyawan" :error="inviteErrors.email?.[0]">
+        <AppInput v-model.trim="inviteForm.email" type="email" required maxlength="190" placeholder="nama@perusahaan.com" :invalid="!!inviteErrors.email" />
+      </AppField>
+      <AppField label="Peran"><AppSelect v-model="inviteForm.role" :options="roles()" /></AppField>
+      <AppButton type="submit" :loading="busy"><Mail class="size-5" /> Undang</AppButton>
+    </form>
+    <p class="mt-3 text-sm text-muted">Karyawan menerima tautan aktivasi yang berlaku 72 jam, lalu membuat kata sandinya sendiri. Tidak perlu punya akun TapCard sebelumnya.</p>
+    <ul v-if="invites.length" class="mt-4 grid gap-2" aria-label="Undangan menunggu">
+      <li v-for="i in invites" :key="i.id" class="flex flex-wrap items-center justify-between gap-2 rounded-md border border-line px-3 py-2 text-sm">
+        <span class="min-w-0 break-all">{{ i.email }} <span class="text-muted">· {{ i.role_name }}</span></span>
+        <span class="flex flex-wrap items-center gap-2">
+          <AppBadge :tone="i.status === 'pending' ? 'warn' : 'muted'">{{ i.status === 'pending' ? 'Diundang' : 'Kedaluwarsa' }}</AppBadge>
+          <AppButton variant="ghost" :disabled="busy" @click="resendInvite(i)">Kirim ulang</AppButton>
+          <AppButton variant="ghost" :disabled="busy" @click="revokeInvite(i)">Batalkan</AppButton>
+        </span>
+      </li>
+    </ul>
   </AppPanel>
 
   <form class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap" @submit.prevent="list.search">

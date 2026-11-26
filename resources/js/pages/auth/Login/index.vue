@@ -4,6 +4,7 @@
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AdminLoginForm from '@/components/auth/AdminLoginForm/index.vue'
+import CompanyLoginForm from '@/components/auth/CompanyLoginForm/index.vue'
 import { Nfc } from 'lucide-vue-next'
 import AuthShell from '@/components/auth/AuthShell/index.vue'
 import GoogleButton from '@/components/auth/GoogleButton/index.vue'
@@ -67,6 +68,10 @@ async function quickLogin(account) {
         <AppButton variant="secondary" @click="auth.logout()">Masuk dengan akun lain</AppButton>
       </div>
       <p v-else-if="error" class="rounded-md border border-line-strong bg-surface-2 px-3 py-2 text-sm text-danger" role="alert">{{ error }}</p>
+      <template v-if="config.tenant">
+        <CompanyLoginForm @success="done" />
+        <p class="text-center text-xs text-muted">atau</p>
+      </template>
       <GoogleButton :redirect="redirect" label="Masuk dengan Google" />
       <AppButton variant="secondary" block :to="{ path: '/login/kartu', query: { redirect: route.query.redirect || undefined } }">
         <Nfc class="size-5" /> Masuk dengan kartu NFC
