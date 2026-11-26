@@ -6,6 +6,7 @@ use App\Enums\CardStatus;
 use App\Http\Resources\Present;
 use App\Models\Card;
 use App\Models\Connection;
+use App\Models\LeadReminder;
 use App\Models\LeadStage;
 use App\Models\Tap;
 use App\Support\Onboarding;
@@ -95,6 +96,13 @@ class DashboardController extends WorkspaceController
         $data['share_token'] = Card::query()->where('holder_user_id', $uid)->where('status', CardStatus::Active->value)
             ->orderByRaw("form = 'digital' desc")->orderBy('activated_at')->value('card_token');
         $data['onboarding'] = Onboarding::for($this->user(), $this->tenant());
+        // yang perlu ditindaklanjuti hari ini: follow-up terlambat (pengingat pribadi) & kartu fisik yang berakhir 30 hari lagi
+        $data['attention'] = [
+            'followups_overdue' => LeadReminder::where('user_id', $uid)->whereNull('done_at')->where('due_at', '<', now())
+                ->whereHas('connection', fn ($c) => $c->whereNull('merged_into_id'))->count(),
+            'cards_expiring' => Card::where('holder_user_id', $uid)->where('form', Card::PHYSICAL)->where('status', CardStatus::Active->value)
+                ->whereBetween('valid_until', [now(), now()->addDays(30)])->count(),
+        ];
 
         return response()->json(['data' => $data]);
     }

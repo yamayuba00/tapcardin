@@ -40,7 +40,7 @@ const groups = computed(() => [
   ] },
   { label: auth.contactLabel, items: [
     { key: 'connections', label: `Daftar ${auth.contactLabel.toLowerCase()}`, icon: Users, to: '/connections' },
-    { key: 'lead-dashboard', label: 'Ringkasan lead', icon: LayoutDashboard, to: '/connections/dashboard' },
+    { key: 'lead-dashboard', label: `Ringkasan ${auth.contactLabel.toLowerCase()}`, icon: LayoutDashboard, to: '/connections/dashboard' },
     { key: 'follow-up', label: 'Follow-up', icon: BellRing, to: '/follow-up' },
     { key: 'events', label: 'Event', icon: CalendarDays, to: '/events' },
   ] },
@@ -113,7 +113,7 @@ const link = 'group flex min-h-9 cursor-pointer items-center gap-3 rounded-lg px
           <span class="grid size-8 flex-none place-items-center rounded-sm bg-surface-2 font-display text-sm font-semibold" aria-hidden="true">{{ (auth.me?.name || auth.workspace?.name || '?')[0]?.toUpperCase() }}</span>
           <span class="grid min-w-0 flex-1">
             <span class="truncate text-sm font-semibold">{{ auth.me?.name || 'Akun' }}</span>
-            <span class="label truncate !text-[10px] !tracking-[.12em]">{{ auth.workspace?.type === 'personal' ? 'Personal' : auth.workspace?.name }} · {{ auth.workspace?.plan_name }}</span>
+            <span class="label min-w-0 break-words !text-[10px] !tracking-[.12em]">{{ auth.workspace?.type === 'personal' ? 'Personal' : auth.workspace?.name }} · {{ auth.workspace?.plan_name }}</span>
           </span>
           <ChevronsUpDown class="size-4 flex-none text-muted" aria-hidden="true" />
         </button>

@@ -16,6 +16,7 @@ import MiniChart from '@/components/common/MiniChart/index.vue'
 import PageHeader from '@/components/common/PageHeader/index.vue'
 import { dashboardApi } from '@/api/workspace'
 import { useAsync } from '@/composables/useAsync'
+import { groupRecent } from '@/lib/activity'
 import { delta, num, relative } from '@/lib/format'
 import { useAuthStore } from '@/stores/auth'
 import { config } from '@/config'
@@ -29,7 +30,8 @@ const { data, error, reload } = useAsync(() => dashboardApi.summary())
 const now = ref(new Date())
 const RECENT = 5 // aktivitas yang tampil sebelum "Tampilkan semua"
 const allRecent = ref(false)
-const recent = computed(() => (allRecent.value ? data.value.recent : data.value.recent.slice(0, RECENT)))
+const grouped = computed(() => groupRecent(data.value?.recent))
+const recent = computed(() => (allRecent.value ? grouped.value : grouped.value.slice(0, RECENT)))
 let timer
 let unsubscribe
 
@@ -92,7 +94,7 @@ const empty = computed(() => data.value && data.value.kpi.taps_30 === 0 && data.
     <!-- Ponsel: 2 kartu per baris (bukan satu kolom panjang). minmax(170px) membuat kolom ke-2 turun di layar < 380px. -->
     <div class="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
       <KpiCard label="Tap 7 hari" :value="num(data.kpi.taps_7)" :delta="tapDelta" hint="Minggu lalu belum ada tap" />
-      <KpiCard label="Pengunjung unik 30 hari" :value="num(data.kpi.visitors_30)" />
+      <KpiCard label="Pengunjung unik" :value="num(data.kpi.visitors_30)" hint="30 hari terakhir" />
       <KpiCard label="Simpan kontak" :value="num(data.kpi.saved_30)" :hint="data.kpi.save_rate !== null ? `${data.kpi.save_rate}% dari tap` : 'Belum ada tap'" />
       <KpiCard :label="`${auth.contactLabel} 30 hari`" :value="num(data.kpi.connections_30)" />
     </div>
@@ -102,10 +104,29 @@ const empty = computed(() => data.value && data.value.kpi.taps_30 === 0 && data.
     </AppEmpty>
 
     <div v-else class="grid gap-4 md:grid-cols-2 md:items-start">
-      <AppPanel title="Tap 30 hari">
-        <template #actions><span class="text-sm text-muted">{{ num(data.kpi.taps_30) }} total</span></template>
-        <MiniChart :series="data.series" label="Tap per hari selama 30 hari" />
-      </AppPanel>
+      <div class="grid content-start gap-4">
+        <AppPanel title="Tap 30 hari">
+          <template #actions><span class="text-sm text-muted">{{ num(data.kpi.taps_30) }} total</span></template>
+          <MiniChart :series="data.series" label="Tap per hari selama 30 hari" :height="220" />
+        </AppPanel>
+        <AppPanel title="Perlu tindak lanjut">
+          <ul v-if="data.attention.followups_overdue || data.attention.cards_expiring" class="grid gap-2 text-sm">
+            <li v-if="data.attention.followups_overdue">
+              <RouterLink to="/follow-up" class="flex min-h-10 items-center justify-between gap-3 rounded-sm px-1 no-underline hover:bg-surface-2">
+                <span class="font-medium text-fg">{{ num(data.attention.followups_overdue) }} follow-up terlambat</span>
+                <span class="text-muted">Buka</span>
+              </RouterLink>
+            </li>
+            <li v-if="data.attention.cards_expiring">
+              <RouterLink to="/cards" class="flex min-h-10 items-center justify-between gap-3 rounded-sm px-1 no-underline hover:bg-surface-2">
+                <span class="font-medium text-fg">{{ num(data.attention.cards_expiring) }} kartu berakhir dalam 30 hari</span>
+                <span class="text-muted">Buka</span>
+              </RouterLink>
+            </li>
+          </ul>
+          <p v-else class="text-muted">Tidak ada yang perlu ditindaklanjuti.</p>
+        </AppPanel>
+      </div>
       <AppPanel title="Aktivitas terbaru">
         <template #actions><AppButton variant="ghost" to="/connections">{{ auth.contactLabel }}</AppButton></template>
         <ul>
@@ -116,13 +137,13 @@ const empty = computed(() => data.value && data.value.kpi.taps_30 === 0 && data.
             <div class="min-w-0 flex-1">
               <RouterLink v-if="r.id" :to="`/connections/${r.id}`" class="block truncate font-medium !text-fg">{{ r.title }}</RouterLink>
               <span v-else class="block truncate font-medium">{{ r.title }}</span>
-              <span class="text-sm text-muted">{{ [relative(r.at, now), ...Object.values(r.meta ?? {})].join(' · ') }}</span>
+              <span class="text-sm text-muted">{{ [relative(r.at, now), ...Object.values(r.meta ?? {}), ...(r.count > 1 ? [`${r.count} kali`] : [])].join(' · ') }}</span>
             </div>
           </li>
           <li v-if="!data.recent.length" class="py-3 text-muted">Belum ada aktivitas.</li>
         </ul>
-        <AppButton v-if="data.recent.length > RECENT" variant="ghost" block class="mt-2" @click="allRecent = !allRecent">
-          {{ allRecent ? 'Tampilkan lebih sedikit' : `Tampilkan ${data.recent.length - RECENT} lainnya` }}
+        <AppButton v-if="grouped.length > RECENT" variant="ghost" block class="mt-2" @click="allRecent = !allRecent">
+          {{ allRecent ? 'Tampilkan lebih sedikit' : `Tampilkan ${grouped.length - RECENT} lainnya` }}
         </AppButton>
       </AppPanel>
     </div>

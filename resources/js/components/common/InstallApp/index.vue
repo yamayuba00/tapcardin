@@ -31,8 +31,8 @@ async function go() {
 
     <!-- Ponsel: ikon + teks di atas, tombol Pasang selebar kartu di bawah, × di pojok kanan atas.
          Desktop (sm+): satu baris — ikon, teks, tombol, ×. -->
-    <div v-else-if="!dismissed" class="relative grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-3 rounded-md border border-line-strong bg-surface-2 p-4 pr-12 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:px-5 sm:py-4 sm:pr-16">
-      <img :src="ICON" alt="" width="44" height="44" class="size-11 flex-none rounded-lg" />
+    <div v-else-if="!dismissed" class="relative grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-2 rounded-md border border-line-strong bg-surface-2 p-3 pr-10 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:px-4 sm:py-2.5 sm:pr-12">
+      <img :src="ICON" alt="" width="36" height="36" class="size-9 flex-none rounded-lg" />
       <div class="grid min-w-0 gap-0.5">
         <span class="font-semibold">Pasang TapCard di layar utama</span>
         <span class="text-sm text-muted">Buka QR & tautan kartu dalam satu ketukan, tanpa membuka browser dulu.</span>
