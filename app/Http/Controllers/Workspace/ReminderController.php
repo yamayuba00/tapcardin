@@ -9,6 +9,7 @@ use App\Models\LeadReminder;
 use App\Models\TenantMember;
 use App\Models\User;
 use App\Support\Http\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -29,15 +30,24 @@ class ReminderController extends WorkspaceController
         ]);
         $tz = $this->user()->timezone ?: 'Asia/Jakarta';
         $all = $this->access()->has('leads.view.all');
-        $scope = fn ($q) => $all ? $q : $q->where('user_id', $this->user()->id);
+        // lead yang sudah dihapus (soft delete) tetap tampil agar pengingatnya bisa diselesaikan atau dihapus
+        $filtered = function (Builder $q) use ($all, $request) {
+            if (! $all) {
+                $q->where('user_id', $this->user()->id);
+            }
+            $q->whereHas('connection', fn ($c) => $c->withTrashed()->whereNull('merged_into_id'));
+            if ($all && $request->filled('member')) {
+                $member = (string) $request->query('member');
+                $uid = $member === 'none' ? null : (User::where('public_id', $member)->value('id') ?? 0);
+                $q->whereHas('connection', fn ($c) => $uid === null
+                    ? $c->withTrashed()->whereNull('assignee_user_id')
+                    : $c->withTrashed()->where('assignee_user_id', $uid));
+            }
 
-        $q = $scope(LeadReminder::with(['connection.stage', 'connection.assignee:id,public_id,name'])
-            ->whereHas('connection', fn ($c) => $c->whereNull('merged_into_id')));
-        if ($all && $request->filled('member')) {
-            $member = (string) $request->query('member');
-            $uid = $member === 'none' ? null : (User::where('public_id', $member)->value('id') ?? 0);
-            $q->whereHas('connection', fn ($c) => $uid === null ? $c->whereNull('assignee_user_id') : $c->where('assignee_user_id', $uid));
-        }
+            return $q;
+        };
+
+        $q = $filtered(LeadReminder::with(['connection' => fn ($c) => $c->withTrashed()->with(['stage', 'assignee:id,public_id,name'])]));
         match ($request->query('due')) {
             'overdue' => $q->whereNull('done_at')->where('due_at', '<', now()),
             'today' => $q->whereNull('done_at')->whereBetween('due_at', [now(), now($tz)->endOfDay()->utc()]),
@@ -46,11 +56,16 @@ class ReminderController extends WorkspaceController
             default => $q->whereNull('done_at'),
         };
 
-        $counts = $scope(LeadReminder::query())->whereNull('done_at')
-            ->selectRaw('count(*) filter (where due_at < ?) as overdue, count(*) filter (where due_at >= ? and due_at <= ?) as today', [now(), now(), now($tz)->endOfDay()->utc()])
+        // jumlah per tab, ikut filter anggota; dihitung sekali untuk semua tab
+        $counts = $filtered(LeadReminder::query())
+            ->selectRaw('count(*) filter (where done_at is null and due_at < ?) as overdue,
+                count(*) filter (where done_at is null and due_at >= ? and due_at <= ?) as today,
+                count(*) filter (where done_at is null and due_at > ?) as upcoming,
+                count(*) filter (where done_at is not null) as done',
+                [now(), now(), now($tz)->endOfDay()->utc(), now($tz)->endOfDay()->utc()])
             ->first();
 
-        $meta = ['counts' => ['overdue' => (int) $counts->overdue, 'today' => (int) $counts->today]];
+        $meta = ['counts' => ['overdue' => (int) $counts->overdue, 'today' => (int) $counts->today, 'upcoming' => (int) $counts->upcoming, 'done' => (int) $counts->done]];
         if ($all) {
             $meta['members'] = $this->byMember($tz);
             $meta['team'] = TenantMember::where('status', 'active')->with('user:id,public_id,name')->get()
@@ -125,6 +140,7 @@ class ReminderController extends WorkspaceController
         return response()->json(['data' => Present::reminder($reminder->load('connection.stage'), true)]);
     }
 
+    /** DELETE /api/reminders/{id} — hapus pengingat, juga bila lead-nya sudah dihapus. */
     public function destroy(LeadReminder $reminder): JsonResponse
     {
         $this->mine($reminder);

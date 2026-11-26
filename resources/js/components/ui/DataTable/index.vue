@@ -81,7 +81,7 @@ function pickSort(v) {
               <slot :name="`cell-${c.key}`" :row="row">{{ row[c.key] ?? '' }}</slot>
             </div>
           </li>
-          <li v-if="!rows.length" class="rounded-md border border-line bg-surface p-6 text-center text-muted">{{ emptyText }}</li>
+          <li v-if="!rows.length" class="rounded-md border border-line bg-surface p-6 text-center text-muted"><slot name="empty">{{ emptyText }}</slot></li>
         </ul>
       </div>
 
@@ -110,7 +110,7 @@ function pickSort(v) {
                 <slot :name="`cell-${c.key}`" :row="row">{{ row[c.key] ?? '—' }}</slot>
               </td>
             </tr>
-            <tr v-if="!rows.length"><td :colspan="columns.length" class="text-center text-muted">{{ emptyText }}</td></tr>
+            <tr v-if="!rows.length"><td :colspan="columns.length" class="text-center text-muted"><slot name="empty">{{ emptyText }}</slot></td></tr>
           </tbody>
         </AppTable>
       </div>

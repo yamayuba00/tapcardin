@@ -84,7 +84,7 @@ final class Present
         ] + ($withLead && $r->connection ? ['lead' => [
             'id' => $r->connection->public_id, 'name' => $r->connection->name, 'company' => $r->connection->company,
             'phone' => $r->connection->phone_e164, 'stage' => $r->connection->stage ? self::stage($r->connection->stage) : null,
-            'assignee' => self::memberRef($r->connection->assignee),
+            'assignee' => self::memberRef($r->connection->assignee), 'deleted' => $r->connection->trashed(),
         ]] : []);
     }
 

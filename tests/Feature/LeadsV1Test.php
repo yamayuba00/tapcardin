@@ -97,6 +97,44 @@ class LeadsV1Test extends TestCase
         $this->actingAs($other)->api('PATCH', "/reminders/$id", ['done' => false])->assertNotFound();
     }
 
+    public function test_reminder_of_deleted_lead_stays_listed_actionable_and_removable(): void
+    {
+        $rina = $this->makeUser();
+        $this->actingAs($rina);
+        $lead = $this->lead('Budi');
+        $id = $this->api('POST', "/leads/{$lead['id']}/reminders", ['due_at' => now()->addMinutes(5)->toIso8601String(), 'note' => 'Kirim proposal'])
+            ->assertCreated()->json('data.id');
+        $this->api('DELETE', "/leads/{$lead['id']}")->assertSuccessful();
+
+        $this->travel(10)->minutes();
+        $row = collect($this->api('GET', '/reminders?due=overdue')->assertOk()->json('data'))->firstWhere('id', $id);
+        $this->assertNotNull($row);
+        $this->assertTrue($row['lead']['deleted']);
+        $this->assertSame('Budi', $row['lead']['name']);
+
+        // tunda dan selesai tetap berfungsi untuk pengingat lead yang sudah dihapus
+        $this->api('PATCH', "/reminders/$id", ['due_at' => now()->addDay()->toIso8601String()])->assertOk();
+        $this->api('PATCH', "/reminders/$id", ['done' => true])->assertOk()->assertJsonPath('data.done_at', fn ($v) => $v !== null);
+        $this->api('PATCH', "/reminders/$id", ['done' => false])->assertOk();
+
+        $this->actingAs($this->makeUser('lain@example.com', 'Lain'))->api('DELETE', "/reminders/$id")->assertNotFound();
+        $this->actingAs($rina)->api('DELETE', "/reminders/$id")->assertNoContent();
+        $this->assertFalse(collect($this->api('GET', '/reminders')->json('data'))->contains('id', $id));
+        $this->assertFalse(LeadReminder::withoutGlobalScope(TenantScope::class)->where('public_id', $id)->exists());
+    }
+
+    public function test_reminder_tab_counts_cover_every_tab(): void
+    {
+        $this->actingAs($this->makeUser());
+        $this->lead('Budi'); // follow-up otomatis 24 jam lagi → Mendatang
+        $meta = $this->api('GET', '/reminders')->assertOk()->json('meta.counts');
+        $this->assertSame(['overdue' => 0, 'today' => 0, 'upcoming' => 1, 'done' => 0], $meta);
+
+        $id = $this->api('GET', '/reminders?due=upcoming')->json('data.0.id');
+        $this->api('PATCH', "/reminders/$id", ['done' => true])->assertOk();
+        $this->assertSame(['overdue' => 0, 'today' => 0, 'upcoming' => 0, 'done' => 1], $this->api('GET', '/reminders')->json('meta.counts'));
+    }
+
     // ── Tabel server-side ───────────────────────────────────────────
 
     public function test_connection_list_is_paged_and_sorted_on_the_server(): void

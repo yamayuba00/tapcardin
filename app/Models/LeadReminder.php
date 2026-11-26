@@ -22,7 +22,7 @@ class LeadReminder extends Model
 
     public function connection(): BelongsTo
     {
-        return $this->belongsTo(Connection::class);
+        return $this->belongsTo(Connection::class)->withTrashed();
     }
 
     public function user(): BelongsTo
