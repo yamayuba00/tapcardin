@@ -111,8 +111,8 @@ const fresh = computed(() => result.value?.status === 'checked_in')
         <video v-show="mode === 'qr'" ref="video" class="mx-auto aspect-square w-full max-w-sm rounded-md bg-surface-2 object-cover" playsinline muted></video>
 
         <div class="grid gap-2 sm:flex sm:flex-wrap sm:justify-center">
-          <AppButton v-if="canNfc" size="lg" :disabled="mode === 'nfc'" @click="read('nfc')"><Nfc class="size-5" /> Tap kartu</AppButton>
-          <AppButton v-if="canQr" size="lg" :variant="canNfc ? 'secondary' : 'primary'" :disabled="mode === 'qr'" @click="read('qr')"><Camera class="size-5" /> Scan QR</AppButton>
+          <AppButton variant="ink" v-if="canNfc" size="lg" :disabled="mode === 'nfc'" @click="read('nfc')"><Nfc class="size-5" /> Tap kartu</AppButton>
+          <AppButton v-if="canQr" size="lg" :variant="canNfc ? 'secondary' : 'ink'" :disabled="mode === 'qr'" @click="read('qr')"><Camera class="size-5" /> Scan QR</AppButton>
           <AppButton v-if="mode" size="lg" variant="ghost" @click="stop"><X class="size-5" /> Berhenti</AppButton>
           <AppButton v-if="result && !mode" size="lg" variant="ghost" @click="result = null; state = 'idle'"><RotateCcw class="size-5" /> Peserta berikutnya</AppButton>
         </div>

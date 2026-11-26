@@ -82,7 +82,7 @@ async function destroy() {
           <span v-if="e.location">· {{ e.location }}</span>
         </div>
       </template>
-      <AppButton v-if="auth.can('events.checkin')" :to="`/events/${id}/checkin`"><ScanLine class="size-5" /> Check-in peserta</AppButton>
+      <AppButton variant="ink" v-if="auth.can('events.checkin')" :to="`/events/${id}/checkin`"><ScanLine class="size-5" /> Check-in peserta</AppButton>
       <AppButton variant="ghost" @click="editing = true"><Pencil class="size-5" /> Ubah</AppButton>
       <AppButton v-if="auth.can('leads.export.*')" variant="secondary" @click="download(exportHref, 'peserta-event.csv')"><Download class="size-5" /> Ekspor koneksi</AppButton>
       <AppButton v-if="e.is_active" variant="secondary" :loading="busy" @click="deactivate"><Power class="size-5" /> Matikan Mode Event</AppButton>
@@ -154,7 +154,7 @@ async function destroy() {
       <EventForm id="event-edit" :initial="e" :errors="errors" @submit="saveEdit" />
       <template #footer>
         <AppButton variant="secondary" @click="editing = false">Batal</AppButton>
-        <AppButton type="submit" form="event-edit" :loading="busy">Simpan</AppButton>
+        <AppButton variant="ink" type="submit" form="event-edit" :loading="busy">Simpan</AppButton>
       </template>
     </AppModal>
     <AppModal v-if="removing" size="sm" title="Hapus event?" description="Koneksi & tap dari event ini tetap tersimpan, hanya label event-nya yang dilepas." @close="removing = false">

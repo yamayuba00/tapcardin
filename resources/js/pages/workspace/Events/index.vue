@@ -42,7 +42,7 @@ async function stop() {
 
 <template>
   <PageHeader eyebrow="Mode Event" title="Event">
-    <AppButton @click="creating = true"><CalendarPlus class="size-5" /> Event baru</AppButton>
+    <AppButton variant="ink" @click="creating = true"><CalendarPlus class="size-5" /> Event baru</AppButton>
   </PageHeader>
 
   <div v-if="active" class="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-3 rounded-md border border-accent bg-surface p-4 sm:flex sm:flex-wrap sm:items-center sm:py-3">
@@ -83,7 +83,7 @@ async function stop() {
     <EventForm id="event-create" with-activate :errors="errors" @submit="create" />
     <template #footer>
       <AppButton variant="secondary" @click="creating = false">Batal</AppButton>
-      <AppButton type="submit" form="event-create" :loading="busy"><CalendarPlus class="size-5" /> Buat event</AppButton>
+      <AppButton variant="ink" type="submit" form="event-create" :loading="busy"><CalendarPlus class="size-5" /> Buat event</AppButton>
     </template>
   </AppModal>
 </template>

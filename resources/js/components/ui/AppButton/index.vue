@@ -21,6 +21,8 @@ const variants = {
   secondary: 'border border-line-strong text-fg hover:bg-surface-2',
   ghost: 'text-accent-text hover:bg-surface-2',
   danger: 'bg-solid-danger text-on-solid hover:opacity-90',
+  // Gaya gelap pill untuk aksi utama acara: onyx solid, tepi tipis, hover tepi aksen.
+  ink: 'border border-line-strong bg-onyx-800 text-bone-50 hover:border-accent',
 }
 
 const classes = computed(() => [
