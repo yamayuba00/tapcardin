@@ -54,9 +54,17 @@ const groups = computed(() => [
   ] },
 ])
 const active = computed(() => route.meta.nav)
-// konten di-scroll di <main>, bukan window → kembalikan ke atas saat pindah halaman
+// konten di-scroll di <main>, bukan window → kembalikan ke atas saat pindah halaman;
+// tautan #jangkar digulir di dalam <main> (window tidak ikut bergerak)
 const mainEl = ref(null)
-watch(() => route.path, () => mainEl.value?.scrollTo({ top: 0 }))
+watch(() => route.path + route.hash, (key) => {
+  const m = mainEl.value
+  if (!m) return
+  const hash = key.slice(key.indexOf('#') + 1)
+  const el = key.includes('#') && hash ? document.getElementById(hash) : null
+  if (el && m.contains(el)) m.scrollTo({ top: m.scrollTop + el.getBoundingClientRect().top - m.getBoundingClientRect().top - 24 })
+  else m.scrollTo({ top: 0 })
+}, { flush: 'post' })
 
 // tarik ke bawah (ponsel/PWA) → halaman aktif dipasang ulang sehingga datanya dimuat ulang
 const refreshKey = ref(0)
@@ -154,13 +162,12 @@ const link = 'group flex min-h-10 cursor-pointer items-center gap-3 rounded-md p
     </aside>
 
     <PullIndicator :pull="pull" :refreshing="refreshing" :threshold="threshold" />
-    <main ref="mainEl" class="min-h-0 min-w-0 overflow-y-auto overscroll-contain px-4 pt-6 pb-[calc(88px+env(safe-area-inset-bottom))] print:overflow-visible print:p-0 md:px-6 md:pb-10 lg:px-8 lg:pt-8 lg:pb-12">
-      <div class="grid w-full gap-6">
-        <!-- ponsel: bilah atas ringkas dengan lonceng notifikasi -->
-        <div class="-mt-2 -mb-2 flex items-center justify-between md:hidden print:hidden"><RouterLink to="/dashboard" class="no-underline"><BrandLogo /></RouterLink><NotificationBell /></div>
-
-        <!-- tablet & desktop: topbar — lokasi (workspace › halaman), cari, lonceng, tindak lanjut -->
-        <header class="hidden items-center gap-3 print:hidden md:flex">
+    <!-- kolom kanan: topbar diam di atas (tinggi tetap), hanya <main> yang scroll -->
+    <div class="flex min-h-0 min-w-0 flex-col">
+      <!-- ponsel: merek + lonceng · tablet & desktop: lokasi (workspace › halaman), cari, lonceng, tindak lanjut -->
+      <header class="flex h-14 shrink-0 items-center gap-3 px-4 print:hidden md:h-16 md:px-6 lg:px-8">
+        <div class="flex w-full items-center justify-between md:hidden"><RouterLink to="/dashboard" class="no-underline"><BrandLogo /></RouterLink><NotificationBell /></div>
+        <div class="hidden min-w-0 flex-1 items-center gap-3 md:flex">
           <nav aria-label="Lokasi" class="min-w-0 flex-1">
             <p class="flex min-w-0 items-center gap-1.5 text-sm text-muted">
               <span class="truncate">{{ wsName }}</span>
@@ -175,11 +182,16 @@ const link = 'group flex min-h-10 cursor-pointer items-center gap-3 rounded-md p
           <RouterLink to="/follow-up" class="grid size-10 flex-none place-items-center rounded-md text-muted no-underline hover:bg-surface-2 hover:text-fg" aria-label="Perlu tindak lanjut">
             <CircleAlert class="size-5" aria-hidden="true" />
           </RouterLink>
-        </header>
+        </div>
+      </header>
 
-        <RouterView v-slot="{ Component }"><component :is="Component" :key="refreshKey" /></RouterView>
-      </div>
-    </main>
+      <!-- satu-satunya area yang scroll; ponsel: padding bawah = ruang MobileNav + safe-area -->
+      <main ref="mainEl" class="relative min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain px-4 pt-6 pb-[calc(88px+env(safe-area-inset-bottom))] print:overflow-visible print:p-0 md:px-6 md:pb-10 lg:px-8 lg:pt-8 lg:pb-12">
+        <div class="grid w-full gap-6">
+          <RouterView v-slot="{ Component }"><component :is="Component" :key="refreshKey" /></RouterView>
+        </div>
+      </main>
+    </div>
 
     <MobileNav
       bp="md"

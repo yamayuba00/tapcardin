@@ -41,7 +41,8 @@ const step = computed(() => {
 })
 function goStep(n) {
   router.replace({ query: { ...route.query, step: n } })
-  window.scrollTo({ top: 0 })
+  // konten di-scroll di <main> layout (bukan window)
+  document.querySelector('main')?.scrollTo({ top: 0 })
 }
 
 // ── keranjang ──────────────────────────────────────────────
