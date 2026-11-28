@@ -131,4 +131,10 @@ return [
     'webhooks' => [
         'allow_private' => (bool) env('WEBHOOKS_ALLOW_PRIVATE', false),
     ],
+
+    // Email blast promo (panel): laju kirim per menit (antrean `mail`, batch 50) & alamat perusahaan di footer email.
+    'blast' => [
+        'per_minute' => max(1, (int) env('BLAST_PER_MINUTE', 60)),
+        'address' => env('MAIL_COMPANY_ADDRESS', 'TapCard · Indonesia'),
+    ],
 ];

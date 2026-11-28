@@ -62,6 +62,11 @@ Operasional (workspace, domain kustom, pengguna, kartu), **produksi** (pesanan, 
 **bisnis** (paket & harga, keuangan & MRR, voucher, katalog produk kartu, ongkir, lanyard & jenis kontak, pengumuman), dan sistem
 (staf & peran, audit log, kesehatan sistem). Menu mengikuti izin setiap staf.
 
+**Email blast** (promo, izin `comms.manage`): editor markdown + gambar, pratinjau, kirim uji, jadwal, kirim bertahap di
+antrean `mail` (laju `BLAST_PER_MINUTE`), tautan & one-click berhenti berlangganan. Gambar disimpan di disk `blast`:
+`BLAST_DISK_DRIVER=s3` → folder `blast/` di bucket `AWS_BUCKET` (URL dari `AWS_URL`). **Bucket policy wajib mengizinkan
+baca publik (`s3:GetObject`) untuk `blast/*`**, kalau tidak gambar tidak tampil di email.
+
 ### Keamanan & privasi
 Pengguna masuk dengan **Google** (akun dibuat otomatis) atau **kartu NFC + kode akun** 6 angka — bukti kartu dari Web NFC
 (UID chip, Chrome Android) atau kunci chip di URL NFC (tap di HP mana pun, termasuk iPhone; tidak ada di QR); kode salah 5×
@@ -128,7 +133,7 @@ php artisan storage:link
 npm run build                                       # atau `npm run dev` untuk hot reload
 
 php artisan serve --port=8000
-php artisan queue:work --queue=taps,notify,leads,default,render,broadcast,webhooks   # wajib: tap, notifikasi, siaran realtime & webhook lewat antrean
+php artisan queue:work --queue=taps,notify,leads,default,render,broadcast,webhooks,mail   # wajib: tap, notifikasi, siaran realtime, webhook & email blast lewat antrean
 php artisan schedule:work                                          # pengingat, statistik, langganan
 ```
 

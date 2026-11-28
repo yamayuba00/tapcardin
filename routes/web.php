@@ -3,6 +3,7 @@
 use App\Http\Controllers\Marketing\SeoController;
 use App\Http\Controllers\Marketing\ShowcaseController;
 use App\Http\Controllers\PaymentWebhookController;
+use App\Http\Controllers\Public\UnsubscribeController;
 use App\Http\Controllers\Public\WebhookDocsController;
 use App\Http\Controllers\SpaController;
 use App\Http\Controllers\StatusController;
@@ -80,6 +81,10 @@ Route::domain($base)->group(function () use ($spa) {
     Route::get('/api/status', StatusController::class)->middleware('throttle:120,1')->name('marketing.status');
     // alamat lama notifikasi gateway pembayaran — alamat resmi kini wbh.{base}/payment (CSRF dikecualikan untuk webhooks/*)
     Route::post('/webhooks/payment', PaymentWebhookController::class)->middleware('throttle:120,1')->name('webhooks.payment');
+    // berhenti berlangganan email blast: GET /unsubscribe = halaman konfirmasi (SPA); POST = tombol konfirmasi & one-click
+    // List-Unsubscribe-Post dari penyedia email (tanpa CSRF/sesi; keabsahan dari tanda tangan URL)
+    Route::post('/unsubscribe', UnsubscribeController::class)->middleware(['signed', 'throttle:20,1'])
+        ->withoutMiddleware([PreventRequestForgery::class])->name('blast.unsubscribe');
     $spa()->name('marketing');
 });
 

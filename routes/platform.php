@@ -10,6 +10,7 @@ use App\Http\Controllers\Platform\CardController;
 use App\Http\Controllers\Platform\CatalogController;
 use App\Http\Controllers\Platform\DashboardController;
 use App\Http\Controllers\Platform\DomainController;
+use App\Http\Controllers\Platform\EmailBlastController;
 use App\Http\Controllers\Platform\FieldActivationController;
 use App\Http\Controllers\Platform\FinanceController;
 use App\Http\Controllers\Platform\MeController;
@@ -25,6 +26,7 @@ use App\Http\Controllers\Platform\TenantController;
 use App\Http\Controllers\Platform\UptimeController;
 use App\Http\Controllers\Platform\UserController;
 use App\Http\Controllers\Platform\VoucherController;
+use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -35,6 +37,11 @@ Route::post('/api/auth/login', [AdminLoginController::class, 'login'])->name('lo
 Route::post('/api/auth/logout', [AdminLoginController::class, 'logout'])->name('logout');
 Route::post('/api/auth/forgot-password', [StaffPasswordResetController::class, 'forgot'])->middleware('throttle:5,1')->name('password.forgot');
 Route::post('/api/auth/reset-password', [StaffPasswordResetController::class, 'reset'])->middleware('throttle:10,1')->name('password.reset');
+
+// Pratinjau email blast sebagai dokumen iframe (di luar /api: iframe tidak bisa membawa X-Tap-Key). CSP panel diganti
+// CSP khusus pratinjau (lihat EmailBlastController::previewDocument).
+Route::middleware(['auth:staff', 'platform'])->withoutMiddleware([SecurityHeaders::class])
+    ->get('/email-blasts/preview/{token}', [EmailBlastController::class, 'previewDocument'])->where('token', '[A-Za-z0-9]{40}')->name('email-blasts.preview-doc');
 
 Route::middleware(['auth:staff', 'platform'])->prefix('api')->name('api.')->group(function () {
     Route::get('/me', MeController::class)->name('me');
@@ -160,6 +167,20 @@ Route::middleware(['auth:staff', 'platform'])->prefix('api')->name('api.')->grou
 
     Route::get('/announcements', [AnnouncementController::class, 'index'])->name('announcements');
     Route::post('/announcements', [AnnouncementController::class, 'store'])->name('announcements.store');
+
+    Route::controller(EmailBlastController::class)->prefix('/email-blasts')->name('email-blasts')->group(function () {
+        Route::get('/', 'index');
+        Route::post('/', 'store')->name('.store');
+        Route::post('/preview', 'preview')->middleware('throttle:120,1')->name('.preview');
+        Route::get('/audience-count', 'audienceCount')->name('.count');
+        Route::post('/images', 'image')->middleware('throttle:30,1')->name('.images');
+        Route::get('/{blast}', 'show')->name('.show');
+        Route::patch('/{blast}', 'update')->name('.update');
+        Route::post('/{blast}/test', 'test')->middleware('throttle:10,1')->name('.test');
+        Route::post('/{blast}/schedule', 'schedule')->name('.schedule');
+        Route::post('/{blast}/send', 'send')->name('.send');
+        Route::post('/{blast}/cancel', 'cancel')->name('.cancel');
+    });
 
     Route::get('/audit', [AuditController::class, 'index'])->name('audit');
     Route::get('/system', [SystemController::class, 'show'])->name('system');

@@ -63,6 +63,29 @@ return [
             'report' => false,
         ],
 
+        // Gambar email blast (promo). BLAST_DISK_DRIVER=s3 → bucket S3 yang sama, folder blast/ (bucket policy harus
+        // mengizinkan baca publik untuk blast/*, kalau tidak gambar tidak tampil di email); selain itu storage/app/public/blast.
+        'blast' => env('BLAST_DISK_DRIVER', 'local') === 's3' ? [
+            'driver' => 's3',
+            'key' => env('AWS_ACCESS_KEY_ID'),
+            'secret' => env('AWS_SECRET_ACCESS_KEY'),
+            'region' => env('AWS_DEFAULT_REGION'),
+            'bucket' => env('AWS_BUCKET'),
+            'endpoint' => env('AWS_ENDPOINT'),
+            'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
+            'root' => 'blast',
+            'url' => rtrim((string) env('AWS_URL'), '/'), // Laravel menambahkan root (blast/) sendiri ke URL
+            // tanpa ACL per objek (bucket modern menolak ACL): baca publik diatur bucket policy untuk blast/*
+            'retain_visibility' => false,
+            'throw' => true,
+        ] : [
+            'driver' => 'local',
+            'root' => storage_path('app/public/blast'),
+            'url' => rtrim(env('APP_URL', 'http://localhost'), '/').'/storage/blast',
+            'visibility' => 'public',
+            'throw' => true,
+        ],
+
         // backup database (tapcard:backup) — bucket yang sama, folder backups/ tidak terbaca publik
         'backups' => [
             'driver' => 's3',

@@ -18,7 +18,7 @@ set -euo pipefail
 APP=/var/www/tapcard
 ENV=$APP/shared/.env
 CONF=/etc/redis/redis.conf
-QUEUES=taps,notify,leads,default,render,broadcast,webhooks   # semua antrean di deploy/supervisor/tapcard.conf
+QUEUES=taps,notify,leads,default,render,broadcast,webhooks,mail   # semua antrean di deploy/supervisor/tapcard.conf
 STAMP=$(date +%Y%m%d%H%M%S)
 
 step() { printf '\n\033[1;33m▶ %s\033[0m\n' "$*"; }
