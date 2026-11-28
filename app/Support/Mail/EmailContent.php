@@ -40,8 +40,9 @@ final class EmailContent
     }
 
     /**
-     * @return array{subject:string, title:string, lines:list<string>, action:?array{label:string,path?:string,url?:string}, tone:string}|null
-     *                                                                                                                                         tone: default | ok | warn | danger
+     * Nada (tone): default | ok | warn | danger.
+     *
+     * @return array{subject:string, title:string, lines:list<string>, action:?array{label:string,path?:string,url?:string}, tone:string, preheader:string, facts:list<array{0:string,1:string}>, items:list<array>}|null
      */
     public static function for(string $type, array $d): ?array
     {
@@ -50,7 +51,7 @@ final class EmailContent
         $num = fn ($n) => number_format((int) $n, 0, ',', '.');
         $invoice = fn () => ['label' => 'Lihat tagihan', 'path' => '/billing/invoices/'.($d['id'] ?? '')];
 
-        return match ($type) {
+        $c = match ($type) {
             'invoice_due' => [
                 'subject' => "Tagihan perpanjangan {$d['number']}",
                 'title' => 'Tagihan perpanjangan paket sudah terbit',
@@ -349,6 +350,178 @@ final class EmailContent
                 'tone' => 'ok',
             ],
             default => null,
+        };
+
+        return $c === null ? null : $c + self::summary($type, $d);
+    }
+
+    /** Nama sumber lead untuk ringkasan email. */
+    private const LEAD_SOURCES = [
+        'exchange_form' => 'Formulir tukar kontak', 'scan_tapcard' => 'Scan kartu TapCard', 'scan_external' => 'Scan kartu nama',
+        'manual' => 'Input manual', 'import' => 'Impor CSV', 'event_checkin' => 'Check-in event',
+        'saved_from_profile' => 'Disimpan dari profil', 'bio_form' => 'Formulir bio link',
+    ];
+
+    /**
+     * Preheader (baris pratinjau di kotak masuk), ringkasan poin penting [label, nilai], dan rincian item (bila data
+     * membawanya). Hanya dari data yang sudah dikirim ke jenis itu; baris tanpa data dibuang.
+     *
+     * @return array{preheader:string, facts:list<array{0:string,1:string}>, items:list<array{label:string,qty:int,amount:?string}>}
+     */
+    private static function summary(string $type, array $d): array
+    {
+        $rp = fn ($n) => isset($n) ? 'Rp'.number_format((int) $n, 0, ',', '.') : null;
+        $date = fn ($iso) => $iso ? Carbon::parse($iso)->timezone('Asia/Jakarta')->locale('id')->translatedFormat('j F Y') : null;
+        $time = fn ($iso) => $iso ? Carbon::parse($iso)->timezone('Asia/Jakarta')->locale('id')->translatedFormat('j F Y, H.i').' WIB' : null;
+        $num = fn ($n) => isset($n) ? number_format((int) $n, 0, ',', '.') : null;
+        $now = $time(now()->toIso8601String());
+        // gabung potongan kalimat, lewati yang kosong
+        $s = fn (...$parts) => implode(' ', array_filter($parts, fn ($p) => $p !== null && $p !== ''));
+        $many = ($d['count'] ?? 1) > 1;
+
+        [$preheader, $facts] = match ($type) {
+            'invoice_due' => [
+                $s('Tagihan '.($d['number'] ?? ''), isset($d['total']) ? 'sebesar '.$rp($d['total']) : null, isset($d['due']) ? 'jatuh tempo '.$date($d['due']).'.' : null),
+                [['Nomor tagihan', $d['number'] ?? null], ['Total', $rp($d['total'] ?? null)], ['Jatuh tempo', $date($d['due'] ?? null)], ['Paket', $d['plan'] ?? null]],
+            ],
+            'invoice_paid' => [
+                'Pembayaran tagihan '.($d['number'] ?? '').' sudah kami terima. Simpan email ini sebagai bukti.',
+                [['Nomor tagihan', $d['number'] ?? null], ['Status', 'Lunas'], ['Item', $d['label'] ?? null], ['Paket', $d['plan'] ?? null], ['Aktif sampai', $date($d['until'] ?? null)]],
+            ],
+            'subscription_past_due', 'grace_ending' => [
+                $s('Fitur paket', $d['plan'] ?? null, 'tetap jalan sampai', ($date($d['grace_until'] ?? null) ?? 'akhir masa tenggang').'.', 'Bayar tagihan agar tidak terkunci.'),
+                [['Paket', $d['plan'] ?? null], ['Nomor tagihan', $d['number'] ?? null], ['Masa tenggang sampai', $date($d['grace_until'] ?? null)]],
+            ],
+            'plan_changed' => [
+                'Workspace Anda kini memakai paket '.($d['plan'] ?? '-').'. Data tetap aman.',
+                [['Paket sekarang', $d['plan'] ?? null], ['Alasan', ['expired' => 'Masa tenggang habis', 'cancelled' => 'Langganan dibatalkan'][$d['reason'] ?? ''] ?? null]],
+            ],
+            'subscription_reminder' => [
+                $s('Masa aktif', $d['plan'] ?? null, 'berakhir', ($date($d['end'] ?? null) ?? '-').'.', isset($d['number']) ? 'Tagihan '.$d['number'].' sudah terbit.' : null),
+                [['Workspace', $d['workspace'] ?? null], ['Paket', $d['plan'] ?? null], ['Berakhir pada', $date($d['end'] ?? null)],
+                    ['Sisa waktu', isset($d['days']) ? $d['days'].' hari' : null], ['Nomor tagihan', $d['number'] ?? null]],
+            ],
+            'trial_ending' => [
+                $s('Uji coba', $d['plan'] ?? null, 'berakhir', ($date($d['end'] ?? null) ?? 'besok').'.', 'Pilih paket agar dashboard tetap terbuka.'),
+                [['Workspace', $d['workspace'] ?? null], ['Paket uji coba', $d['plan'] ?? null], ['Berakhir pada', $date($d['end'] ?? null)]],
+            ],
+            'webhook_disabled' => [
+                'Endpoint '.($d['url'] ?? 'webhook').' gagal '.($d['failures'] ?? 20).' kali berturut-turut dan kini nonaktif.',
+                [['Endpoint', $d['url'] ?? null], ['Gagal berturut-turut', ($d['failures'] ?? 20).' kali'], ['Status', 'Nonaktif']],
+            ],
+            'workspace_expired' => [
+                $s(($d['reason'] ?? null) === 'trial' ? 'Uji coba' : 'Masa aktif', 'paket', $d['plan'] ?? null, 'habis. Kartu karyawan tetap bisa di-tap.'),
+                [['Paket', $d['plan'] ?? null], ['Jenis', ($d['reason'] ?? null) === 'trial' ? 'Uji coba' : 'Langganan'], ['Dashboard', 'Terkunci sampai diperpanjang']],
+            ],
+            'order_status' => [
+                $s('Pesanan '.($d['number'] ?? '').': '.($d['label'] ?? '').'.', ! empty($d['tracking']) ? 'Resi '.$d['tracking'].'.' : null),
+                [['Nomor pesanan', $d['number'] ?? null], ['Status', $d['label'] ?? null], ['Nomor resi', $d['tracking'] ?? null],
+                    ['Estimasi', $date($d['estimate'] ?? null)], ['Total', $rp($d['total'] ?? null)]],
+            ],
+            'order_unpaid' => [
+                $s('Pesanan '.($d['number'] ?? ''), isset($d['total']) ? 'sebesar '.$rp($d['total']) : null, 'menunggu pembayaran', isset($d['cancel_at']) ? 'sampai '.$date($d['cancel_at']).'.' : null),
+                [['Nomor pesanan', $d['number'] ?? null], ['Total', $rp($d['total'] ?? null)], ['Status', 'Menunggu pembayaran'], ['Batal otomatis', $date($d['cancel_at'] ?? null)]],
+            ],
+            'card_period' => [
+                $s('Kartu', $d['label'] ?? null, 'berlaku sampai', ($date($d['until'] ?? null) ?? '-').'.', isset($d['renew_price']) ? 'Perpanjang '.$rp($d['renew_price']).' untuk 6 bulan.' : null),
+                [['Kartu', $d['label'] ?? null], ['Berlaku sampai', $date($d['until'] ?? null)],
+                    ['Status', ($d['stage'] ?? '') === 'grace_end' ? 'Nonaktif' : (isset($d['days']) ? 'Berakhir '.$d['days'].' hari lagi' : null)],
+                    ['Biaya perpanjangan', isset($d['renew_price']) ? $rp($d['renew_price']).' / 6 bulan' : null]],
+            ],
+            'card_renewed' => [
+                $s('Kartu', $d['label'] ?? null, 'kini berlaku sampai', ($date($d['until'] ?? null) ?? '-').'.'),
+                [['Kartu', $d['label'] ?? null], ['Berlaku sampai', $date($d['until'] ?? null)], ['Status', 'Aktif']],
+            ],
+            'tap_quota' => [
+                'Terpakai '.$num($d['used'] ?? 0).' dari '.$num($d['quota'] ?? 0).' tap kartu digital.',
+                [['Terpakai', isset($d['used'], $d['quota']) ? $num($d['used']).' / '.$num($d['quota']).' tap' : null],
+                    ['Persentase', isset($d['level']) ? ((int) $d['level']).'%' : null],
+                    ['Sisa', isset($d['used'], $d['quota']) ? $num(max(0, $d['quota'] - $d['used'])).' tap' : null]],
+            ],
+            'domain_unverified' => [
+                'Record TXT untuk '.($d['domain'] ?? 'domain Anda').' tidak ditemukan; domain dinonaktifkan sementara.',
+                [['Domain', $d['domain'] ?? null], ['Status', 'Nonaktif sementara'], ['Diperiksa', $now]],
+            ],
+            'lost_card_tapped' => [
+                $s('Kartu yang dilaporkan hilang di-tap', ! empty($d['city']) ? 'di sekitar '.$d['city'] : null, 'pada', ($time($d['at'] ?? null) ?? $now).'.'),
+                [['Kartu', $d['label'] ?? null], ['Lokasi', $d['city'] ?? null], ['Waktu', $time($d['at'] ?? null)]],
+            ],
+            'tap' => [
+                $s('Profil Anda dibuka', ! empty($d['city']) ? 'dari '.$d['city'] : null, 'pada', ($time($d['at'] ?? null) ?? $now).'.'),
+                [['Kartu', $d['label'] ?? null], ['Lokasi', $d['city'] ?? null], ['Waktu', $time($d['at'] ?? null)],
+                    ['Jumlah tap', $many ? $num($d['count']).' kali' : null]],
+            ],
+            'lead_assigned' => [
+                ($d['by'] ?? 'Rekan Anda').' menugaskan '.($many ? $d['count'].' lead' : ($d['name'] ?? 'lead')).' ke Anda.',
+                [['Lead', $d['name'] ?? null], ['Jumlah', $many ? $d['count'].' lead' : null], ['Ditugaskan oleh', $d['by'] ?? null], ['Penanggung jawab', 'Anda']],
+            ],
+            'lead_new' => [
+                $s($d['name'] ?? 'Kontak baru', ! empty($d['company']) ? '('.$d['company'].')' : null, 'baru saja terhubung dengan Anda.'),
+                [['Nama', $d['name'] ?? null], ['Perusahaan', $d['company'] ?? null], ['Sumber', self::LEAD_SOURCES[$d['source'] ?? ''] ?? null]],
+            ],
+            'saved_back' => [
+                ($d['name'] ?? 'Seseorang').' menyimpan Anda sebagai koneksi.',
+                [['Nama', $d['name'] ?? null]],
+            ],
+            'reminder_due' => [
+                $s('Waktunya follow-up '.($d['name'] ?? ''), ! empty($d['company']) ? '('.$d['company'].')' : null),
+                [['Nama', $d['name'] ?? null], ['Perusahaan', $d['company'] ?? null], ['Catatan', $d['note'] ?? null]],
+            ],
+            'import_done' => [
+                $num($d['created'] ?? 0).' kontak baru, '.$num($d['merged'] ?? 0).' digabung, '.$num($d['failed'] ?? 0).' gagal.',
+                [['File', $d['filename'] ?? null], ['Kontak baru', $num($d['created'] ?? null)], ['Digabung', $num($d['merged'] ?? null)], ['Gagal', $num($d['failed'] ?? null)]],
+            ],
+            'account_deleted' => [
+                $s('Akun TapCard Anda sudah dihapus.', isset($d['purge_at']) ? 'Data pribadi dihapus permanen '.$date($d['purge_at']).'.' : null),
+                [['Status akun', 'Dihapus'], ['Hapus permanen', $date($d['purge_at'] ?? null)]],
+            ],
+            'password_reset' => [
+                'Tautan reset password berlaku '.($d['minutes'] ?? 60).' menit dan hanya sekali pakai.',
+                [['Berlaku', isset($d['minutes']) ? $d['minutes'].' menit' : null], ['Pemakaian', 'Sekali pakai'], ['Diminta', $now]],
+            ],
+            'system_alert' => [
+                'Perlu diperiksa: '.implode(', ', array_column($d['checks'], 'label')).'.',
+                [...array_map(fn ($c) => [(string) $c['label'], (string) $c['value']], $d['checks']), ['Waktu', $now]],
+            ],
+            'monitor_down', 'monitor_degraded' => [
+                $s($d['name'] ?? 'Monitor', $type === 'monitor_down' ? 'tidak bisa diakses' : 'perlu perhatian', ! empty($d['reason']) ? '— '.$d['reason'] : null),
+                [['Layanan', $d['name'] ?? null], ['Status', $type === 'monitor_down' ? 'Down' : 'Terganggu'], ['Penyebab', $d['reason'] ?? null],
+                    ['Alamat', $d['target'] ?? null], ['Waktu', $now]],
+            ],
+            'monitor_up' => [
+                ($d['name'] ?? 'Monitor').' kembali normal.',
+                [['Layanan', $d['name'] ?? null], ['Status', 'Normal'], ['Gangguan sejak', $time($d['since'] ?? null)], ['Pulih', $now]],
+            ],
+            'system_recovered' => [
+                'Sudah pulih: '.implode(', ', $d['labels']).'.',
+                [['Pulih', implode(', ', $d['labels'])], ['Status', 'Normal'], ['Waktu', $now]],
+            ],
+            default => ['', []],
+        };
+
+        // rincian barang hanya bila payload pesanan membawanya (label, qty, amount) — tidak pernah dikarang
+        $items = [];
+        foreach (str_starts_with($type, 'order_') ? (array) ($d['items'] ?? []) : [] as $i) {
+            if (is_array($i) && isset($i['label'])) {
+                $items[] = ['label' => (string) $i['label'], 'qty' => (int) ($i['qty'] ?? 1), 'amount' => isset($i['amount']) ? $rp($i['amount']) : null];
+            }
+        }
+
+        return [
+            'preheader' => $preheader,
+            'facts' => array_values(array_filter($facts, fn ($f) => $f[1] !== null && $f[1] !== '')),
+            'items' => $items,
+        ];
+    }
+
+    /** Kalimat "Email ini dikirim karena …" di footer, menurut kelompok jenisnya. */
+    public static function reason(string $type): string
+    {
+        return match (true) {
+            str_starts_with($type, 'system_') || str_starts_with($type, 'monitor_') => 'Email ini dikirim karena alamat Anda terdaftar sebagai penerima peringatan sistem TapCard. Peringatan ini selalu dikirim.',
+            in_array($type, self::ALWAYS, true) => 'Email ini dikirim karena berkaitan dengan keamanan akun Anda, jadi selalu dikirim.',
+            self::defaultOn($type) => 'Email ini dikirim karena berkaitan dengan tagihan, pesanan, atau layanan di akun TapCard Anda.',
+            default => 'Email ini dikirim karena notifikasi email untuk aktivitas ini aktif di akun Anda.',
         };
     }
 }

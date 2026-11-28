@@ -108,6 +108,13 @@ return [
     // Kosong → tombol disembunyikan.
     'sales_whatsapp' => preg_replace('/\D/', '', (string) env('TAPCARD_SALES_WHATSAPP', '')),
 
+    // Email transaksional: asal gambar (logo) yang bisa diakses publik — kosong = APP_URL; tautan "Pusat bantuan"
+    // di footer — kosong = WhatsApp sales bila diisi, selain itu situs utama.
+    'mail' => [
+        'asset_url' => env('MAIL_ASSET_URL'),
+        'help_url' => env('MAIL_HELP_URL'),
+    ],
+
     // Render server landing page (Vue SSR lewat node, hasil di-cache). Mati → landing tetap SPA biasa.
     'ssr' => [
         'enabled' => (bool) env('LANDING_SSR', true),

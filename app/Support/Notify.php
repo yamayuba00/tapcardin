@@ -118,7 +118,8 @@ final class Notify
         if (str_ends_with($to, '@invalid')) {
             return;
         }
-        $mail = new NotificationMail($type, $data, $name, self::baseUrl($tenant));
+        $workspace = $tenant && $tenant->type !== TenantType::Personal ? $tenant->name : null; // nama workspace di footer email
+        $mail = new NotificationMail($type, $data, $name, self::baseUrl($tenant), $workspace);
         rescue(fn () => $now ? Mail::to($to, $name)->sendNow($mail) : Mail::to($to, $name)->queue($mail), report: true);
     }
 
