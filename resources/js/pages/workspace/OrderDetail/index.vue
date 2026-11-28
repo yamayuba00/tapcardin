@@ -16,6 +16,7 @@ import { ordersApi } from '@/api/workspace'
 import { useAction, useAsync } from '@/composables/useAsync'
 import { useNotificationStore } from '@/stores/notifications'
 import { rupiah } from '@/lib/format'
+import { formatPrintRange } from '@/lib/printEta'
 import { ORDER_STATUS } from '@/lib/orders'
 
 const route = useRoute()
@@ -93,6 +94,20 @@ async function cancel() {
       </AppPanel>
 
       <div class="grid gap-4">
+        <AppPanel v-if="o.print?.eta_min" title="Estimasi cetak">
+          <div class="grid gap-2 text-sm">
+            <p class="font-medium">Estimasi cetak: {{ formatPrintRange(o.print.eta_min, o.print.eta_max) }}</p>
+            <p v-if="o.status === 'pending_payment'" class="text-xs text-muted">Perkiraan jika dibayar hari ini; jadwal resmi ditetapkan saat pembayaran diterima.</p>
+            <p v-if="o.print.note" class="text-xs text-warn">{{ o.print.note }}</p>
+            <ul class="grid gap-1">
+              <li v-for="i in o.items" :key="i.id" class="flex justify-between gap-3">
+                <span class="min-w-0 truncate">{{ i.label }}</span>
+                <span class="shrink-0 font-mono text-xs text-muted">{{ formatPrintRange(i.print?.eta_min, i.print?.eta_max) ?? '—' }}</span>
+              </li>
+            </ul>
+            <p class="text-xs text-muted">Pengiriman dihitung setelah cetak selesai.</p>
+          </div>
+        </AppPanel>
         <AppPanel title="Status"><OrderTimeline :timeline="o.timeline" /></AppPanel>
         <AppPanel title="Pengiriman">
           <div class="grid gap-2 text-sm">

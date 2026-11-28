@@ -57,7 +57,11 @@ async function addHardware() {
   if (res) { c.value = res.data; fresh.name = ''; fresh.price = 0 }
 }
 async function saveProduct(p) {
-  const res = await run(() => adminApi.saveCardProduct(p.public_id, { name: p.name, description: p.description || null, is_active: p.is_active, ...ints(p, ['price', 'min_qty', 'sort']) }), `${p.name} disimpan.`).catch(() => null)
+  const res = await run(() => adminApi.saveCardProduct(p.public_id, { name: p.name, description: p.description || null, is_active: p.is_active, ...ints(p, ['price', 'min_qty', 'print_min_days', 'print_max_days', 'sort']) }), `${p.name} disimpan.`).catch(() => null)
+  if (res) c.value = res.data
+}
+async function saveCapacity(n) {
+  const res = await run(() => adminApi.saveProduction({ cards_per_day: Number(n) }), 'Kapasitas cetak harian disimpan.').catch(() => null)
   if (res) c.value = res.data
 }
 async function saveRenewal(price) {
@@ -97,13 +101,22 @@ async function saveType(t, patch) {
       <p class="text-sm text-muted">Placeholder sampai harga final ditetapkan. Berlaku untuk perpanjangan kartu hasil penjualan langsung.</p>
     </AppPanel>
 
+    <AppPanel title="Kapasitas cetak">
+      <div class="grid gap-3 sm:flex sm:items-end">
+        <AppField label="Kartu dimulai cetak per hari kerja"><AppInput v-model.number="c.production.cards_per_day" type="number" min="1" /></AppField>
+        <AppButton :loading="busy" @click="saveCapacity(c.production.cards_per_day)">Simpan</AppButton>
+      </div>
+      <p class="text-sm text-muted">Dipakai untuk estimasi cetak di checkout dan pesanan. Nilai 200 masih placeholder sampai kapasitas sungguhan ditetapkan. Hari libur diatur di config <span class="font-mono">production.holidays</span>.</p>
+    </AppPanel>
+
     <AppPanel title="Kartu fisik · produk" flush>
       <div class="overflow-x-auto">
-        <table class="w-full min-w-[760px] text-sm table-stack">
+        <table class="w-full min-w-[860px] text-sm table-stack">
           <thead>
             <tr class="text-left text-muted">
               <th class="px-4 py-2 font-medium">Nama</th><th class="px-4 py-2 font-medium">Deskripsi</th><th class="px-4 py-2 font-medium">Chip</th>
-              <th class="px-4 py-2 font-medium">Harga / kartu (Rp)</th><th class="px-4 py-2 font-medium">Min. pesan</th><th class="px-4 py-2 font-medium">Aktif</th><th></th>
+              <th class="px-4 py-2 font-medium">Harga / kartu (Rp)</th><th class="px-4 py-2 font-medium">Min. pesan</th>
+              <th class="px-4 py-2 font-medium">Cetak min–maks (hari kerja)</th><th class="px-4 py-2 font-medium">Aktif</th><th></th>
             </tr>
           </thead>
           <tbody>
@@ -113,6 +126,7 @@ async function saveType(t, patch) {
               <td data-label="Chip" class="px-4 py-2 font-mono uppercase">{{ p.chip_type }}</td>
               <td data-label="Harga / kartu (Rp)" class="px-4 py-2"><AppInput v-model="p.price" type="number" min="0" class="max-w-32" :aria-label="`Harga ${p.name}`" /></td>
               <td data-label="Min. pesan" class="px-4 py-2"><AppInput v-model="p.min_qty" type="number" min="1" class="max-w-24" :aria-label="`Minimal pesan ${p.name}`" /></td>
+              <td data-label="Cetak min–maks" class="px-4 py-2 flex gap-2"><AppInput v-model="p.print_min_days" type="number" min="1" max="60" class="max-w-20" :aria-label="`Lead time minimal ${p.name}`" /><AppInput v-model="p.print_max_days" type="number" min="1" max="60" class="max-w-20" :aria-label="`Lead time maksimal ${p.name}`" /></td>
               <td data-label="Aktif" class="px-4 py-2"><AppToggle v-model="p.is_active" :label="p.is_active ? 'Ya' : 'Tidak'" /></td>
               <td class="px-4 py-2 text-right"><AppButton variant="secondary" :loading="busy" @click="saveProduct(p)"><Save class="size-4" /> Simpan</AppButton></td>
             </tr>

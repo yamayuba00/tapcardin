@@ -110,6 +110,7 @@ export const adminApi = {
   saveLanyardWidth: (id, body) => (id ? http.patch(`/api/catalog/lanyard-widths/${id}`, body) : http.post('/api/catalog/lanyard-widths', body)),
   saveLanyardHardware: (id, body) => (id ? http.patch(`/api/catalog/lanyard-hardware/${id}`, body) : http.post('/api/catalog/lanyard-hardware', body)),
   saveCardRenewal: (body) => http.patch('/api/catalog/card-renewal', body),
+  saveProduction: (body) => http.patch('/api/catalog/production', body),
   receipt: (id) => http.get(`/api/platform/receipts/${id}`),
   saveCardProduct: (id, body) => (id ? http.patch(`/api/catalog/card-products/${id}`, body) : http.post('/api/catalog/card-products', body)),
   saveShippingRate: (id, body) => http.patch(`/api/catalog/shipping-rates/${id}`, body),

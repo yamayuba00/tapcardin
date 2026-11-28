@@ -19,6 +19,7 @@ use App\Support\Audit;
 use App\Support\CardPeriod;
 use App\Support\Notify;
 use App\Support\OrderRisk;
+use App\Support\Production\PrintSchedule;
 use App\Support\TapQuota;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -159,6 +160,8 @@ final class ApplyPayment
             return;
         }
         $order->update(['status' => 'paid', 'paid_at' => now()]);
+        // estimasi cetak dihitung dari tanggal lunas lalu disimpan (tidak berubah walau kapasitas diubah kemudian)
+        PrintSchedule::commit($order);
         // tinjau dulu sebelum produksi bila ada tanda risiko (nilai besar, akun baru, alamat berulang, kata terlarang)
         $risk = OrderRisk::assess($order);
         $order->update(['risk_score' => $risk['score'], 'risk_flags' => $risk['flags'], 'review_status' => $risk['flags'] ? 'pending' : 'none']);

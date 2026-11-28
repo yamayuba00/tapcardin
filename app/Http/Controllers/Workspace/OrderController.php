@@ -20,6 +20,7 @@ use App\Support\Design\Variables;
 use App\Support\Http\Table;
 use App\Support\Indonesia;
 use App\Support\Notify;
+use App\Support\Production\PrintSchedule;
 use App\Support\Qr\SvgRenderer;
 use App\Support\Shipping\ShippingProvider;
 use Illuminate\Http\JsonResponse;
@@ -130,6 +131,8 @@ class OrderController extends WorkspaceController
             'courier' => $q['courier'], 'service' => $q['service'], 'etd' => $q['etd'],
             'promo' => $q['voucher'] ? ['code' => $q['voucher']->code, 'description' => $q['voucher']->description] : null,
             'lines' => array_map(fn ($l) => ['label' => $l['label'], 'quantity' => $l['quantity'], 'unit_price' => $l['unit_price'], 'total' => $l['total']], $q['lines']),
+            // estimasi cetak (pratinjau, tanggal Y-m-d); terpisah dari estimasi pengiriman (`etd`)
+            'print_eta_min' => $q['print']['eta_min'], 'print_eta_max' => $q['print']['eta_max'], 'print_note' => $q['print']['note'],
         ]]);
     }
 
@@ -222,10 +225,13 @@ class OrderController extends WorkspaceController
     {
         $o->loadMissing(['items.cardProduct', 'items.lanyardWidth', 'items.lanyardHardware', 'shippingMethod']);
         $inv = Invoice::withoutGlobalScopes()->where('order_id', $o->id)->latest('id')->first();
+        $print = PrintSchedule::forOrder($o);
 
         return self::summary($o) + [
             'subtotal' => $o->subtotal, 'shipping_fee' => $o->shipping_fee, 'discount' => $o->discount,
             'promo' => $o->voucher_id ? Voucher::whereKey($o->voucher_id)->value('code') : null,
+            // jadwal cetak per item (eta_min = paling cepat, eta_max = janji); `estimated` true bila belum lunas
+            'print' => ['eta_min' => $print['eta_min'], 'eta_max' => $print['eta_max'], 'note' => $print['note']],
             'shipping' => [
                 'method' => $o->shippingMethod?->name, 'eta' => $o->shippingMethod?->eta, 'needs_address' => (bool) $o->shippingMethod?->needs_address,
                 'recipient_name' => $o->recipient_name, 'recipient_phone' => $o->recipient_phone, 'address_line' => $o->address_line,
@@ -235,6 +241,7 @@ class OrderController extends WorkspaceController
             'items' => $o->items->map(fn (OrderItem $i) => [
                 'id' => $i->public_id, 'kind' => $i->kind, 'label' => $i->label, 'quantity' => $i->quantity, 'unit_price' => $i->unit_price, 'total' => $i->total,
                 'design' => $i->design_snapshot,
+                'print' => $print['items'][(string) $i->id] ?? null,
             ])->values(),
             'timeline' => collect([
                 ['created', 'Pesanan dibuat', $o->created_at], ['paid', 'Pembayaran diterima', $o->paid_at],

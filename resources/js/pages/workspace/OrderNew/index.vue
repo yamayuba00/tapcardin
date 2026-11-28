@@ -23,6 +23,7 @@ import LanyardStrip from '@/components/studio/LanyardStrip/index.vue'
 import { cartApi, checkoutApi, ordersApi } from '@/api/workspace'
 import { useAction, useAsync } from '@/composables/useAsync'
 import { rupiah } from '@/lib/format'
+import { formatPrintRange } from '@/lib/printEta'
 import { useToastStore } from '@/stores/toast'
 
 const route = useRoute()
@@ -178,6 +179,7 @@ const promo = ref('')
 const appliedPromo = ref('')
 const promoError = ref('')
 const quote = ref(null)
+const printEta = computed(() => formatPrintRange(quote.value?.print_eta_min, quote.value?.print_eta_max))
 const quoting = ref(false)
 const payload = computed(() => chosen.value.map((i) => ({ kind: i.kind, design: i.design.id, product: i.product, quantity: i.quantity })))
 let qt = null
@@ -444,6 +446,10 @@ openDraft()
               <div v-if="quote?.discount" class="flex justify-between gap-3 text-ok"><dt class="flex items-center gap-1"><Tag class="size-4" /> Promo {{ quote.promo?.code }}</dt><dd class="font-mono">−{{ rupiah(quote.discount) }}</dd></div>
               <div class="flex justify-between gap-3 border-t border-line pt-2 text-base font-semibold"><dt>Total</dt><dd class="font-display text-xl">{{ quote ? rupiah(quote.total) : '…' }}</dd></div>
             </dl>
+            <div v-if="quote && printEta" class="grid gap-1 rounded-md bg-surface-2 px-3 py-2 text-sm">
+              <p><span class="text-muted">Estimasi cetak:</span> <b>{{ printEta }}</b></p>
+              <p v-if="quote.print_note" class="text-xs text-warn">{{ quote.print_note }}</p>
+            </div>
 
             <!-- kode promo -->
             <div v-if="quote?.promo" class="flex items-center gap-2 rounded-md border border-line bg-surface-2 px-3 py-2 text-sm">

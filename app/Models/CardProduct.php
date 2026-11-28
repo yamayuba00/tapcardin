@@ -14,6 +14,6 @@ class CardProduct extends Model
 
     protected function casts(): array
     {
-        return ['chip_type' => ChipType::class, 'price' => 'integer', 'min_qty' => 'integer', 'is_active' => 'boolean'];
+        return ['chip_type' => ChipType::class, 'price' => 'integer', 'min_qty' => 'integer', 'print_min_days' => 'integer', 'print_max_days' => 'integer', 'is_active' => 'boolean'];
     }
 }

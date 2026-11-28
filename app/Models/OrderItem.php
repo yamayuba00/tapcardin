@@ -15,7 +15,8 @@ class OrderItem extends Model
 
     protected function casts(): array
     {
-        return ['design_snapshot' => 'array', 'quantity' => 'integer', 'unit_price' => 'integer', 'total' => 'integer'];
+        return ['design_snapshot' => 'array', 'quantity' => 'integer', 'unit_price' => 'integer', 'total' => 'integer',
+            'print_starts_on' => 'date', 'print_eta_min' => 'date', 'print_eta_max' => 'date', 'print_delay_days' => 'integer'];
     }
 
     public function order(): BelongsTo

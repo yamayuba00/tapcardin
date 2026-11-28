@@ -24,6 +24,7 @@ use App\Support\Design\CardVisual;
 use App\Support\Design\Variables;
 use App\Support\Indonesia;
 use App\Support\Phone;
+use App\Support\Production\PrintSchedule;
 use App\Support\Shipping\ShippingProvider;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -78,7 +79,7 @@ final class CreateOrder
     /**
      * Rincian harga final (server): baris pesanan, subtotal, ongkir, potongan promo, total.
      *
-     * @return array{lines: list<array>, subtotal: int, shipping: int, discount: int, total: int, voucher: ?Voucher, method: ShippingMethod}
+     * @return array{lines: list<array>, subtotal: int, shipping: int, discount: int, total: int, voucher: ?Voucher, method: ShippingMethod, print: array}
      */
     public function quote(Tenant $tenant, User $user, array $items, string $methodKey, ?string $promo = null, array $ship = []): array
     {
@@ -97,9 +98,12 @@ final class CreateOrder
             [$courier, $service, $etd, $fee] = [$picked['courier'], $picked['service'], $picked['etd'], $picked['cost']];
         }
 
+        // estimasi cetak dari sekarang (pratinjau; jadwal resmi disimpan saat lunas)
+        $print = PrintSchedule::preview(array_map(fn (array $l, int $k) => ['key' => $k] + $l, $lines, array_keys($lines)));
+
         return ['lines' => $lines, 'subtotal' => $subtotal, 'shipping' => $fee, 'discount' => $discount,
             'total' => $subtotal + $fee - $discount, 'voucher' => $voucher, 'method' => $method,
-            'courier' => $courier, 'service' => $service, 'etd' => $etd];
+            'courier' => $courier, 'service' => $service, 'etd' => $etd, 'print' => $print];
     }
 
     /** Kode promo yang sah untuk pesanan cetak workspace ini; selain itu galat pada kolom `promo`. */

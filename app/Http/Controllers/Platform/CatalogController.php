@@ -13,10 +13,12 @@ use App\Models\ShippingZoneRate;
 use App\Support\Audit;
 use App\Support\CardPeriod;
 use App\Support\Contacts\ContactTypes;
+use App\Support\Production\PrintSchedule;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 /** Katalog (platform.catalog.manage): produk kartu & ongkir, harga lanyard, jenis kontak bio link, add-on (harga, status, peminat). */
 class CatalogController extends PlatformController
@@ -27,7 +29,8 @@ class CatalogController extends PlatformController
 
         return $this->ok([
             'card_renewal' => ['price' => CardPeriod::renewalPrice(), 'months' => CardPeriod::months(), 'grace_days' => CardPeriod::graceDays()],
-            'card_products' => CardProduct::orderBy('sort')->get()->map(fn (CardProduct $p) => $p->only(['public_id', 'key', 'name', 'description', 'price', 'min_qty', 'sort', 'is_active']) + ['chip_type' => $p->chip_type->value]),
+            'production' => ['cards_per_day' => PrintSchedule::capacity()],
+            'card_products' => CardProduct::orderBy('sort')->get()->map(fn (CardProduct $p) => $p->only(['public_id', 'key', 'name', 'description', 'price', 'min_qty', 'print_min_days', 'print_max_days', 'sort', 'is_active']) + ['chip_type' => $p->chip_type->value]),
             'shipping_methods' => ShippingMethod::orderBy('sort')->get()->map(fn ($m) => $m->only(['public_id', 'key', 'name', 'eta', 'price', 'needs_address', 'sort', 'is_active'])),
             'shipping_rates' => ShippingZoneRate::orderBy('zone_code')->orderBy('courier')->orderBy('service')->get()->map(fn ($r) => ['id' => $r->id, 'zone' => $r->zone_code, 'courier' => $r->courier, 'service' => $r->service, 'base_cost' => $r->base_cost, 'per_kg_cost' => $r->per_kg_cost, 'etd_min_days' => $r->etd_min_days, 'etd_max_days' => $r->etd_max_days, 'is_placeholder' => $r->is_placeholder]),
             'lanyard_widths' => LanyardWidth::orderBy('sort')->get()->map(fn ($w) => $w->only(['public_id', 'width_mm', 'label', 'price_single', 'price_double', 'min_qty', 'sort', 'is_active'])),
@@ -62,6 +65,18 @@ class CatalogController extends PlatformController
         return $this->show();
     }
 
+    /** PATCH /api/catalog/production {cards_per_day} — kapasitas cetak: kartu yang mulai dicetak per hari kerja. */
+    public function saveProduction(Request $request): JsonResponse
+    {
+        $this->can('catalog.manage');
+        $data = $request->validate(['cards_per_day' => ['required', 'integer', 'min:1', 'max:100000']]);
+        $before = PlatformSetting::get('production.cards_per_day');
+        PlatformSetting::put('production.cards_per_day', (int) $data['cards_per_day'], auth()->id());
+        Audit::platform('catalog.production_capacity', PlatformSetting::find('production.cards_per_day'), ['cards_per_day' => $before], ['cards_per_day' => (int) $data['cards_per_day']]);
+
+        return $this->show();
+    }
+
     /** PATCH /api/catalog/card-renewal {price} — harga perpanjangan masa pakai kartu (per periode `months`). */
     public function saveCardRenewal(Request $request): JsonResponse
     {
@@ -84,9 +99,16 @@ class CatalogController extends PlatformController
             'chip_type' => [$s, Rule::in(['ntag213', 'ntag215', 'ntag216', 'ntag424'])],
             'price' => [$s, 'integer', 'min:0', 'max:100000000'],
             'min_qty' => ['sometimes', 'integer', 'min:1', 'max:5000'],
+            'print_min_days' => ['sometimes', 'integer', 'min:1', 'max:60'],
+            'print_max_days' => ['sometimes', 'integer', 'min:1', 'max:60'],
             'sort' => ['sometimes', 'integer'],
             'is_active' => ['sometimes', 'boolean'],
         ]);
+        $minDays = (int) ($data['print_min_days'] ?? $p->print_min_days ?? 3);
+        $maxDays = (int) ($data['print_max_days'] ?? $p->print_max_days ?? 7);
+        if ($maxDays < $minDays) {
+            throw ValidationException::withMessages(['print_max_days' => 'Lead time maksimal harus sama atau lebih dari minimal.']);
+        }
         if (! $id) {
             $data['key'] = Str::limit(Str::slug($data['name'], '_'), 24, '').'_'.Str::lower(Str::random(3));
         }

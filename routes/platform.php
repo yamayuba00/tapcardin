@@ -150,6 +150,7 @@ Route::middleware(['auth:staff', 'platform'])->prefix('api')->name('api.')->grou
     Route::post('/catalog/lanyard-hardware', [CatalogController::class, 'saveHardware'])->name('catalog.hardware.store');
     Route::patch('/catalog/lanyard-hardware/{id}', [CatalogController::class, 'saveHardware'])->name('catalog.hardware.update');
     Route::patch('/catalog/card-renewal', [CatalogController::class, 'saveCardRenewal'])->name('catalog.card-renewal.update');
+    Route::patch('/catalog/production', [CatalogController::class, 'saveProduction'])->name('catalog.production.update');
     Route::post('/catalog/card-products', [CatalogController::class, 'saveCardProduct'])->name('catalog.card-products.store');
     Route::patch('/catalog/card-products/{id}', [CatalogController::class, 'saveCardProduct'])->name('catalog.card-products.update');
     Route::post('/catalog/shipping', [CatalogController::class, 'saveShipping'])->name('catalog.shipping.store');
