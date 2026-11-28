@@ -2,12 +2,15 @@
 
 namespace Tests\Feature;
 
+use App\Actions\Billing\ApplyPayment;
 use App\Models\CardProduct;
 use App\Models\Design;
 use App\Models\Invoice;
 use App\Models\Order;
 use App\Models\PlatformSetting;
 use App\Models\User;
+use App\Services\Payment\PaymentNotification;
+use App\Support\Production\PrintSchedule;
 use App\Tenancy\TenantScope;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -188,5 +191,68 @@ class PrintScheduleTest extends TestCase
         $row = $this->itemRow($second['order']['id']);
         $this->assertSame('2026-12-08', DB::table('order_item_schedules')->where('order_item_id', $row->id)->where('quantity', 10)->value('day'));
         $this->assertSame('2026-12-11', $row->print_eta_min);
+    }
+
+    /** @return array<string,int> kartu terjadwal per hari (semua pesanan). */
+    private function bookedPerDay(): array
+    {
+        return DB::table('order_item_schedules')->groupBy('day')->orderBy('day')
+            ->selectRaw('day, SUM(quantity) AS qty')->pluck('qty', 'day')->map(fn ($v) => (int) $v)->all();
+    }
+
+    public function test_orders_paid_back_to_back_near_capacity_never_overbook_a_day(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-12-04 10:00', 'Asia/Jakarta'));
+        PlatformSetting::put('production.cards_per_day', 100);
+        $u = $this->makeUser();
+        $d = $this->cardDesign($u);
+
+        foreach ([60, 60, 45, 99] as $qty) {
+            $this->pay($this->order($d, $qty)['order']['id']);
+        }
+
+        $booked = $this->bookedPerDay();
+        $this->assertSame(264, array_sum($booked), 'semua kartu terjadwal');
+        foreach ($booked as $day => $qty) {
+            $this->assertLessThanOrEqual(100, $qty, "kapasitas {$day} terlampaui");
+        }
+        $this->assertSame(['2026-12-07' => 100, '2026-12-08' => 100, '2026-12-09' => 64], $booked);
+    }
+
+    public function test_applying_the_same_payment_twice_books_capacity_once(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-12-04 10:00', 'Asia/Jakarta'));
+        $u = $this->makeUser();
+        $o = $this->order($this->cardDesign($u), 5);
+        $order = Order::withoutGlobalScopes()->where('public_id', $o['order']['id'])->firstOrFail();
+        $inv = Invoice::withoutGlobalScope(TenantScope::class)->where('order_id', $order->id)->firstOrFail();
+        $n = new PaymentNotification('simulator', 'sim-dup-1', $inv->number, PaymentNotification::PAID, (int) $inv->total, 'QRIS', true, []);
+
+        $this->assertSame('paid', app(ApplyPayment::class)->handle($n));
+        $this->assertSame('duplicate', app(ApplyPayment::class)->handle($n));
+        // jadwal dipanggil ulang langsung (mis. pemrosesan ulang) -> tetap satu pemesanan
+        DB::transaction(fn () => PrintSchedule::commit($order->fresh()));
+
+        $this->assertSame(1, DB::table('order_item_schedules')->count());
+        $this->assertSame(['2026-12-07' => 5], $this->bookedPerDay());
+    }
+
+    public function test_capacity_advisory_lock_is_taken_without_capacity_setting_row(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-12-04 10:00', 'Asia/Jakarta'));
+        DB::table('platform_settings')->where('key', 'production.cards_per_day')->delete();
+        $u = $this->makeUser();
+        $o = $this->order($this->cardDesign($u), 3);
+
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        $this->pay($o['order']['id']);
+        $log = collect(DB::getQueryLog());
+        DB::disableQueryLog();
+
+        $lock = $log->first(fn ($q) => str_contains($q['query'], 'pg_advisory_xact_lock'));
+        $this->assertNotNull($lock, 'kunci advisory kapasitas cetak diambil');
+        $this->assertSame([PrintSchedule::CAPACITY_LOCK_KEY], $lock['bindings']);
+        $this->assertSame(3, (int) DB::table('order_item_schedules')->sum('quantity'));
     }
 }

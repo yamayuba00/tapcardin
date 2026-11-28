@@ -23,6 +23,16 @@ final class PrintSchedule
     private const MAX_IDLE_DAYS = 3650;
 
     /**
+     * Kunci advisory PostgreSQL (tingkat transaksi) untuk pemesanan kapasitas cetak harian. Diambil lewat
+     * `pg_advisory_xact_lock` di transaksi pembayaran sebelum membaca kartu terjadwal dan menyimpan
+     * order_item_schedules, sehingga dua pesanan yang lunas bersamaan diserialkan dan tidak memakai kapasitas
+     * yang sama. Tidak bergantung pada baris pengaturan apa pun (instalasi baru belum punya
+     * `production.cards_per_day`). Dilepas otomatis saat commit/rollback. Nilai tetap: jangan dipakai ulang
+     * untuk kunci lain. 0x7461705F70726E74 = "tap_prnt".
+     */
+    public const CAPACITY_LOCK_KEY = 0x7461705F70726E74;
+
+    /**
      * Hitung jadwal (murni, tanpa DB).
      *
      * @param  list<array{key:int|string, kind:string, quantity:int, min_days:int, max_days:int}>  $rows
@@ -137,17 +147,24 @@ final class PrintSchedule
 
     /**
      * Saat pesanan lunas: hitung jadwal dan simpan (kolom print_* item + pemesanan kapasitas per hari).
-     * Dipanggil dalam transaksi pembayaran; baris pengaturan kapasitas dikunci agar pesanan lunas bersamaan tidak
-     * memakai kapasitas yang sama.
+     * Wajib dipanggil di dalam transaksi pembayaran: kunci advisory kapasitas (CAPACITY_LOCK_KEY) diambil di sini
+     * dan baru lepas saat transaksi itu selesai. Idempoten: pesanan yang item-nya sudah punya jadwal tidak dipesan lagi.
      */
     public static function commit(Order $order): void
     {
+        if (DB::transactionLevel() < 1) {
+            throw new RuntimeException('PrintSchedule::commit harus dipanggil di dalam transaksi.');
+        }
+        self::lockCapacity();
+
+        $items = $order->items()->get();
+        if (DB::table('order_item_schedules')->whereIn('order_item_id', $items->pluck('id'))->exists()) {
+            return;
+        }
+
         $cal = WorkingCalendar::fromConfig();
         $paid = CarbonImmutable::instance($order->paid_at ?? now())->setTimezone('Asia/Jakarta');
         $start = $cal->nextWorkingDay($paid->startOfDay());
-        DB::table('platform_settings')->where('key', 'production.cards_per_day')->lockForUpdate()->first();
-
-        $items = $order->items()->get();
         $plan = self::plan(self::rows(self::specs($items)), $start->format('Y-m-d'), self::bookedFrom($start->format('Y-m-d')), self::capacity(), $cal);
 
         foreach ($items as $item) {
@@ -158,6 +175,14 @@ final class PrintSchedule
             foreach ($p['allocations'] as $day => $qty) {
                 DB::table('order_item_schedules')->insert(['order_item_id' => $item->id, 'day' => $day, 'quantity' => $qty, 'created_at' => now()]);
             }
+        }
+    }
+
+    /** Serialkan pemesanan kapasitas cetak sampai transaksi berjalan selesai (PostgreSQL). */
+    private static function lockCapacity(): void
+    {
+        if (DB::connection()->getDriverName() === 'pgsql') {
+            DB::select('SELECT pg_advisory_xact_lock(?)', [self::CAPACITY_LOCK_KEY]);
         }
     }
 
