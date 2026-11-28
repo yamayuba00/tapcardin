@@ -1,0 +1,21 @@
+{
+  "name": "tapcard-nfc-bridge",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Konektor lokal reader NFC USB (PC/SC) untuk Stasiun encode panel TapCard.",
+  "type": "module",
+  "bin": {
+    "tapcard-nfc-bridge": "bin/nfc-bridge.js"
+  },
+  "scripts": {
+    "start": "node bin/nfc-bridge.js",
+    "test": "node --test \"test/*.test.js\""
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "nfc-pcsc": "0.8.1",
+    "ws": "8.18.0"
+  }
+}

@@ -34,13 +34,15 @@ class SecurityHeaders
         $rt = config('broadcasting.default') === 'reverb' && ($h = config('broadcasting.connections.reverb.options.host'))
             ? ' '.(config('broadcasting.connections.reverb.options.scheme') === 'https' ? 'wss' : 'ws').'://'.$h.':'.config('broadcasting.connections.reverb.options.port')
             : '';
+        // Stasiun encode mode Reader USB: konektor lokal tools/nfc-bridge di ws://127.0.0.1:<port> (hanya host panel)
+        $nfcBridge = $host === config('tapcard.panel_subdomain').'.'.$base ? ' ws://127.0.0.1:*' : '';
         $csp = implode('; ', [
             "default-src 'self'",
             "img-src 'self' data: blob: ".$this->formTargets().$media,
             "script-src 'self' 'nonce-$nonce'$dev",
             "style-src 'self' 'nonce-$nonce'$dev",
             "font-src 'self'",
-            "connect-src 'self'$dev$media$rt",
+            "connect-src 'self'$dev$media$rt$nfcBridge",
             "frame-src 'self' ".implode(' ', BioBlocks::EMBED_ORIGINS), // embed video bio link
             "frame-ancestors 'self'",
             "base-uri 'none'",
