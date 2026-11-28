@@ -37,6 +37,8 @@ export default [
       { path: 'vouchers', name: 'vouchers', component: page('Vouchers'), meta: { title: 'Voucher', nav: 'vouchers', perm: 'vouchers.manage' } },
       { path: 'catalog', name: 'catalog', component: page('Catalog'), meta: { title: 'Katalog', nav: 'catalog', perm: 'catalog.manage' } },
       { path: 'announcements', name: 'announcements', component: page('Announcements'), meta: { title: 'Pengumuman', nav: 'announcements', perm: 'comms.manage' } },
+      { path: 'email-blasts', name: 'email-blasts', component: page('EmailBlasts'), meta: { title: 'Email blast', nav: 'email-blasts', perm: 'comms.manage' } },
+      { path: 'email-blasts/:id', name: 'email-blast', component: page('EmailBlastEditor'), meta: { title: 'Email blast', nav: 'email-blasts', perm: 'comms.manage' } },
       { path: 'staff', name: 'staff', component: page('Staff'), meta: { title: 'Staf & peran', nav: 'staff', perm: 'staff.manage' } },
       { path: 'audit', name: 'audit', component: page('Audit'), meta: { title: 'Audit log', nav: 'audit', perm: 'audit.view' } },
       { path: 'account', name: 'account', component: page('Account'), meta: { title: 'Akun', nav: 'account' } },

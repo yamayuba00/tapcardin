@@ -6,7 +6,7 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import {
-  Activity, BadgeCheck, BadgePercent, Bell, Boxes, Building2, ChevronRight, ChevronsUpDown, CircleAlert, CircleCheck, CircleUser, ClipboardList, Cpu, CreditCard, Gem, Globe, HeartPulse, House, LogOut, Megaphone, Moon, Package, PanelLeft, Search, ShieldCheck, ShoppingCart, Stamp, User, Users, Wallet,
+  Activity, BadgeCheck, BadgePercent, Bell, Boxes, Building2, ChevronRight, ChevronsUpDown, CircleAlert, CircleCheck, CircleUser, ClipboardList, Cpu, CreditCard, Gem, Globe, HeartPulse, House, LogOut, Mail, Megaphone, Moon, Package, PanelLeft, Search, ShieldCheck, ShoppingCart, Stamp, User, Users, Wallet,
 } from 'lucide-vue-next'
 import BrandLogo from '@/components/common/BrandLogo/index.vue'
 import InstallApp from '@/components/common/InstallApp/index.vue'
@@ -56,6 +56,7 @@ const groups = [
     { key: 'vouchers', label: 'Voucher', icon: BadgePercent, to: '/vouchers', perm: 'vouchers.manage' },
     { key: 'catalog', label: 'Katalog', icon: Package, to: '/catalog', perm: 'catalog.manage' },
     { key: 'announcements', label: 'Pengumuman', icon: Megaphone, to: '/announcements', perm: 'comms.manage' },
+    { key: 'email-blasts', label: 'Email blast', icon: Mail, to: '/email-blasts', perm: 'comms.manage' },
   ] },
   { label: 'Sistem', items: [
     { key: 'staff', label: 'Staf & peran', icon: ShieldCheck, to: '/staff', perm: 'staff.manage' },

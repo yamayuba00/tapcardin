@@ -121,6 +121,22 @@ export const adminApi = {
   announcements: (params) => http.get('/api/announcements', params),
   sendAnnouncement: (body) => http.post('/api/announcements', body),
 
+  emailBlasts: (params) => http.get('/api/email-blasts', params),
+  emailBlast: (id) => http.get(`/api/email-blasts/${id}`),
+  createEmailBlast: (body) => http.post('/api/email-blasts', body),
+  updateEmailBlast: (id, body) => http.patch(`/api/email-blasts/${id}`, body),
+  previewEmailBlast: (body) => http.post('/api/email-blasts/preview', body),
+  emailBlastCount: (params) => http.get('/api/email-blasts/audience-count', params),
+  uploadBlastImage: (file) => {
+    const fd = new FormData()
+    fd.append('image', file)
+    return http.post('/api/email-blasts/images', fd)
+  },
+  testEmailBlast: (id, email) => http.post(`/api/email-blasts/${id}/test`, { email }),
+  scheduleEmailBlast: (id, scheduledAt) => http.post(`/api/email-blasts/${id}/schedule`, { scheduled_at: scheduledAt }),
+  sendEmailBlast: (id) => http.post(`/api/email-blasts/${id}/send`),
+  cancelEmailBlast: (id) => http.post(`/api/email-blasts/${id}/cancel`),
+
   audit: (params) => http.get('/api/audit', params),
   system: () => http.get('/api/system'),
   uptime: () => http.get('/api/uptime'),
